@@ -47,6 +47,7 @@ public class RegistrationService {
     private final TicketOrderService ticketOrderService;
     private final EventService eventService;
     private final bf.evenements.plateforme.invoice.ConfirmationPdfService confirmationPdfService;
+    private final bf.evenements.plateforme.notification.NotificationService notificationService;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
 
@@ -175,6 +176,7 @@ public class RegistrationService {
         }
         r.setStatut(RegistrationStatus.CONFIRMEE);
         r.setConfirmeeLe(Instant.now());
+        notifyConfirmed(r);
         auditService.record(currentUser.requireId(), currentUser.require().email(),
                 "REGISTRATION_CONFIRMED", "Registration", id.toString(), null, null);
         return RegistrationResponse.from(r);
@@ -186,6 +188,11 @@ public class RegistrationService {
         eventService.loadManaged(r.getEvent().getId());
         r.setStatut(RegistrationStatus.REFUSEE);
         r.setMotifRefus(motif);
+        notificationService.notify(r.getUser().getId(),
+                bf.evenements.plateforme.notification.NotificationType.MESSAGE_ORGANISATEUR,
+                "Inscription refusée",
+                "Votre inscription à « " + r.getEvent().getNom() + " » a été refusée. Motif : " + motif,
+                "/tableau-de-bord/inscriptions");
         auditService.record(currentUser.requireId(), currentUser.require().email(),
                 "REGISTRATION_REJECTED", "Registration", id.toString(), null, motif);
         return RegistrationResponse.from(r);
@@ -213,7 +220,31 @@ public class RegistrationService {
         } else {
             r.setStatut(RegistrationStatus.CONFIRMEE);
             r.setConfirmeeLe(Instant.now());
+            notifyConfirmed(r);
         }
+    }
+
+    private void notifyConfirmed(Registration r) {
+        notificationService.notify(r.getUser().getId(),
+                bf.evenements.plateforme.notification.NotificationType.INSCRIPTION_CONFIRMEE,
+                "Inscription confirmée",
+                "Votre inscription à « " + r.getEvent().getNom() + " » est confirmée (réf. "
+                        + r.getReference() + ").",
+                "/tableau-de-bord/inscriptions");
+    }
+
+    /** Sends a message from the organiser to every confirmed participant. */
+    @Transactional
+    public int broadcast(UUID eventId, String titre, String contenu) {
+        var event = eventService.loadManaged(eventId);
+        var confirmed = registrationRepository.findByEventIdOrderByCreatedAtDesc(eventId,
+                org.springframework.data.domain.Pageable.unpaged()).stream()
+                .filter(r -> r.getStatut() == RegistrationStatus.CONFIRMEE)
+                .toList();
+        confirmed.forEach(r -> notificationService.notify(r.getUser().getId(),
+                bf.evenements.plateforme.notification.NotificationType.MESSAGE_ORGANISATEUR,
+                titre, contenu, "/evenements/" + event.getSlug()));
+        return confirmed.size();
     }
 
     private Registration load(UUID id) {

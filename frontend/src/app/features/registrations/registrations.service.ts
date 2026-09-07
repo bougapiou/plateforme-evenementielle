@@ -33,6 +33,12 @@ export class RegistrationsService extends ApiBase {
   reject(id: string, motif: string): Observable<Registration> {
     return this.http.post<Registration>(`${this.base}/registrations/${id}/reject`, { motif });
   }
+  broadcast(eventId: string, titre: string, contenu: string): Observable<{ destinataires: number }> {
+    return this.http.post<{ destinataires: number }>(
+      `${this.base}/events/${eventId}/broadcast`,
+      { titre, contenu },
+    );
+  }
 
   // documents
   documents(id: string): Observable<EventDocument[]> {

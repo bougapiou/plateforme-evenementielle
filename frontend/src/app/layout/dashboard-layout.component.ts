@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { NotificationBellComponent } from '../features/notifications/notification-bell.component';
 
 interface NavItem {
   label: string;
@@ -12,7 +13,7 @@ interface NavItem {
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationBellComponent],
   template: `
     <div class="flex min-h-full">
       <aside class="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:block">
@@ -46,6 +47,7 @@ interface NavItem {
         <header class="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-5">
           <a routerLink="/" class="text-sm text-slate-500 hover:text-slate-700">← Retour au site</a>
           <div class="flex items-center gap-3 text-sm">
+            <app-notification-bell />
             <span class="font-medium text-slate-700">{{ auth.user()?.fullName }}</span>
             <span class="badge bg-slate-100 text-slate-600">{{ auth.user()?.roles?.join(', ') }}</span>
             <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>

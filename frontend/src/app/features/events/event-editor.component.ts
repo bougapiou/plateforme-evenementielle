@@ -337,6 +337,14 @@ type Tab =
 
       <!-- INSCRIPTIONS -->
       @if (tab() === 'inscriptions') {
+        <form class="card mt-4 grid gap-2 p-4 sm:grid-cols-3" (ngSubmit)="broadcast()">
+          <input class="form-input sm:col-span-1" placeholder="Titre du message"
+                 [(ngModel)]="broadcastTitre" name="bt" />
+          <input class="form-input sm:col-span-2" placeholder="Message aux inscrits confirmés"
+                 [(ngModel)]="broadcastContenu" name="bc" />
+          <button type="submit" class="btn-primary sm:col-span-3">Envoyer à tous les inscrits</button>
+          @if (broadcastInfo()) { <p class="sm:col-span-3 text-sm text-green-700">{{ broadcastInfo() }}</p> }
+        </form>
         <div class="mt-4 space-y-2">
           @for (r of registrations(); track r.id) {
             <div class="card flex items-center justify-between p-3 text-sm">
@@ -428,6 +436,9 @@ export class EventEditorComponent {
   checkins = signal<CheckinView[]>([]);
   staffEmail = '';
   staffError = signal<string | null>(null);
+  broadcastTitre = '';
+  broadcastContenu = '';
+  broadcastInfo = signal<string | null>(null);
   editingStandTypeId = signal<string | null>(null);
   standError = signal<string | null>(null);
 
@@ -598,6 +609,15 @@ export class EventEditorComponent {
     this.registrationsService.reject(r.id, motif).subscribe(() =>
       this.registrationsService.forEvent(this.id()).subscribe((p) => this.registrations.set(p.content)),
     );
+  }
+  broadcast(): void {
+    if (!this.broadcastTitre.trim() || !this.broadcastContenu.trim()) return;
+    this.registrationsService.broadcast(this.id(), this.broadcastTitre, this.broadcastContenu)
+      .subscribe((r) => {
+        this.broadcastInfo.set(`Message envoyé à ${r.destinataires} inscrit(s).`);
+        this.broadcastTitre = '';
+        this.broadcastContenu = '';
+      });
   }
 
   // --- stands ---

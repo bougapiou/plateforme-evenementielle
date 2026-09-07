@@ -85,6 +85,20 @@ public class RegistrationController {
         return registrationService.forEvent(eventId, pageable);
     }
 
+    @PostMapping("/events/{eventId}/broadcast")
+    @PreAuthorize("hasAuthority('" + Permissions.REGISTRATION_MANAGE + "')")
+    @Operation(summary = "Message de l'organisateur à tous les inscrits confirmés")
+    public java.util.Map<String, Integer> broadcast(@PathVariable UUID eventId,
+                                                    @Valid @RequestBody BroadcastRequest request) {
+        return java.util.Map.of("destinataires",
+                registrationService.broadcast(eventId, request.titre(), request.contenu()));
+    }
+
+    public record BroadcastRequest(
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 200) String titre,
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 2000) String contenu) {
+    }
+
     @PostMapping("/registrations/{id}/confirm")
     @PreAuthorize("hasAuthority('" + Permissions.REGISTRATION_MANAGE + "')")
     @Operation(summary = "Valider une inscription (organisateur)")
