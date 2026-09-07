@@ -11,7 +11,7 @@
 | M6  | Inscriptions (particulier & structure, documents) | ✅ livré |
 | M7  | Paiements (`PaymentProvider`, sandbox, webhook HMAC) | ✅ livré |
 | M8  | Billets électroniques & QR codes | ✅ livré |
-| M9  | Contrôle d'accès (scan) | à venir |
+| M9  | Contrôle d'accès (scan) | ✅ livré |
 | M10 | Factures & reçus (PDF) | à venir |
 | M11 | Notifications (in-app, email, canaux SMS/WhatsApp) | à venir |
 | M12 | Statistiques & tableaux de bord | à venir |
@@ -22,6 +22,27 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M9 — Contrôle à l'entrée (contenu livré)
+
+- Entités (Flyway V9) : `event_staff` (personnel de contrôle par événement),
+  `checkins` (journal des scans).
+- `POST /api/checkins/scan {token, eventId}` → **VALIDE** (nom, catégorie, n°,
+  heure d'entrée ; billet marqué `UTILISE`), **DEJA_UTILISE** (date du 1er
+  contrôle), **INVALIDE** (inconnu / annulé / autre événement). Chaque scan est
+  journalisé et audité.
+- Habilitation : organisateur de l'événement, personnel assigné (`event_staff`),
+  ou admin (`EVENT_VALIDATE`). L'ajout au personnel accorde le rôle
+  `PERSONNEL_CONTROLE`.
+- Endpoints : `/api/events/{id}/staff` (CRUD), `/api/events/{id}/checkins`
+  (journal), `/api/events/{id}/checkin-stats` (compteurs).
+- Frontend : page **« Contrôle à l'entrée »** — sélection de l'événement, scan
+  caméra (API `BarcodeDetector`) + saisie manuelle, résultat plein écran
+  (vert / orange / rouge) + compteurs ; onglet « Contrôle » de l'éditeur
+  (personnel + journal).
+- Tests : `CheckinIT` — flux complet avec **décodage réel du QR** (ZXing) :
+  valide → déjà utilisé → invalide, permission refusée à un participant,
+  scan par un membre du personnel. 23/23 verts.
 
 ## M8 — Billets électroniques & QR codes (contenu livré)
 

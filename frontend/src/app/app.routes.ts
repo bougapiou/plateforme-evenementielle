@@ -84,6 +84,14 @@ export const routes: Routes = [
         title: 'Mes paiements',
       },
       {
+        path: 'controle',
+        canActivate: [authGuard],
+        data: { permission: 'CHECKIN_SCAN' },
+        loadComponent: () =>
+          import('./features/checkin/scanner.component').then((m) => m.ScannerComponent),
+        title: "Contrôle à l'entrée",
+      },
+      {
         path: 'structures',
         loadComponent: () =>
           import('./features/structures/structures-list.component').then(
