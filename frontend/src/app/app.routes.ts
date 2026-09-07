@@ -58,6 +58,12 @@ export const routes: Routes = [
         title: 'Événement',
       },
       {
+        path: 'billets',
+        loadComponent: () =>
+          import('./features/tickets/my-tickets.component').then((m) => m.MyTicketsComponent),
+        title: 'Mes billets',
+      },
+      {
         path: 'structures',
         loadComponent: () =>
           import('./features/structures/structures-list.component').then(

@@ -62,6 +62,7 @@ export class DashboardLayoutComponent {
   private readonly nav: NavItem[] = [
     { label: 'Vue d’ensemble', path: '/tableau-de-bord', exact: true },
     { label: 'Mes événements', path: '/tableau-de-bord/evenements', permission: 'EVENT_CREATE' },
+    { label: 'Mes billets', path: '/tableau-de-bord/billets' },
     { label: 'Mes structures', path: '/tableau-de-bord/structures' },
     { label: 'Espace organisateur', path: '/tableau-de-bord/organisateur' },
   ];

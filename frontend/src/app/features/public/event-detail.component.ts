@@ -1,38 +1,33 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { EventsService } from '../events/events.service';
-import { EventPublic } from '../events/event.models';
-import { formatDateRange, formatDateTime, formatTime } from '../../shared/format';
+import { TicketsService } from '../tickets/tickets.service';
+import { EventPublic, EventTicket, TicketOrder } from '../events/event.models';
+import { formatDateRange, formatDateTime, formatFcfa, formatTime } from '../../shared/format';
+import { AuthService } from '../../core/auth.service';
+import { ApiError } from '../../core/models';
 
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
     @if (event(); as e) {
       <div class="rounded-xl bg-slate-100">
         @if (e.coverUrl) { <img [src]="e.coverUrl" alt="" class="h-56 w-full rounded-xl object-cover" /> }
       </div>
 
-      <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          @if (e.categoryNom) {
-            <span class="badge bg-brand-50 text-brand-700">{{ e.categoryNom }}</span>
-          }
-          <h1 class="mt-2 text-2xl font-extrabold text-slate-900">{{ e.nom }}</h1>
-          <p class="mt-1 text-slate-500">
-            {{ range(e) }} · {{ e.lieu || '' }}{{ e.ville ? ', ' + e.ville : '' }}
-          </p>
-          <p class="text-sm text-slate-400">Organisé par {{ e.organizerNom }}</p>
-        </div>
-        <div class="flex gap-2">
-          <button class="btn-primary" disabled title="Disponible avec la billetterie">
-            Acheter un ticket
-          </button>
-          @if (e.standsActifs) {
-            <button class="btn-ghost border border-slate-300" disabled>Réserver un stand</button>
-          }
-        </div>
+      <div class="mt-4">
+        @if (e.categoryNom) {
+          <span class="badge bg-brand-50 text-brand-700">{{ e.categoryNom }}</span>
+        }
+        <h1 class="mt-2 text-2xl font-extrabold text-slate-900">{{ e.nom }}</h1>
+        <p class="mt-1 text-slate-500">
+          {{ range(e) }} · {{ e.lieu || '' }}{{ e.ville ? ', ' + e.ville : '' }}
+        </p>
+        <p class="text-sm text-slate-400">Organisé par {{ e.organizerNom }}</p>
       </div>
 
       @if (e.descriptionDetaillee || e.descriptionCourte) {
@@ -44,6 +39,59 @@ import { formatDateRange, formatDateTime, formatTime } from '../../shared/format
         </section>
       }
 
+      <!-- BILLETTERIE -->
+      <section class="card mt-6 p-5" id="billets">
+        <h2 class="font-semibold text-slate-800">Billets</h2>
+        @if (!tickets().length) {
+          <p class="mt-2 text-sm text-slate-500">Aucun billet en vente pour le moment.</p>
+        } @else if (order()) {
+          <div class="mt-3 rounded-lg bg-slate-50 p-4 text-sm">
+            <p class="font-medium text-slate-700">Commande {{ order()!.reference }}</p>
+            <p class="text-slate-500">
+              {{ order()!.montantFormatte }} —
+              <span class="font-semibold">{{ order()!.statut }}</span>
+            </p>
+            @if (order()!.statut === 'EN_ATTENTE') {
+              <p class="mt-1 text-xs text-amber-700">
+                Quota réservé jusqu'à {{ dt(order()!.expireLe) }}. Finalisez le paiement.
+              </p>
+              <button class="btn-primary mt-3" (click)="pay()">
+                Payer (paiement simulé — sandbox)
+              </button>
+            } @else if (order()!.statut === 'PAYEE') {
+              <p class="mt-2 text-green-700">Paiement confirmé — vos billets sont disponibles.</p>
+              <a routerLink="/tableau-de-bord/billets" class="btn-primary mt-2 inline-flex">Voir mes billets</a>
+            }
+          </div>
+        } @else {
+          <table class="mt-3 w-full text-sm">
+            <tbody class="divide-y divide-slate-100">
+              @for (t of tickets(); track t.id) {
+                <tr>
+                  <td class="py-2">
+                    <p class="font-medium text-slate-700">{{ t.nom }}</p>
+                    <p class="text-xs text-slate-400">
+                      {{ t.portee === 'ACTIVITE' ? 'Accès : ' + activityTitles(t) : 'Accès à tout l\\'événement' }}
+                      · {{ t.quantiteRestante }} disponibles
+                    </p>
+                  </td>
+                  <td class="py-2 text-right font-semibold">{{ fcfa(t.prixMontant) }}</td>
+                  <td class="py-2 pl-3 text-right">
+                    <input type="number" min="0" [max]="maxFor(t)" class="form-input w-16"
+                           [ngModel]="qty()[t.id] || 0" (ngModelChange)="setQty(t.id, $event)" />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          @if (buyError()) { <p class="mt-2 text-sm text-red-700">{{ buyError() }}</p> }
+          <button class="btn-primary mt-4" [disabled]="totalQty() === 0" (click)="createOrder()">
+            @if (auth.isAuthenticated()) { Commander ({{ totalQty() }} billet(s)) }
+            @else { Se connecter pour commander }
+          </button>
+        }
+      </section>
+
       @if (e.hasActivities && e.programme.length) {
         <section class="card mt-6 p-5">
           <h2 class="font-semibold text-slate-800">Programme</h2>
@@ -54,7 +102,7 @@ import { formatDateRange, formatDateTime, formatTime } from '../../shared/format
                 <div>
                   <p class="font-medium text-slate-800">{{ a.titre }}</p>
                   <p class="text-slate-400">
-                    {{ a.salle }}{{ a.intervenant ? ' · ' + a.intervenant : '' }}{{ a.moderateur ? ' · modération : ' + a.moderateur : '' }}
+                    {{ a.salle }}{{ a.intervenant ? ' · ' + a.intervenant : '' }}
                   </p>
                 </div>
               </li>
@@ -71,7 +119,6 @@ import { formatDateRange, formatDateTime, formatTime } from '../../shared/format
               <div class="rounded-lg border border-slate-100 p-3 text-sm">
                 <p class="font-medium text-slate-800">{{ s.nom }}</p>
                 <p class="text-slate-400">{{ s.titre }}{{ s.organisation ? ' · ' + s.organisation : '' }}</p>
-                @if (s.bio) { <p class="mt-1 text-slate-500">{{ s.bio }}</p> }
               </div>
             }
           </div>
@@ -96,9 +143,6 @@ import { formatDateRange, formatDateTime, formatTime } from '../../shared/format
           <div><dt class="text-slate-400">Lieu</dt><dd>{{ e.lieu || '—' }}{{ e.adresse ? ', ' + e.adresse : '' }}</dd></div>
           <div><dt class="text-slate-400">Ville</dt><dd>{{ e.ville || '—' }}, {{ e.pays }}</dd></div>
           <div><dt class="text-slate-400">Contact</dt><dd>{{ e.contactEmail || e.contactTelephone || '—' }}</dd></div>
-          @if (e.inscriptionFin) {
-            <div><dt class="text-slate-400">Clôture des inscriptions</dt><dd>{{ dt(e.inscriptionFin) }}</dd></div>
-          }
         </dl>
         @if (e.conditionsParticipation) {
           <p class="mt-3 text-sm text-slate-500"><b>Conditions :</b> {{ e.conditionsParticipation }}</p>
@@ -114,24 +158,71 @@ import { formatDateRange, formatDateTime, formatTime } from '../../shared/format
   `,
 })
 export class EventDetailComponent {
-  private service = inject(EventsService);
+  private events = inject(EventsService);
+  private ticketsService = inject(TicketsService);
+  private router = inject(Router);
+  auth = inject(AuthService);
+
   slug = input.required<string>();
   event = signal<EventPublic | null>(null);
+  tickets = signal<EventTicket[]>([]);
+  order = signal<TicketOrder | null>(null);
   error = signal<string | null>(null);
+  buyError = signal<string | null>(null);
+  qty = signal<Record<string, number>>({});
 
   constructor() {
     effect(() => {
       const slug = this.slug();
-      if (slug) {
-        this.service.publicBySlug(slug).subscribe({
-          next: (e) => this.event.set(e),
-          error: () => this.error.set("Cet événement n'est pas disponible."),
-        });
-      }
+      if (!slug) return;
+      this.events.publicBySlug(slug).subscribe({
+        next: (e) => this.event.set(e),
+        error: () => this.error.set("Cet événement n'est pas disponible."),
+      });
+      this.ticketsService.publicTickets(slug).subscribe({
+        next: (t) => this.tickets.set(t.filter((x) => x.enVente || x.quantiteRestante > 0)),
+        error: () => this.tickets.set([]),
+      });
     });
   }
 
   range = (e: EventPublic) => formatDateRange(e.dateDebut, e.dateFin);
   dt = (iso?: string) => formatDateTime(iso);
   time = (iso?: string) => formatTime(iso);
+  fcfa = (n?: number) => formatFcfa(n);
+  activityTitles = (t: EventTicket) => t.activites.map((a) => a.titre).join(', ');
+  maxFor = (t: EventTicket) => Math.min(t.quantiteRestante, t.limiteParUtilisateur);
+
+  setQty(id: string, value: number): void {
+    this.qty.set({ ...this.qty(), [id]: Math.max(0, Math.floor(value || 0)) });
+  }
+  totalQty(): number {
+    return Object.values(this.qty()).reduce((a, b) => a + b, 0);
+  }
+
+  createOrder(): void {
+    if (!this.auth.isAuthenticated()) {
+      this.router.navigate(['/connexion'], { queryParams: { redirect: this.router.url } });
+      return;
+    }
+    this.buyError.set(null);
+    const lignes = Object.entries(this.qty())
+      .filter(([, q]) => q > 0)
+      .map(([eventTicketId, quantite]) => ({ eventTicketId, quantite }));
+    this.ticketsService
+      .createOrder({ eventId: this.event()!.id, lignes })
+      .subscribe({
+        next: (o) => this.order.set(o),
+        error: (err: HttpErrorResponse) =>
+          this.buyError.set((err.error as ApiError)?.message ?? 'Commande impossible.'),
+      });
+  }
+
+  pay(): void {
+    this.ticketsService.paySandbox(this.order()!.id).subscribe({
+      next: (o) => this.order.set(o),
+      error: (err: HttpErrorResponse) =>
+        this.buyError.set((err.error as ApiError)?.message ?? 'Paiement impossible.'),
+    });
+  }
 }

@@ -6,7 +6,7 @@
 | M1  | Authentification & RBAC     | ✅ livré |
 | M2  | Structures & organisateurs   | ✅ livré |
 | M3  | Événements (workflow, catégories, **activités**, programme, intervenants, partenaires, pages publiques) | ✅ livré |
-| M4  | Billetterie (catégories, quotas, commandes, **portée événement / activité**) | à venir |
+| M4  | Billetterie (catégories, quotas, commandes, **portée événement / activité**) | ✅ livré |
 | M5  | Stands (types, réservation, hold 15 min, expiration) | à venir |
 | M6  | Inscriptions (particulier & structure, documents) | à venir |
 | M7  | Paiements (`PaymentProvider`, sandbox, webhook HMAC) | à venir |
@@ -22,6 +22,29 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M4 — Billetterie (contenu livré)
+
+- Entités (Flyway V4) : `event_tickets` (catégories : prix, devise, quota,
+  limite/utilisateur, fenêtre de vente), `event_ticket_activities` (N–N),
+  `ticket_orders` + `ticket_order_lines`, `tickets`.
+- **Portée** : `event_tickets.portee` ∈ {EVENEMENT, ACTIVITE} ; une catégorie de
+  portée ACTIVITE référence une ou plusieurs activités (`event_ticket_activities`).
+- Commande : réservation atomique du quota sous **verrou pessimiste**
+  (`findByIdForUpdate`) ; contrôle du quota restant et de la limite par personne ;
+  hold de **30 min** puis job d'expiration (`TicketExpiryJob`) qui libère le quota.
+- Confirmation du paiement (`markPaid` / sandbox) → `quantite_reservee` →
+  `quantite_vendue`, génération des billets (`tickets`, statut EMISE, numéro
+  unique). Commandes gratuites confirmées immédiatement.
+- Endpoints : `/api/events/{id}/tickets` (CRUD organisateur),
+  `/api/ticket-orders` (créer / mes commandes / annuler / `pay-sandbox` /
+  `for-event/{id}`), `/api/tickets/my`, `/api/public/events/{slug}/tickets`.
+- `common/money/Money` (montant + devise, FCFA par défaut, `formatted()`).
+- Frontend : onglet « Billetterie » de l'éditeur d'événement (catégories,
+  portée activité), achat de billets sur la page publique (commande + paiement
+  simulé), « Mes billets » + « Mes commandes ».
+- Tests : `TicketingIT` (quota + limite/personne + paiement → billets ;
+  billet gratuit confirmé ; annulation → quota libéré). 11/11 verts.
 
 ## M3 — Événements (contenu livré)
 
