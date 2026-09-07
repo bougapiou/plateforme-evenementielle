@@ -9,7 +9,7 @@
 | M4  | Billetterie (catégories, quotas, commandes, **portée événement / activité**) | ✅ livré |
 | M5  | Stands (types, réservation, hold 15 min, expiration) | ✅ livré |
 | M6  | Inscriptions (particulier & structure, documents) | ✅ livré |
-| M7  | Paiements (`PaymentProvider`, sandbox, webhook HMAC) | à venir |
+| M7  | Paiements (`PaymentProvider`, sandbox, webhook HMAC) | ✅ livré |
 | M8  | Billets électroniques & QR codes | à venir |
 | M9  | Contrôle d'accès (scan) | à venir |
 | M10 | Factures & reçus (PDF) | à venir |
@@ -22,6 +22,28 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M7 — Paiements (contenu livré)
+
+- Entité (Flyway V7) : `payments` (référence, provider, moyen, cible
+  TICKET_ORDER / STAND_RESERVATION, montant, statut) + index unique partiel
+  `(provider, transaction_ref)` pour l'**idempotence des webhooks**.
+- **Abstraction `PaymentProvider`** (`initiate`, `verifyWebhook`) ;
+  `SandboxPaymentProvider` bundlé (signature HMAC-SHA256, corps JSON) ; provider
+  actif choisi par `app.payment.provider`. FasoArzeka / mobile money = nouvelle
+  implémentation à brancher.
+- Endpoints : `POST /api/payments` (initier → renvoie `paymentUrl`),
+  `GET /api/payments/{id,my}`, `GET /api/payments` (admin `PAYMENT_READ`),
+  `POST /api/payments/{id}/refund` (`PAYMENT_MANAGE`),
+  `POST /api/payments/webhook` (public, signé — rejeté 400 si signature invalide),
+  `POST /api/payments/{ref}/simulate` (sandbox).
+- Sur succès → `Payment.REUSSI` + `markPaid()` de la cible → billets / stand
+  confirmés → `PaymentSucceededEvent` → inscription confirmée (M6).
+- Les boutons « pay-sandbox » (billets / stands) passent désormais par la couche
+  paiement (`quickSandboxPay`) : un vrai `Payment` est enregistré.
+- Frontend : « Mes paiements ».
+- Tests : `PaymentIT` (initiation → webhook succès → commande payée + idempotence ;
+  signature invalide → 400 ; échec → commande reste en attente). 21/21 verts.
 
 ## M6 — Inscriptions (contenu livré)
 

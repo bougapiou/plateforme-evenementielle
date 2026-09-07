@@ -3,6 +3,8 @@ package bf.evenements.plateforme.ticket;
 import bf.evenements.plateforme.common.config.AppProperties;
 import bf.evenements.plateforme.common.exception.BusinessException;
 import bf.evenements.plateforme.common.web.PageResponse;
+import bf.evenements.plateforme.payment.PaymentService;
+import bf.evenements.plateforme.payment.PaymentTargetType;
 import bf.evenements.plateforme.rbac.Permissions;
 import bf.evenements.plateforme.ticket.dto.CreateOrderRequest;
 import bf.evenements.plateforme.ticket.dto.TicketOrderResponse;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TicketOrderController {
 
     private final TicketOrderService service;
+    private final PaymentService paymentService;
     private final AppProperties appProperties;
 
     @PostMapping
@@ -73,6 +76,7 @@ public class TicketOrderController {
             throw new BusinessException("SANDBOX_DISABLED",
                     "Le paiement simulé n'est disponible qu'avec le fournisseur 'sandbox'.");
         }
-        return service.confirmSandboxPayment(id);
+        paymentService.quickSandboxPay(PaymentTargetType.TICKET_ORDER, id);
+        return service.get(id);
     }
 }

@@ -48,6 +48,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST,
+                                "/api/payments/webhook").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, PUBLIC_GET).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
