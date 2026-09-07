@@ -15,13 +15,17 @@ public record TicketResponse(
         String categorieNom,
         String participantNom,
         TicketStatus statut,
-        String orderReference) {
+        String orderReference,
+        String qrImageUrl,
+        String pdfUrl) {
 
     public static TicketResponse from(Ticket t) {
         return new TicketResponse(
                 t.getId(), t.getNumero(), t.getEvent().getId(), t.getEvent().getNom(),
                 t.getEvent().getDateDebut(), t.getEvent().getLieu(),
                 t.getEventTicket().getNom(), t.getParticipantNom(), t.getStatut(),
-                t.getOrder().getReference());
+                t.getOrder().getReference(),
+                "/api/tickets/" + t.getId() + "/qr.png",
+                "/api/tickets/" + t.getId() + "/pdf");
     }
 }

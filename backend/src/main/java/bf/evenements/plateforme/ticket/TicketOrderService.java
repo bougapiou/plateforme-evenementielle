@@ -47,6 +47,7 @@ public class TicketOrderService {
     private final EventService eventService;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
+    private final bf.evenements.plateforme.qrcode.QrCodeService qrCodeService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // -------------------------------------------------------------- create
@@ -235,7 +236,8 @@ public class TicketOrderService {
                 t.setParticipantNom(order.getAcheteurNom());
                 t.setParticipantEmail(order.getAcheteurEmail());
                 t.setStatut(TicketStatus.EMISE);
-                ticketEntityRepository.save(t);
+                t = ticketEntityRepository.save(t);
+                qrCodeService.issueFor(t);
             }
         }
         order.setStatut(TicketOrderStatus.PAYEE);
