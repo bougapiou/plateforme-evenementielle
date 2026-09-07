@@ -4,6 +4,8 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { EventsService } from '../events/events.service';
 import { TicketsService } from '../tickets/tickets.service';
+import { StandsService } from '../stands/stands.service';
+import { Stand, StandReservation, StandType } from '../stands/stand.models';
 import { EventPublic, EventTicket, TicketOrder } from '../events/event.models';
 import { formatDateRange, formatDateTime, formatFcfa, formatTime } from '../../shared/format';
 import { AuthService } from '../../core/auth.service';
@@ -92,6 +94,66 @@ import { ApiError } from '../../core/models';
         }
       </section>
 
+      <!-- STANDS -->
+      @if (e.standsActifs) {
+        <section class="card mt-6 p-5" id="stands">
+          <h2 class="font-semibold text-slate-800">Stands</h2>
+          @if (standReservation()) {
+            <div class="mt-3 rounded-lg bg-slate-50 p-4 text-sm">
+              <p class="font-medium text-slate-700">
+                Réservation {{ standReservation()!.numeroReservation }} — Stand
+                {{ standReservation()!.standNumero }}
+              </p>
+              <p class="text-slate-500">
+                {{ standReservation()!.montantFormatte }} —
+                <span class="font-semibold">{{ standReservation()!.statut }}</span>
+              </p>
+              @if (standReservation()!.statut === 'RESERVE_TEMP') {
+                <p class="mt-1 text-xs text-amber-700">
+                  Stand bloqué jusqu'à {{ dt(standReservation()!.dateLimitePaiement) }}.
+                </p>
+                <button class="btn-primary mt-3" (click)="payStand()">Payer (sandbox)</button>
+              } @else if (standReservation()!.statut === 'CONFIRME') {
+                <p class="mt-2 text-green-700">Stand confirmé.</p>
+                <a routerLink="/tableau-de-bord/stands" class="btn-primary mt-2 inline-flex">Mes stands</a>
+              }
+            </div>
+          } @else {
+            @for (t of standTypes(); track t.id) {
+              <div class="mt-3 rounded-lg border border-slate-100 p-3 text-sm">
+                <div class="flex items-center justify-between">
+                  <p class="font-medium text-slate-800">{{ t.nom }} — {{ fcfa(t.prixMontant) }}</p>
+                  <span class="text-slate-400">{{ t.quantiteRestante }} disponibles</span>
+                </div>
+                @if (t.dimensions || t.equipements) {
+                  <p class="text-slate-400">{{ t.dimensions }}{{ t.equipements ? ' · ' + t.equipements : '' }}</p>
+                }
+                <div class="mt-2 flex flex-wrap gap-1">
+                  @for (s of standsOfType(t.id); track s.id) {
+                    <button type="button"
+                            class="rounded border px-2 py-1 text-xs"
+                            [class.border-brand-500]="s.disponible"
+                            [class.text-brand-700]="s.disponible"
+                            [class.border-slate-200]="!s.disponible"
+                            [class.text-slate-300]="!s.disponible"
+                            [disabled]="!s.disponible"
+                            (click)="reserveStand(s)">
+                      {{ s.numero }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+            @if (standError()) { <p class="mt-2 text-sm text-red-700">{{ standError() }}</p> }
+            @if (!auth.hasPermission('STAND_RESERVE')) {
+              <p class="mt-2 text-xs text-slate-400">
+                La réservation de stands est réservée aux comptes structure.
+              </p>
+            }
+          }
+        </section>
+      }
+
       @if (e.hasActivities && e.programme.length) {
         <section class="card mt-6 p-5">
           <h2 class="font-semibold text-slate-800">Programme</h2>
@@ -160,6 +222,7 @@ import { ApiError } from '../../core/models';
 export class EventDetailComponent {
   private events = inject(EventsService);
   private ticketsService = inject(TicketsService);
+  private standsService = inject(StandsService);
   private router = inject(Router);
   auth = inject(AuthService);
 
@@ -170,6 +233,10 @@ export class EventDetailComponent {
   error = signal<string | null>(null);
   buyError = signal<string | null>(null);
   qty = signal<Record<string, number>>({});
+  standTypes = signal<StandType[]>([]);
+  stands = signal<Stand[]>([]);
+  standReservation = signal<StandReservation | null>(null);
+  standError = signal<string | null>(null);
 
   constructor() {
     effect(() => {
@@ -183,6 +250,37 @@ export class EventDetailComponent {
         next: (t) => this.tickets.set(t.filter((x) => x.enVente || x.quantiteRestante > 0)),
         error: () => this.tickets.set([]),
       });
+      this.standsService.publicTypes(slug).subscribe({
+        next: (t) => this.standTypes.set(t),
+        error: () => this.standTypes.set([]),
+      });
+      this.standsService.publicStands(slug).subscribe({
+        next: (s) => this.stands.set(s),
+        error: () => this.stands.set([]),
+      });
+    });
+  }
+
+  standsOfType = (typeId: string) => this.stands().filter((s) => s.standTypeId === typeId);
+
+  reserveStand(s: Stand): void {
+    if (!this.auth.isAuthenticated()) {
+      this.router.navigate(['/connexion'], { queryParams: { redirect: this.router.url } });
+      return;
+    }
+    this.standError.set(null);
+    this.standsService.reserve({ eventId: this.event()!.id, standId: s.id }).subscribe({
+      next: (r) => this.standReservation.set(r),
+      error: (err: HttpErrorResponse) =>
+        this.standError.set((err.error as ApiError)?.message ?? 'Réservation impossible.'),
+    });
+  }
+
+  payStand(): void {
+    this.standsService.paySandbox(this.standReservation()!.id).subscribe({
+      next: (r) => this.standReservation.set(r),
+      error: (err: HttpErrorResponse) =>
+        this.standError.set((err.error as ApiError)?.message ?? 'Paiement impossible.'),
     });
   }
 

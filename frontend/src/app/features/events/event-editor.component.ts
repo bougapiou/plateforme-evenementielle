@@ -9,8 +9,10 @@ import { formatDateTime, formatFcfa } from '../../shared/format';
 import { ApiError } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
 import { TicketsService } from '../tickets/tickets.service';
+import { StandsService } from '../stands/stands.service';
+import { StandType } from '../stands/stand.models';
 
-type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie';
+type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie' | 'stands';
 
 @Component({
   selector: 'app-event-editor',
@@ -273,6 +275,56 @@ type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie
           } @empty { <li class="text-sm text-slate-400">Aucune catégorie de tickets.</li> }
         </ul>
       }
+
+      <!-- STANDS -->
+      @if (tab() === 'stands') {
+        @if (!e.standsActifs) {
+          <p class="card mt-4 bg-amber-50 p-4 text-sm text-amber-700">
+            Activez « Réservation de stands » dans l'onglet Informations pour proposer des stands.
+          </p>
+        }
+        <form class="card mt-4 grid gap-3 p-4 sm:grid-cols-2" [formGroup]="standForm"
+              (ngSubmit)="saveStandType()">
+          <input class="form-input" placeholder="Nom (ex : Standard, Premium, VIP)" formControlName="nom" />
+          <input class="form-input" placeholder="Dimensions (ex : 3m x 3m)" formControlName="dimensions" />
+          <input type="number" class="form-input" placeholder="Prix (FCFA)" formControlName="prixMontant" />
+          <input type="number" class="form-input" placeholder="Nombre de stands" formControlName="quantiteTotale" />
+          <input class="form-input sm:col-span-2" placeholder="Équipements inclus" formControlName="equipements" />
+          @if (standError()) { <p class="sm:col-span-2 text-sm text-red-700">{{ standError() }}</p> }
+          <button type="submit" class="btn-primary sm:col-span-2">
+            {{ editingStandTypeId() ? 'Modifier le type' : 'Ajouter le type de stand' }}
+          </button>
+        </form>
+        <ul class="mt-4 space-y-2">
+          @for (t of standTypes(); track t.id) {
+            <li class="card flex items-center justify-between p-3 text-sm">
+              <div>
+                <p class="font-medium text-slate-700">{{ t.nom }} — {{ fcfa(t.prixMontant) }}</p>
+                <p class="text-slate-400">
+                  {{ t.quantiteReservee }}/{{ t.quantiteTotale }} réservés · {{ t.quantiteRestante }} disponibles
+                  {{ t.dimensions ? ' · ' + t.dimensions : '' }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button class="text-xs text-brand-700" (click)="editStandType(t)">Modifier</button>
+                <button class="text-xs text-red-600" (click)="removeStandType(t)">Supprimer</button>
+              </div>
+            </li>
+          } @empty { <li class="text-sm text-slate-400">Aucun type de stand.</li> }
+        </ul>
+
+        @if (standReservations().length) {
+          <h3 class="mt-6 font-semibold text-slate-700">Réservations</h3>
+          <ul class="mt-2 space-y-1 text-sm">
+            @for (r of standReservations(); track r.id) {
+              <li class="card flex items-center justify-between p-3">
+                <span>{{ r.standNumero }} · {{ r.structureNom || r.numeroReservation }} · {{ r.montantFormatte }}</span>
+                <app-status-badge [value]="r.statut" />
+              </li>
+            }
+          </ul>
+        }
+      }
     } @else {
       <p class="mt-6 text-sm text-slate-500">Chargement…</p>
     }
@@ -282,6 +334,7 @@ export class EventEditorComponent {
   private fb = inject(FormBuilder);
   private service = inject(EventsService);
   private ticketsService = inject(TicketsService);
+  private standsService = inject(StandsService);
   private auth = inject(AuthService);
 
   id = input.required<string>();
@@ -292,6 +345,10 @@ export class EventEditorComponent {
   partners = signal<Partner[]>([]);
   tickets = signal<EventTicket[]>([]);
   selectedActivityIds = signal<string[]>([]);
+  standTypes = signal<StandType[]>([]);
+  standReservations = signal<any[]>([]);
+  editingStandTypeId = signal<string | null>(null);
+  standError = signal<string | null>(null);
 
   tab = signal<Tab>('infos');
   tabs: { id: Tab; label: string }[] = [
@@ -300,6 +357,7 @@ export class EventEditorComponent {
     { id: 'intervenants', label: 'Intervenants' },
     { id: 'partenaires', label: 'Partenaires' },
     { id: 'billetterie', label: 'Billetterie' },
+    { id: 'stands', label: 'Stands' },
   ];
   activityTypes = ['CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION', 'TABLE_RONDE',
     'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE'];
@@ -353,6 +411,13 @@ export class EventEditorComponent {
     limiteParUtilisateur: [10, [Validators.min(1)]],
     portee: ['EVENEMENT' as 'EVENEMENT' | 'ACTIVITE'],
     description: [''],
+  });
+  standForm = this.fb.nonNullable.group({
+    nom: ['', Validators.required],
+    dimensions: [''],
+    prixMontant: [0, [Validators.required, Validators.min(0)]],
+    quantiteTotale: [10, [Validators.required, Validators.min(1)]],
+    equipements: [''],
   });
 
   private isAdmin = computed(() => this.auth.hasPermission('EVENT_VALIDATE'));
@@ -412,6 +477,45 @@ export class EventEditorComponent {
     this.service.speakers(id).subscribe((s) => this.speakers.set(s));
     this.service.partners(id).subscribe((p) => this.partners.set(p));
     this.ticketsService.forEvent(id).subscribe((t) => this.tickets.set(t));
+    this.standsService.types(id).subscribe((t) => this.standTypes.set(t));
+    this.standsService.reservationsForEvent(id).subscribe((p) => this.standReservations.set(p.content));
+  }
+
+  // --- stands ---
+  saveStandType(): void {
+    if (this.standForm.invalid) return;
+    this.standError.set(null);
+    const v = this.standForm.getRawValue();
+    const body = {
+      nom: v.nom,
+      dimensions: v.dimensions || undefined,
+      prixMontant: Number(v.prixMontant),
+      quantiteTotale: Number(v.quantiteTotale),
+      equipements: v.equipements || undefined,
+    };
+    this.standsService.saveType(this.id(), body, this.editingStandTypeId() ?? undefined).subscribe({
+      next: () => {
+        this.editingStandTypeId.set(null);
+        this.standForm.reset({ prixMontant: 0, quantiteTotale: 10 });
+        this.standsService.types(this.id()).subscribe((t) => this.standTypes.set(t));
+      },
+      error: (err: HttpErrorResponse) =>
+        this.standError.set((err.error as ApiError)?.message ?? 'Enregistrement impossible.'),
+    });
+  }
+  editStandType(t: StandType): void {
+    this.editingStandTypeId.set(t.id);
+    this.standForm.reset({
+      nom: t.nom, dimensions: t.dimensions ?? '', prixMontant: t.prixMontant,
+      quantiteTotale: t.quantiteTotale, equipements: t.equipements ?? '',
+    });
+  }
+  removeStandType(t: StandType): void {
+    this.standsService.removeType(this.id(), t.id).subscribe({
+      next: () => this.standsService.types(this.id()).subscribe((x) => this.standTypes.set(x)),
+      error: (err: HttpErrorResponse) =>
+        this.standError.set((err.error as ApiError)?.message ?? 'Suppression impossible.'),
+    });
   }
 
   // --- billetterie ---
