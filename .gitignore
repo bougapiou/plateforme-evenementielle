@@ -28,7 +28,8 @@ mobile/.flutter-plugins-dependencies
 .env
 *.local
 backend/data/
-data/
+/data/
+!mobile/lib/data/
 
 # OS
 .DS_Store
