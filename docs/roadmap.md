@@ -16,8 +16,40 @@
 | M11 | Notifications (in-app, email, canaux SMS/WhatsApp) | ✅ livré |
 | M12 | Statistiques & tableaux de bord | ✅ livré |
 | M13 | Pages publiques (recherche, filtres, détail) | ✅ livré (avec M3) |
-| M14 | Frontends Angular + Flutter | ✅ Angular livré en continu ; Flutter = squelette M0 |
+| M14 | Frontends Angular + Flutter | ✅ Angular livré en continu ; **app mobile Flutter livrée** (catalogue, billetterie, paiement sandbox, inscriptions, stands, portefeuille QR hors-ligne, factures, notifications, scan de contrôle) |
 | M15 | Durcissement, tests bout-en-bout, données de démo | ✅ livré |
+
+## M14 — Application mobile Flutter (contenu livré)
+
+- **Navigation** : `go_router` avec `StatefulShellRoute` — 4 onglets (Événements,
+  Mes billets, Notifications, Profil) + routes plein écran (détail, achat,
+  paiement, inscription, stand, scanner).
+- **Catalogue public** : recherche plein texte + filtres par catégorie,
+  cartes événement (`GET /api/public/events`).
+- **Détail événement** : infos, programme (activités), intervenants, partenaires,
+  catégories de billets, types de stands ; actions contextuelles selon le statut.
+- **Billetterie** : sélection quantités, création de commande
+  (`POST /api/ticket-orders`), écran de paiement (Orange / Moov / Telecel Money,
+  FasoArzeka, carte) via le provider **sandbox** (`initiate` + `simulate`).
+- **Inscriptions** : formulaire particulier + participants
+  (`POST /api/events/{id}/registrations`).
+- **Stands** : plan par type, blocage temporaire 15 min, paiement.
+- **Portefeuille de billets** : `GET /api/tickets/my`, image QR **mise en cache
+  sur l'appareil** (`qr_<id>.png` dans le répertoire documents) → présentable
+  **hors-ligne** à l'entrée ; téléchargement du PDF (`open_filex`).
+- **Mon activité** : commandes, inscriptions, réservations, paiements (`*/my`),
+  avec reprise de paiement pour les éléments en attente.
+- **Factures & reçus** : `GET /api/invoices/my` + téléchargement PDF.
+- **Notifications** : centre in-app, badge de non-lus, « tout marquer lu ».
+- **Contrôle à l'entrée** : `mobile_scanner` (caméra) → `POST /api/checkins/scan`
+  → bandeau VALIDE / DÉJÀ UTILISÉ / INVALIDE, scan en série.
+- **Sécurité** : intercepteur Dio (JWT + refresh auto sur 401), session en
+  stockage sécurisé, permissions lues du profil (`CHECKIN_SCAN` masque/affiche
+  le scanner).
+- Vérifié : `flutter analyze` sans erreur, test widget vert, `flutter build apk`
+  OK, et flux bout-en-bout (inscription → commande → paiement → billet + QR →
+  facture ; réservation stand → paiement → confirmé) validés en direct contre le
+  backend de démo.
 
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
