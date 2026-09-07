@@ -10,7 +10,9 @@ Spring Boot 3 · Java 21 · PostgreSQL · Flyway · Spring Security (JWT).
 ```
 
 Variables : voir `../.env.example`. Par défaut, l'API se connecte à
-`jdbc:postgresql://localhost:5432/plateforme` (user/pass `plateforme`).
+`jdbc:postgresql://localhost:5433/plateforme` (user/pass `plateforme`) — le
+conteneur Docker publie PostgreSQL sur le port **5433** pour éviter tout conflit
+avec un PostgreSQL installé localement.
 
 - API : http://localhost:8080
 - Swagger : http://localhost:8080/swagger-ui.html
