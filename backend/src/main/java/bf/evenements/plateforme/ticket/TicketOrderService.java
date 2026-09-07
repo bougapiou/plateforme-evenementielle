@@ -3,6 +3,7 @@ package bf.evenements.plateforme.ticket;
 import bf.evenements.plateforme.audit.AuditService;
 import bf.evenements.plateforme.common.exception.BusinessException;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
+import bf.evenements.plateforme.common.events.PaymentSucceededEvent;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.common.web.PageResponse;
 import bf.evenements.plateforme.common.web.References;
@@ -46,11 +47,18 @@ public class TicketOrderService {
     private final EventService eventService;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     // -------------------------------------------------------------- create
 
     @Transactional
     public TicketOrderResponse createOrder(CreateOrderRequest request) {
+        return TicketOrderResponse.from(createOrderInternal(request));
+    }
+
+    /** Creates the order and returns the entity — used by the registration module. */
+    @Transactional
+    public TicketOrder createOrderInternal(CreateOrderRequest request) {
         User buyer = userRepository.findById(currentUser.requireId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur courant introuvable"));
         Event event = eventRepository.findById(request.eventId())
@@ -128,7 +136,7 @@ public class TicketOrderService {
         if (total.signum() == 0) {
             confirmPaymentInternal(order);
         }
-        return TicketOrderResponse.from(order);
+        return order;
     }
 
     // ------------------------------------------------------------- reads
@@ -235,6 +243,8 @@ public class TicketOrderService {
         auditService.record(order.getUser().getId(), order.getUser().getEmail(),
                 "TICKET_ORDER_PAID", "TicketOrder", order.getId().toString(), null,
                 "ref=" + order.getReference());
+        eventPublisher.publishEvent(
+                new PaymentSucceededEvent(PaymentSucceededEvent.TICKET_ORDER, order.getId()));
     }
 
     private void releaseReservations(TicketOrder order) {

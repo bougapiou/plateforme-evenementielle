@@ -11,8 +11,11 @@ import { AuthService } from '../../core/auth.service';
 import { TicketsService } from '../tickets/tickets.service';
 import { StandsService } from '../stands/stands.service';
 import { StandType } from '../stands/stand.models';
+import { RegistrationsService } from '../registrations/registrations.service';
+import { Registration } from '../registrations/registration.models';
 
-type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie' | 'stands';
+type Tab =
+  | 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie' | 'stands' | 'inscriptions';
 
 @Component({
   selector: 'app-event-editor',
@@ -103,6 +106,10 @@ type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie
             </label>
             <label class="flex items-center gap-2 text-sm">
               <input type="checkbox" formControlName="standsActifs" /> Réservation de stands
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" formControlName="validationInscription" />
+              Valider chaque inscription manuellement
             </label>
           </div>
           @if (error()) { <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ error() }}</p> }
@@ -325,6 +332,33 @@ type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie
           </ul>
         }
       }
+
+      <!-- INSCRIPTIONS -->
+      @if (tab() === 'inscriptions') {
+        <div class="mt-4 space-y-2">
+          @for (r of registrations(); track r.id) {
+            <div class="card flex items-center justify-between p-3 text-sm">
+              <div>
+                <p class="font-medium text-slate-700">
+                  {{ r.contactNom || r.reference }}
+                  {{ r.structureNom ? ' — ' + r.structureNom : '' }}
+                </p>
+                <p class="text-slate-400">
+                  {{ r.reference }} · {{ r.type }} · {{ r.nombreParticipants }} participant(s)
+                  {{ r.ticketOrderStatut ? ' · billets ' + r.ticketOrderStatut : '' }}
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <app-status-badge [value]="r.statut" />
+                @if (r.statut === 'EN_ATTENTE') {
+                  <button class="btn-ghost text-green-700" (click)="confirmRegistration(r)">Valider</button>
+                  <button class="btn-ghost text-red-700" (click)="rejectRegistration(r)">Refuser</button>
+                }
+              </div>
+            </div>
+          } @empty { <p class="text-sm text-slate-400">Aucune inscription.</p> }
+        </div>
+      }
     } @else {
       <p class="mt-6 text-sm text-slate-500">Chargement…</p>
     }
@@ -335,6 +369,7 @@ export class EventEditorComponent {
   private service = inject(EventsService);
   private ticketsService = inject(TicketsService);
   private standsService = inject(StandsService);
+  private registrationsService = inject(RegistrationsService);
   private auth = inject(AuthService);
 
   id = input.required<string>();
@@ -347,6 +382,7 @@ export class EventEditorComponent {
   selectedActivityIds = signal<string[]>([]);
   standTypes = signal<StandType[]>([]);
   standReservations = signal<any[]>([]);
+  registrations = signal<Registration[]>([]);
   editingStandTypeId = signal<string | null>(null);
   standError = signal<string | null>(null);
 
@@ -358,6 +394,7 @@ export class EventEditorComponent {
     { id: 'partenaires', label: 'Partenaires' },
     { id: 'billetterie', label: 'Billetterie' },
     { id: 'stands', label: 'Stands' },
+    { id: 'inscriptions', label: 'Inscriptions' },
   ];
   activityTypes = ['CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION', 'TABLE_RONDE',
     'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE'];
@@ -389,6 +426,7 @@ export class EventEditorComponent {
     conditionsParticipation: [''],
     hasActivities: [false],
     standsActifs: [false],
+    validationInscription: [false],
   });
 
   activityForm = this.fb.nonNullable.group({
@@ -469,6 +507,7 @@ export class EventEditorComponent {
         descriptionCourte: e.descriptionCourte ?? '', descriptionDetaillee: e.descriptionDetaillee ?? '',
         conditionsParticipation: e.conditionsParticipation ?? '',
         hasActivities: e.hasActivities, standsActifs: e.standsActifs,
+        validationInscription: e.validationInscription ?? false,
       });
       const editable = ['BROUILLON', 'REFUSE', 'VALIDE'].includes(e.statut) || this.isAdmin();
       editable ? this.form.enable() : this.form.disable();
@@ -479,6 +518,20 @@ export class EventEditorComponent {
     this.ticketsService.forEvent(id).subscribe((t) => this.tickets.set(t));
     this.standsService.types(id).subscribe((t) => this.standTypes.set(t));
     this.standsService.reservationsForEvent(id).subscribe((p) => this.standReservations.set(p.content));
+    this.registrationsService.forEvent(id).subscribe((p) => this.registrations.set(p.content));
+  }
+
+  confirmRegistration(r: Registration): void {
+    this.registrationsService.confirm(r.id).subscribe(() =>
+      this.registrationsService.forEvent(this.id()).subscribe((p) => this.registrations.set(p.content)),
+    );
+  }
+  rejectRegistration(r: Registration): void {
+    const motif = prompt('Motif du refus ?');
+    if (!motif) return;
+    this.registrationsService.reject(r.id, motif).subscribe(() =>
+      this.registrationsService.forEvent(this.id()).subscribe((p) => this.registrations.set(p.content)),
+    );
   }
 
   // --- stands ---

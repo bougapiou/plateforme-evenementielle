@@ -8,7 +8,7 @@
 | M3  | Événements (workflow, catégories, **activités**, programme, intervenants, partenaires, pages publiques) | ✅ livré |
 | M4  | Billetterie (catégories, quotas, commandes, **portée événement / activité**) | ✅ livré |
 | M5  | Stands (types, réservation, hold 15 min, expiration) | ✅ livré |
-| M6  | Inscriptions (particulier & structure, documents) | à venir |
+| M6  | Inscriptions (particulier & structure, documents) | ✅ livré |
 | M7  | Paiements (`PaymentProvider`, sandbox, webhook HMAC) | à venir |
 | M8  | Billets électroniques & QR codes | à venir |
 | M9  | Contrôle d'accès (scan) | à venir |
@@ -22,6 +22,26 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M6 — Inscriptions (contenu livré)
+
+- Entités (Flyway V6) : `registrations`, `participants`, `documents` (+
+  `events.validation_inscription`).
+- Inscription particulier **ou** structure (raison sociale, membre vérifié),
+  liste de participants, informations complémentaires.
+- Achat de billets **rattaché à l'inscription** : `POST /events/{id}/registrations`
+  crée si besoin la commande de tickets (M4) et lie les deux.
+- Confirmation : gratuite → `CONFIRMEE` immédiate ; payante → `CONFIRMEE` quand
+  la commande est payée (via `PaymentSucceededEvent` — découplage inter-modules) ;
+  `validation_inscription` → l'organisateur valide/refuse (`confirm` / `reject`).
+- **Documents demandés** : `FileStorageService` (disque local, PDF/images ≤ 15 Mo,
+  servis sous `/files/**`) ; `POST/GET/DELETE /api/registrations/{id}/documents`.
+- Endpoints : `/api/events/{id}/registrations` (créer / lister organisateur),
+  `/api/registrations/my`, `/registrations/{id}` (+ cancel / confirm / reject / documents).
+- Frontend : flux « Participer » unifié sur la page publique (participants +
+  billets + paiement), « Mes inscriptions », onglet Inscriptions de l'éditeur.
+- Tests : `RegistrationIT` (gratuit → confirmé + doublon bloqué ; billets →
+  confirmé au paiement ; validation organisateur ; upload de document). 18/18 verts.
 
 ## M5 — Stands (contenu livré)
 
