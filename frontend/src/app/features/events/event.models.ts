@@ -60,6 +60,7 @@ export interface EventDetail extends EventSummary {
   siteWeb?: string;
   conditionsParticipation?: string;
   hasActivities: boolean;
+  validationInscription?: boolean;
   inscriptionDebut?: string;
   inscriptionFin?: string;
   reservationDebut?: string;

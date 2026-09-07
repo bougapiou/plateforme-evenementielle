@@ -1,12 +1,14 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { EventsService } from '../events/events.service';
 import { TicketsService } from '../tickets/tickets.service';
 import { StandsService } from '../stands/stands.service';
+import { RegistrationsService } from '../registrations/registrations.service';
+import { Registration } from '../registrations/registration.models';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
-import { EventPublic, EventTicket, TicketOrder } from '../events/event.models';
+import { EventPublic, EventTicket } from '../events/event.models';
 import { formatDateRange, formatDateTime, formatFcfa, formatTime } from '../../shared/format';
 import { AuthService } from '../../core/auth.service';
 import { ApiError } from '../../core/models';
@@ -26,9 +28,7 @@ import { ApiError } from '../../core/models';
           <span class="badge bg-brand-50 text-brand-700">{{ e.categoryNom }}</span>
         }
         <h1 class="mt-2 text-2xl font-extrabold text-slate-900">{{ e.nom }}</h1>
-        <p class="mt-1 text-slate-500">
-          {{ range(e) }} · {{ e.lieu || '' }}{{ e.ville ? ', ' + e.ville : '' }}
-        </p>
+        <p class="mt-1 text-slate-500">{{ range(e) }} · {{ e.lieu || '' }}{{ e.ville ? ', ' + e.ville : '' }}</p>
         <p class="text-sm text-slate-400">Organisé par {{ e.organizerNom }}</p>
       </div>
 
@@ -41,56 +41,65 @@ import { ApiError } from '../../core/models';
         </section>
       }
 
-      <!-- BILLETTERIE -->
-      <section class="card mt-6 p-5" id="billets">
-        <h2 class="font-semibold text-slate-800">Billets</h2>
-        @if (!tickets().length) {
-          <p class="mt-2 text-sm text-slate-500">Aucun billet en vente pour le moment.</p>
-        } @else if (order()) {
+      <!-- PARTICIPER -->
+      <section class="card mt-6 p-5" id="participer">
+        <h2 class="font-semibold text-slate-800">Participer à l'événement</h2>
+
+        @if (registration(); as r) {
           <div class="mt-3 rounded-lg bg-slate-50 p-4 text-sm">
-            <p class="font-medium text-slate-700">Commande {{ order()!.reference }}</p>
-            <p class="text-slate-500">
-              {{ order()!.montantFormatte }} —
-              <span class="font-semibold">{{ order()!.statut }}</span>
-            </p>
-            @if (order()!.statut === 'EN_ATTENTE') {
-              <p class="mt-1 text-xs text-amber-700">
-                Quota réservé jusqu'à {{ dt(order()!.expireLe) }}. Finalisez le paiement.
-              </p>
-              <button class="btn-primary mt-3" (click)="pay()">
-                Payer (paiement simulé — sandbox)
-              </button>
-            } @else if (order()!.statut === 'PAYEE') {
-              <p class="mt-2 text-green-700">Paiement confirmé — vos billets sont disponibles.</p>
-              <a routerLink="/tableau-de-bord/billets" class="btn-primary mt-2 inline-flex">Voir mes billets</a>
+            <p class="font-medium text-slate-700">Inscription {{ r.reference }}</p>
+            <p class="text-slate-500">Statut : <span class="font-semibold">{{ r.statut }}</span></p>
+            @if (r.ticketOrderStatut === 'EN_ATTENTE') {
+              <p class="mt-1 text-xs text-amber-700">Finalisez le paiement pour valider vos billets.</p>
+              <button class="btn-primary mt-3" (click)="pay(r)">Payer (paiement simulé)</button>
+            } @else if (r.statut === 'CONFIRMEE') {
+              <p class="mt-2 text-green-700">Inscription confirmée.</p>
+              <a routerLink="/tableau-de-bord/inscriptions" class="btn-primary mt-2 inline-flex">
+                Mes inscriptions
+              </a>
+            } @else if (r.statut === 'EN_ATTENTE') {
+              <p class="mt-2 text-amber-700">En attente de validation par l'organisateur.</p>
             }
           </div>
+        } @else if (!auth.isAuthenticated()) {
+          <p class="mt-2 text-sm text-slate-500">
+            <a routerLink="/connexion" class="font-semibold text-brand-700">Connectez-vous</a>
+            pour vous inscrire.
+          </p>
         } @else {
-          <table class="mt-3 w-full text-sm">
-            <tbody class="divide-y divide-slate-100">
-              @for (t of tickets(); track t.id) {
-                <tr>
-                  <td class="py-2">
-                    <p class="font-medium text-slate-700">{{ t.nom }}</p>
-                    <p class="text-xs text-slate-400">
-                      {{ t.portee === 'ACTIVITE' ? 'Accès : ' + activityTitles(t) : 'Accès à tout l\\'événement' }}
-                      · {{ t.quantiteRestante }} disponibles
-                    </p>
-                  </td>
-                  <td class="py-2 text-right font-semibold">{{ fcfa(t.prixMontant) }}</td>
-                  <td class="py-2 pl-3 text-right">
-                    <input type="number" min="0" [max]="maxFor(t)" class="form-input w-16"
-                           [ngModel]="qty()[t.id] || 0" (ngModelChange)="setQty(t.id, $event)" />
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-          @if (buyError()) { <p class="mt-2 text-sm text-red-700">{{ buyError() }}</p> }
-          <button class="btn-primary mt-4" [disabled]="totalQty() === 0" (click)="createOrder()">
-            @if (auth.isAuthenticated()) { Commander ({{ totalQty() }} billet(s)) }
-            @else { Se connecter pour commander }
-          </button>
+          <div class="mt-3 space-y-3">
+            <div>
+              <label class="form-label">Nom du participant</label>
+              <input class="form-input max-w-sm" [(ngModel)]="participantNom" />
+            </div>
+
+            @if (tickets().length) {
+              <div>
+                <p class="form-label">Billets</p>
+                <table class="w-full max-w-lg text-sm">
+                  <tbody class="divide-y divide-slate-100">
+                    @for (t of tickets(); track t.id) {
+                      <tr>
+                        <td class="py-2">
+                          {{ t.nom }}
+                          <span class="text-xs text-slate-400">· {{ t.quantiteRestante }} dispo</span>
+                        </td>
+                        <td class="py-2 text-right font-semibold">{{ fcfa(t.prixMontant) }}</td>
+                        <td class="py-2 pl-3 text-right">
+                          <input type="number" min="0" [max]="maxFor(t)" class="form-input w-16"
+                                 [ngModel]="qty()[t.id] || 0" (ngModelChange)="setQty(t.id, $event)" />
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+            @if (error()) { <p class="text-sm text-red-700">{{ error() }}</p> }
+            <button class="btn-primary" [disabled]="submitting()" (click)="submit()">
+              {{ totalQty() > 0 ? 'S\\'inscrire et commander (' + totalQty() + ' billet(s))' : 'S\\'inscrire' }}
+            </button>
+          </div>
         }
       </section>
 
@@ -98,24 +107,17 @@ import { ApiError } from '../../core/models';
       @if (e.standsActifs) {
         <section class="card mt-6 p-5" id="stands">
           <h2 class="font-semibold text-slate-800">Stands</h2>
-          @if (standReservation()) {
+          @if (standReservation(); as sr) {
             <div class="mt-3 rounded-lg bg-slate-50 p-4 text-sm">
               <p class="font-medium text-slate-700">
-                Réservation {{ standReservation()!.numeroReservation }} — Stand
-                {{ standReservation()!.standNumero }}
+                Réservation {{ sr.numeroReservation }} — Stand {{ sr.standNumero }} —
+                <span class="font-semibold">{{ sr.statut }}</span>
               </p>
-              <p class="text-slate-500">
-                {{ standReservation()!.montantFormatte }} —
-                <span class="font-semibold">{{ standReservation()!.statut }}</span>
-              </p>
-              @if (standReservation()!.statut === 'RESERVE_TEMP') {
-                <p class="mt-1 text-xs text-amber-700">
-                  Stand bloqué jusqu'à {{ dt(standReservation()!.dateLimitePaiement) }}.
-                </p>
+              @if (sr.statut === 'RESERVE_TEMP') {
+                <p class="mt-1 text-xs text-amber-700">Stand bloqué jusqu'à {{ dt(sr.dateLimitePaiement) }}.</p>
                 <button class="btn-primary mt-3" (click)="payStand()">Payer (sandbox)</button>
-              } @else if (standReservation()!.statut === 'CONFIRME') {
+              } @else if (sr.statut === 'CONFIRME') {
                 <p class="mt-2 text-green-700">Stand confirmé.</p>
-                <a routerLink="/tableau-de-bord/stands" class="btn-primary mt-2 inline-flex">Mes stands</a>
               }
             </div>
           } @else {
@@ -125,30 +127,19 @@ import { ApiError } from '../../core/models';
                   <p class="font-medium text-slate-800">{{ t.nom }} — {{ fcfa(t.prixMontant) }}</p>
                   <span class="text-slate-400">{{ t.quantiteRestante }} disponibles</span>
                 </div>
-                @if (t.dimensions || t.equipements) {
-                  <p class="text-slate-400">{{ t.dimensions }}{{ t.equipements ? ' · ' + t.equipements : '' }}</p>
-                }
                 <div class="mt-2 flex flex-wrap gap-1">
                   @for (s of standsOfType(t.id); track s.id) {
-                    <button type="button"
-                            class="rounded border px-2 py-1 text-xs"
-                            [class.border-brand-500]="s.disponible"
-                            [class.text-brand-700]="s.disponible"
-                            [class.border-slate-200]="!s.disponible"
-                            [class.text-slate-300]="!s.disponible"
-                            [disabled]="!s.disponible"
-                            (click)="reserveStand(s)">
-                      {{ s.numero }}
-                    </button>
+                    <button type="button" class="rounded border px-2 py-1 text-xs"
+                            [class.border-brand-500]="s.disponible" [class.text-brand-700]="s.disponible"
+                            [class.border-slate-200]="!s.disponible" [class.text-slate-300]="!s.disponible"
+                            [disabled]="!s.disponible" (click)="reserveStand(s)">{{ s.numero }}</button>
                   }
                 </div>
               </div>
             }
             @if (standError()) { <p class="mt-2 text-sm text-red-700">{{ standError() }}</p> }
-            @if (!auth.hasPermission('STAND_RESERVE')) {
-              <p class="mt-2 text-xs text-slate-400">
-                La réservation de stands est réservée aux comptes structure.
-              </p>
+            @if (auth.isAuthenticated() && !auth.hasPermission('STAND_RESERVE')) {
+              <p class="mt-2 text-xs text-slate-400">Réservé aux comptes structure.</p>
             }
           }
         </section>
@@ -163,9 +154,7 @@ import { ApiError } from '../../core/models';
                 <span class="w-14 shrink-0 font-semibold text-brand-700">{{ time(a.dateDebut) }}</span>
                 <div>
                   <p class="font-medium text-slate-800">{{ a.titre }}</p>
-                  <p class="text-slate-400">
-                    {{ a.salle }}{{ a.intervenant ? ' · ' + a.intervenant : '' }}
-                  </p>
+                  <p class="text-slate-400">{{ a.salle }}{{ a.intervenant ? ' · ' + a.intervenant : '' }}</p>
                 </div>
               </li>
             }
@@ -212,8 +201,8 @@ import { ApiError } from '../../core/models';
       </section>
 
       <p class="mt-6"><a routerLink="/" class="text-sm text-brand-700">← Tous les événements</a></p>
-    } @else if (error()) {
-      <p class="py-16 text-center text-slate-500">{{ error() }}</p>
+    } @else if (loadError()) {
+      <p class="py-16 text-center text-slate-500">{{ loadError() }}</p>
     } @else {
       <p class="py-16 text-center text-slate-400">Chargement…</p>
     }
@@ -223,16 +212,20 @@ export class EventDetailComponent {
   private events = inject(EventsService);
   private ticketsService = inject(TicketsService);
   private standsService = inject(StandsService);
+  private registrationsService = inject(RegistrationsService);
   private router = inject(Router);
   auth = inject(AuthService);
 
   slug = input.required<string>();
   event = signal<EventPublic | null>(null);
   tickets = signal<EventTicket[]>([]);
-  order = signal<TicketOrder | null>(null);
+  loadError = signal<string | null>(null);
   error = signal<string | null>(null);
-  buyError = signal<string | null>(null);
+  submitting = signal(false);
   qty = signal<Record<string, number>>({});
+  registration = signal<Registration | null>(null);
+  participantNom = '';
+
   standTypes = signal<StandType[]>([]);
   stands = signal<Stand[]>([]);
   standReservation = signal<StandReservation | null>(null);
@@ -244,24 +237,60 @@ export class EventDetailComponent {
       if (!slug) return;
       this.events.publicBySlug(slug).subscribe({
         next: (e) => this.event.set(e),
-        error: () => this.error.set("Cet événement n'est pas disponible."),
+        error: () => this.loadError.set("Cet événement n'est pas disponible."),
       });
       this.ticketsService.publicTickets(slug).subscribe({
         next: (t) => this.tickets.set(t.filter((x) => x.enVente || x.quantiteRestante > 0)),
         error: () => this.tickets.set([]),
       });
-      this.standsService.publicTypes(slug).subscribe({
-        next: (t) => this.standTypes.set(t),
-        error: () => this.standTypes.set([]),
-      });
-      this.standsService.publicStands(slug).subscribe({
-        next: (s) => this.stands.set(s),
-        error: () => this.stands.set([]),
-      });
+      this.standsService.publicTypes(slug).subscribe({ next: (t) => this.standTypes.set(t), error: () => {} });
+      this.standsService.publicStands(slug).subscribe({ next: (s) => this.stands.set(s), error: () => {} });
     });
+    if (this.auth.user()) this.participantNom = this.auth.user()!.fullName;
   }
 
+  range = (e: EventPublic) => formatDateRange(e.dateDebut, e.dateFin);
+  dt = (iso?: string) => formatDateTime(iso);
+  time = (iso?: string) => formatTime(iso);
+  fcfa = (n?: number) => formatFcfa(n);
+  maxFor = (t: EventTicket) => Math.min(t.quantiteRestante, t.limiteParUtilisateur);
   standsOfType = (typeId: string) => this.stands().filter((s) => s.standTypeId === typeId);
+
+  setQty(id: string, value: number): void {
+    this.qty.set({ ...this.qty(), [id]: Math.max(0, Math.floor(value || 0)) });
+  }
+  totalQty = computed(() => Object.values(this.qty()).reduce((a, b) => a + b, 0));
+
+  submit(): void {
+    this.error.set(null);
+    this.submitting.set(true);
+    const tickets = Object.entries(this.qty())
+      .filter(([, q]) => q > 0)
+      .map(([eventTicketId, quantite]) => ({ eventTicketId, quantite }));
+    this.registrationsService
+      .register(this.event()!.id, {
+        type: 'PARTICULIER',
+        participants: [{ nom: this.participantNom || 'Participant' }],
+        tickets: tickets.length ? tickets : undefined,
+      })
+      .subscribe({
+        next: (r) => {
+          this.submitting.set(false);
+          this.registration.set(r);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting.set(false);
+          this.error.set((err.error as ApiError)?.message ?? 'Inscription impossible.');
+        },
+      });
+  }
+
+  pay(r: Registration): void {
+    if (!r.ticketOrderId) return;
+    this.ticketsService.paySandbox(r.ticketOrderId).subscribe(() =>
+      this.registrationsService.byId(r.id).subscribe((x) => this.registration.set(x)),
+    );
+  }
 
   reserveStand(s: Stand): void {
     if (!this.auth.isAuthenticated()) {
@@ -275,52 +304,11 @@ export class EventDetailComponent {
         this.standError.set((err.error as ApiError)?.message ?? 'Réservation impossible.'),
     });
   }
-
   payStand(): void {
     this.standsService.paySandbox(this.standReservation()!.id).subscribe({
       next: (r) => this.standReservation.set(r),
       error: (err: HttpErrorResponse) =>
         this.standError.set((err.error as ApiError)?.message ?? 'Paiement impossible.'),
-    });
-  }
-
-  range = (e: EventPublic) => formatDateRange(e.dateDebut, e.dateFin);
-  dt = (iso?: string) => formatDateTime(iso);
-  time = (iso?: string) => formatTime(iso);
-  fcfa = (n?: number) => formatFcfa(n);
-  activityTitles = (t: EventTicket) => t.activites.map((a) => a.titre).join(', ');
-  maxFor = (t: EventTicket) => Math.min(t.quantiteRestante, t.limiteParUtilisateur);
-
-  setQty(id: string, value: number): void {
-    this.qty.set({ ...this.qty(), [id]: Math.max(0, Math.floor(value || 0)) });
-  }
-  totalQty(): number {
-    return Object.values(this.qty()).reduce((a, b) => a + b, 0);
-  }
-
-  createOrder(): void {
-    if (!this.auth.isAuthenticated()) {
-      this.router.navigate(['/connexion'], { queryParams: { redirect: this.router.url } });
-      return;
-    }
-    this.buyError.set(null);
-    const lignes = Object.entries(this.qty())
-      .filter(([, q]) => q > 0)
-      .map(([eventTicketId, quantite]) => ({ eventTicketId, quantite }));
-    this.ticketsService
-      .createOrder({ eventId: this.event()!.id, lignes })
-      .subscribe({
-        next: (o) => this.order.set(o),
-        error: (err: HttpErrorResponse) =>
-          this.buyError.set((err.error as ApiError)?.message ?? 'Commande impossible.'),
-      });
-  }
-
-  pay(): void {
-    this.ticketsService.paySandbox(this.order()!.id).subscribe({
-      next: (o) => this.order.set(o),
-      error: (err: HttpErrorResponse) =>
-        this.buyError.set((err.error as ApiError)?.message ?? 'Paiement impossible.'),
     });
   }
 }

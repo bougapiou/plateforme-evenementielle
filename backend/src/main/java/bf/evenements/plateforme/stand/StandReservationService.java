@@ -46,6 +46,7 @@ public class StandReservationService {
     private final EventService eventService;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public StandReservationResponse reserve(CreateStandReservationRequest request) {
@@ -197,6 +198,9 @@ public class StandReservationService {
         auditService.record(reservation.getUser().getId(), reservation.getUser().getEmail(),
                 "STAND_RESERVATION_CONFIRMED", "StandReservation", reservation.getId().toString(),
                 null, "ref=" + reservation.getReference());
+        eventPublisher.publishEvent(new bf.evenements.plateforme.common.events.PaymentSucceededEvent(
+                bf.evenements.plateforme.common.events.PaymentSucceededEvent.STAND_RESERVATION,
+                reservation.getId()));
     }
 
     private StandReservation loadForActor(UUID id) {

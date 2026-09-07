@@ -32,6 +32,7 @@ public record EventRequest(
         String conditionsParticipation,
         boolean hasActivities,
         boolean standsActifs,
+        boolean validationInscription,
         Instant inscriptionDebut,
         Instant inscriptionFin,
         Instant reservationDebut,

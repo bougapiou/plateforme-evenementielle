@@ -70,6 +70,14 @@ export const routes: Routes = [
         title: 'Mes stands',
       },
       {
+        path: 'inscriptions',
+        loadComponent: () =>
+          import('./features/registrations/my-registrations.component').then(
+            (m) => m.MyRegistrationsComponent,
+          ),
+        title: 'Mes inscriptions',
+      },
+      {
         path: 'structures',
         loadComponent: () =>
           import('./features/structures/structures-list.component').then(

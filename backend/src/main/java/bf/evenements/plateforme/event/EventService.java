@@ -271,6 +271,7 @@ public class EventService {
         e.setConditionsParticipation(trimToNull(r.conditionsParticipation()));
         e.setHasActivities(r.hasActivities());
         e.setStandsActifs(r.standsActifs());
+        e.setValidationInscription(r.validationInscription());
         e.setInscriptionDebut(r.inscriptionDebut());
         e.setInscriptionFin(r.inscriptionFin());
         e.setReservationDebut(r.reservationDebut());
