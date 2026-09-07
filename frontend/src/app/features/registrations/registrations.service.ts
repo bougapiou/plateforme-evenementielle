@@ -19,6 +19,9 @@ export class RegistrationsService extends ApiBase {
   cancel(id: string): Observable<Registration> {
     return this.http.post<Registration>(`${this.base}/registrations/${id}/cancel`, {});
   }
+  confirmationPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.base}/registrations/${id}/confirmation.pdf`, { responseType: 'blob' });
+  }
 
   // organiser
   forEvent(eventId: string): Observable<Page<Registration>> {

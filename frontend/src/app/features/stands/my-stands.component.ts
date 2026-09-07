@@ -4,6 +4,7 @@ import { StandsService } from './stands.service';
 import { StandReservation } from './stand.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { formatDateTime } from '../../shared/format';
+import { downloadBlob } from '../invoices/invoices.service';
 
 @Component({
   selector: 'app-my-stands',
@@ -29,6 +30,9 @@ import { formatDateTime } from '../../shared/format';
             @if (r.statut === 'RESERVE_TEMP' || r.statut === 'ATTENTE_PAIEMENT') {
               <button class="btn-ghost text-green-700" (click)="pay(r)">Payer</button>
               <button class="btn-ghost text-red-700" (click)="cancel(r)">Annuler</button>
+            }
+            @if (r.statut === 'CONFIRME') {
+              <button class="btn-ghost text-brand-700" (click)="confirmation(r)">Confirmation PDF</button>
             }
           </div>
         </div>
@@ -57,5 +61,10 @@ export class MyStandsComponent {
   }
   cancel(r: StandReservation): void {
     this.service.cancel(r.id).subscribe(() => this.reload());
+  }
+  confirmation(r: StandReservation): void {
+    this.service.confirmationPdf(r.id).subscribe((b) =>
+      downloadBlob(b, `reservation-${r.numeroReservation}.pdf`),
+    );
   }
 }

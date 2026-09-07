@@ -67,6 +67,7 @@ export class DashboardLayoutComponent {
     { label: 'Mes billets', path: '/tableau-de-bord/billets' },
     { label: 'Mes stands', path: '/tableau-de-bord/stands' },
     { label: 'Mes paiements', path: '/tableau-de-bord/paiements' },
+    { label: 'Mes factures', path: '/tableau-de-bord/factures' },
     { label: 'Mes structures', path: '/tableau-de-bord/structures' },
     { label: 'Espace organisateur', path: '/tableau-de-bord/organisateur' },
   ];

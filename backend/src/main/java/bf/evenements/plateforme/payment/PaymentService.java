@@ -3,6 +3,7 @@ package bf.evenements.plateforme.payment;
 import bf.evenements.plateforme.audit.AuditService;
 import bf.evenements.plateforme.common.config.AppProperties;
 import bf.evenements.plateforme.common.exception.BusinessException;
+import bf.evenements.plateforme.common.events.PaymentSucceededEvent;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.money.Money;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
@@ -48,6 +49,7 @@ public class PaymentService {
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
     private final AppProperties appProperties;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private PaymentProvider provider() {
         String configured = appProperties.payment().provider();
@@ -200,6 +202,8 @@ public class PaymentService {
                 confirmTarget(payment);
                 auditService.record(payment.getUserId(), null, "PAYMENT_SUCCEEDED", "Payment",
                         payment.getId().toString(), null, "ref=" + payment.getReference());
+                eventPublisher.publishEvent(new PaymentSucceededEvent(
+                        payment.getTargetType().name(), payment.getTargetId(), payment.getId()));
             }
             case CANCELLED -> {
                 payment.setStatut(PaymentStatus.ANNULE);

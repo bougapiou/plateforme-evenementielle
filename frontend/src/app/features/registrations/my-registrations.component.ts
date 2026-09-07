@@ -5,6 +5,7 @@ import { Registration } from './registration.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { formatDate } from '../../shared/format';
 import { TicketsService } from '../tickets/tickets.service';
+import { downloadBlob } from '../invoices/invoices.service';
 
 @Component({
   selector: 'app-my-registrations',
@@ -29,6 +30,9 @@ import { TicketsService } from '../tickets/tickets.service';
               <app-status-badge [value]="r.statut" />
               @if (r.ticketOrderStatut === 'EN_ATTENTE') {
                 <button class="btn-ghost text-green-700" (click)="pay(r)">Payer</button>
+              }
+              @if (r.statut === 'CONFIRMEE') {
+                <button class="btn-ghost text-brand-700" (click)="confirmation(r)">Confirmation PDF</button>
               }
               @if (r.statut === 'EN_ATTENTE') {
                 <button class="btn-ghost text-red-700" (click)="cancel(r)">Annuler</button>
@@ -63,5 +67,8 @@ export class MyRegistrationsComponent {
   }
   cancel(r: Registration): void {
     this.service.cancel(r.id).subscribe(() => this.reload());
+  }
+  confirmation(r: Registration): void {
+    this.service.confirmationPdf(r.id).subscribe((b) => downloadBlob(b, `inscription-${r.reference}.pdf`));
   }
 }

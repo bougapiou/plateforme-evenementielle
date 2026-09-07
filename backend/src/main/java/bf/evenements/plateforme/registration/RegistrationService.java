@@ -46,6 +46,7 @@ public class RegistrationService {
     private final StructureMemberRepository memberRepository;
     private final TicketOrderService ticketOrderService;
     private final EventService eventService;
+    private final bf.evenements.plateforme.invoice.ConfirmationPdfService confirmationPdfService;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
 
@@ -131,6 +132,16 @@ public class RegistrationService {
     @Transactional(readOnly = true)
     public RegistrationResponse get(UUID id) {
         return RegistrationResponse.from(loadForActor(id));
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] confirmationPdf(UUID id) {
+        Registration r = loadForActor(id);
+        if (r.getStatut() != RegistrationStatus.CONFIRMEE) {
+            throw new BusinessException("NOT_CONFIRMED",
+                    "La confirmation n'est disponible qu'une fois l'inscription validée.");
+        }
+        return confirmationPdfService.registration(r);
     }
 
     @Transactional(readOnly = true)

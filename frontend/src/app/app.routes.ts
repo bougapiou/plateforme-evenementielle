@@ -84,6 +84,12 @@ export const routes: Routes = [
         title: 'Mes paiements',
       },
       {
+        path: 'factures',
+        loadComponent: () =>
+          import('./features/invoices/my-invoices.component').then((m) => m.MyInvoicesComponent),
+        title: 'Mes factures',
+      },
+      {
         path: 'controle',
         canActivate: [authGuard],
         data: { permission: 'CHECKIN_SCAN' },
