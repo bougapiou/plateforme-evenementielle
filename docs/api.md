@@ -57,6 +57,23 @@ Pagination : paramètres `page`, `size`, `sort` ; enveloppe `PageResponse`
 | GET | `/api/organizers` · `/api/organizers/{id}` | `ORGANIZER_MANAGE` |
 | POST | `/api/organizers/{id}/approve` · `/suspend` | `ORGANIZER_MANAGE` |
 
+### Disponible (M3 — événements)
+
+| Méthode | Endpoint | Accès |
+|--------|----------|-------|
+| GET | `/api/event-categories` | public |
+| GET/POST/PUT/DELETE | `/api/event-categories/**` | `EVENT_CATEGORY_MANAGE` |
+| POST | `/api/events` | `EVENT_CREATE` (organisateur actif) |
+| GET | `/api/events/mine` | `EVENT_READ` (ses événements) |
+| GET | `/api/events/admin` | `EVENT_VALIDATE` (tous) |
+| GET / PUT / DELETE | `/api/events/{id}` | propriétaire ou `EVENT_VALIDATE` |
+| POST | `/api/events/{id}/submit\|publish\|open-registrations\|close-registrations` | propriétaire |
+| POST | `/api/events/{id}/validate\|reject\|suspend\|cancel` | `EVENT_VALIDATE` |
+| GET/POST/PUT/DELETE | `/api/events/{id}/activities` | propriétaire (`EVENT_UPDATE`) |
+| GET/POST/PUT/DELETE | `/api/events/{id}/speakers` · `/partners` | propriétaire (`EVENT_UPDATE`) |
+| GET | `/api/public/events` (`search`, `categorie`, `ville`, `du`, `au`) | public |
+| GET | `/api/public/events/{slug}` | public |
+
 ## Prévu (modules suivants)
 
 ```

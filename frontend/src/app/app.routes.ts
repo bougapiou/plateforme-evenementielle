@@ -9,8 +9,17 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        loadComponent: () => import('./pages/home.component').then((m) => m.HomeComponent),
-        title: 'Accueil — Plateforme Nationale des Événements',
+        loadComponent: () =>
+          import('./features/public/events-public-list.component').then(
+            (m) => m.EventsPublicListComponent,
+          ),
+        title: 'Événements — Plateforme Nationale des Événements',
+      },
+      {
+        path: 'evenements/:slug',
+        loadComponent: () =>
+          import('./features/public/event-detail.component').then((m) => m.EventDetailComponent),
+        title: 'Événement',
       },
       {
         path: 'connexion',
@@ -35,6 +44,18 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/dashboard-overview.component').then((m) => m.DashboardOverviewComponent),
         title: 'Tableau de bord',
+      },
+      {
+        path: 'evenements',
+        loadComponent: () =>
+          import('./features/events/events-list.component').then((m) => m.EventsListComponent),
+        title: 'Mes événements',
+      },
+      {
+        path: 'evenements/:id',
+        loadComponent: () =>
+          import('./features/events/event-editor.component').then((m) => m.EventEditorComponent),
+        title: 'Événement',
       },
       {
         path: 'structures',
@@ -85,6 +106,14 @@ export const routes: Routes = [
             (m) => m.AdminOrganizersComponent,
           ),
         title: 'Organisateurs',
+      },
+      {
+        path: 'admin/evenements',
+        canActivate: [authGuard],
+        data: { permission: 'EVENT_VALIDATE' },
+        loadComponent: () =>
+          import('./features/admin/admin-events.component').then((m) => m.AdminEventsComponent),
+        title: 'Événements',
       },
     ],
   },

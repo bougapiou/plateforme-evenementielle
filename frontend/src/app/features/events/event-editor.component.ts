@@ -1,0 +1,465 @@
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import { EventsService } from './events.service';
+import { Activity, EventCategory, EventDetail, Partner, Speaker } from './event.models';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { formatDateTime } from '../../shared/format';
+import { ApiError } from '../../core/models';
+import { AuthService } from '../../core/auth.service';
+
+type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires';
+
+@Component({
+  selector: 'app-event-editor',
+  standalone: true,
+  imports: [ReactiveFormsModule, RouterLink, StatusBadgeComponent],
+  template: `
+    <a routerLink="/tableau-de-bord/evenements" class="text-sm text-slate-500">← Mes événements</a>
+
+    @if (event(); as e) {
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        <h1 class="text-xl font-bold text-slate-800">{{ e.nom }}</h1>
+        <app-status-badge [value]="e.statut" />
+      </div>
+
+      @if (e.motifRefus && e.statut === 'REFUSE') {
+        <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          Refusé : {{ e.motifRefus }}
+        </p>
+      }
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        @for (a of actions(); track a.action) {
+          <button type="button" class="btn {{ a.class }}" (click)="doTransition(a.action)">
+            {{ a.label }}
+          </button>
+        }
+      </div>
+      @if (transitionError()) {
+        <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ transitionError() }}</p>
+      }
+
+      <div class="mt-5 flex gap-1 border-b border-slate-200 text-sm font-medium">
+        @for (t of tabs; track t.id) {
+          <button type="button" (click)="tab.set(t.id)"
+                  class="border-b-2 px-3 py-2"
+                  [class.border-brand-600]="tab() === t.id"
+                  [class.text-brand-700]="tab() === t.id"
+                  [class.border-transparent]="tab() !== t.id"
+                  [class.text-slate-500]="tab() !== t.id">
+            {{ t.label }}
+          </button>
+        }
+      </div>
+
+      <!-- INFOS -->
+      @if (tab() === 'infos') {
+        <form class="card mt-4 space-y-4 p-5" [formGroup]="form" (ngSubmit)="save()">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="form-label">Nom</label>
+              <input class="form-input" formControlName="nom" />
+            </div>
+            <div><label class="form-label">Sigle</label><input class="form-input" formControlName="sigle" /></div>
+            <div>
+              <label class="form-label">Catégorie</label>
+              <select class="form-input" formControlName="categoryId">
+                <option value="">—</option>
+                @for (c of categories(); track c.id) { <option [value]="c.id">{{ c.nom }}</option> }
+              </select>
+            </div>
+            <div><label class="form-label">Début</label>
+              <input type="datetime-local" class="form-input" formControlName="dateDebut" /></div>
+            <div><label class="form-label">Fin</label>
+              <input type="datetime-local" class="form-input" formControlName="dateFin" /></div>
+            <div><label class="form-label">Ville</label><input class="form-input" formControlName="ville" /></div>
+            <div><label class="form-label">Lieu</label><input class="form-input" formControlName="lieu" /></div>
+            <div class="sm:col-span-2"><label class="form-label">Adresse</label>
+              <input class="form-input" formControlName="adresse" /></div>
+            <div><label class="form-label">Capacité max</label>
+              <input type="number" class="form-input" formControlName="capaciteMax" /></div>
+            <div><label class="form-label">E-mail de contact</label>
+              <input class="form-input" formControlName="contactEmail" /></div>
+            <div><label class="form-label">Ouverture des inscriptions</label>
+              <input type="datetime-local" class="form-input" formControlName="inscriptionDebut" /></div>
+            <div><label class="form-label">Clôture des inscriptions</label>
+              <input type="datetime-local" class="form-input" formControlName="inscriptionFin" /></div>
+            <div class="sm:col-span-2"><label class="form-label">Description courte</label>
+              <input class="form-input" formControlName="descriptionCourte" /></div>
+            <div class="sm:col-span-2"><label class="form-label">Description détaillée</label>
+              <textarea rows="4" class="form-input" formControlName="descriptionDetaillee"></textarea></div>
+            <div class="sm:col-span-2"><label class="form-label">Conditions de participation</label>
+              <textarea rows="3" class="form-input" formControlName="conditionsParticipation"></textarea></div>
+          </div>
+          <div class="flex flex-wrap gap-6">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" formControlName="hasActivities" />
+              Cet événement contient plusieurs activités
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" formControlName="standsActifs" /> Réservation de stands
+            </label>
+          </div>
+          @if (error()) { <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ error() }}</p> }
+          <button type="submit" class="btn-primary" [disabled]="saving() || form.disabled">
+            {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
+          </button>
+          @if (form.disabled) {
+            <p class="text-xs text-slate-400">Les informations ne sont plus modifiables dans cet état.</p>
+          }
+        </form>
+      }
+
+      <!-- PROGRAMME -->
+      @if (tab() === 'programme') {
+        @if (!e.hasActivities) {
+          <p class="card mt-4 p-4 text-sm text-amber-700 bg-amber-50">
+            Activez « Cet événement contient plusieurs activités » dans l'onglet Informations
+            pour planifier un programme. Vous pouvez tout de même ajouter des créneaux ci-dessous.
+          </p>
+        }
+        <form class="card mt-4 grid gap-3 p-4 sm:grid-cols-2" [formGroup]="activityForm"
+              (ngSubmit)="saveActivity()">
+          <input class="form-input sm:col-span-2" placeholder="Titre de l'activité" formControlName="titre" />
+          <select class="form-input" formControlName="typeActivite">
+            <option value="">Type…</option>
+            @for (t of activityTypes; track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+          <input class="form-input" placeholder="Salle" formControlName="salle" />
+          <input type="datetime-local" class="form-input" formControlName="dateDebut" />
+          <input type="datetime-local" class="form-input" formControlName="dateFin" />
+          <input class="form-input" placeholder="Intervenant" formControlName="intervenant" />
+          <input class="form-input" placeholder="Modérateur" formControlName="moderateur" />
+          <button type="submit" class="btn-primary sm:col-span-2">
+            {{ editingActivityId() ? 'Modifier le créneau' : 'Ajouter au programme' }}
+          </button>
+        </form>
+        <ul class="mt-4 space-y-2">
+          @for (a of activities(); track a.id) {
+            <li class="card flex items-center justify-between p-3 text-sm">
+              <div>
+                <p class="font-medium text-slate-700">{{ a.titre }}</p>
+                <p class="text-slate-400">
+                  {{ dt(a.dateDebut) }}{{ a.salle ? ' · ' + a.salle : '' }}{{ a.typeActivite ? ' · ' + a.typeActivite : '' }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button class="text-xs text-brand-700" (click)="editActivity(a)">Modifier</button>
+                <button class="text-xs text-red-600" (click)="removeActivity(a)">Supprimer</button>
+              </div>
+            </li>
+          } @empty { <li class="text-sm text-slate-400">Aucune activité.</li> }
+        </ul>
+      }
+
+      <!-- INTERVENANTS -->
+      @if (tab() === 'intervenants') {
+        <form class="card mt-4 grid gap-3 p-4 sm:grid-cols-2" [formGroup]="speakerForm"
+              (ngSubmit)="saveSpeaker()">
+          <input class="form-input" placeholder="Nom" formControlName="nom" />
+          <input class="form-input" placeholder="Titre / fonction" formControlName="titre" />
+          <input class="form-input sm:col-span-2" placeholder="Organisation" formControlName="organisation" />
+          <textarea class="form-input sm:col-span-2" rows="2" placeholder="Bio" formControlName="bio"></textarea>
+          <button type="submit" class="btn-primary sm:col-span-2">
+            {{ editingSpeakerId() ? 'Modifier' : 'Ajouter l\\'intervenant' }}
+          </button>
+        </form>
+        <ul class="mt-4 space-y-2">
+          @for (s of speakers(); track s.id) {
+            <li class="card flex items-center justify-between p-3 text-sm">
+              <div>
+                <p class="font-medium text-slate-700">{{ s.nom }}</p>
+                <p class="text-slate-400">{{ s.titre }}{{ s.organisation ? ' · ' + s.organisation : '' }}</p>
+              </div>
+              <div class="flex gap-2">
+                <button class="text-xs text-brand-700" (click)="editSpeaker(s)">Modifier</button>
+                <button class="text-xs text-red-600" (click)="removeSpeaker(s)">Supprimer</button>
+              </div>
+            </li>
+          } @empty { <li class="text-sm text-slate-400">Aucun intervenant.</li> }
+        </ul>
+      }
+
+      <!-- PARTENAIRES -->
+      @if (tab() === 'partenaires') {
+        <form class="card mt-4 grid gap-3 p-4 sm:grid-cols-2" [formGroup]="partnerForm"
+              (ngSubmit)="savePartner()">
+          <input class="form-input" placeholder="Nom" formControlName="nom" />
+          <select class="form-input" formControlName="niveau">
+            <option value="">Niveau…</option>
+            <option value="PLATINE">Platine</option>
+            <option value="OR">Or</option>
+            <option value="ARGENT">Argent</option>
+            <option value="BRONZE">Bronze</option>
+            <option value="PARTENAIRE">Partenaire</option>
+            <option value="PARTENAIRE_MEDIA">Partenaire média</option>
+            <option value="PARTENAIRE_INSTITUTIONNEL">Partenaire institutionnel</option>
+          </select>
+          <input class="form-input sm:col-span-2" placeholder="Site web" formControlName="siteWeb" />
+          <button type="submit" class="btn-primary sm:col-span-2">
+            {{ editingPartnerId() ? 'Modifier' : 'Ajouter le partenaire' }}
+          </button>
+        </form>
+        <ul class="mt-4 space-y-2">
+          @for (p of partners(); track p.id) {
+            <li class="card flex items-center justify-between p-3 text-sm">
+              <div>
+                <p class="font-medium text-slate-700">{{ p.nom }}</p>
+                <p class="text-slate-400">{{ p.niveau }}</p>
+              </div>
+              <div class="flex gap-2">
+                <button class="text-xs text-brand-700" (click)="editPartner(p)">Modifier</button>
+                <button class="text-xs text-red-600" (click)="removePartner(p)">Supprimer</button>
+              </div>
+            </li>
+          } @empty { <li class="text-sm text-slate-400">Aucun partenaire.</li> }
+        </ul>
+      }
+    } @else {
+      <p class="mt-6 text-sm text-slate-500">Chargement…</p>
+    }
+  `,
+})
+export class EventEditorComponent {
+  private fb = inject(FormBuilder);
+  private service = inject(EventsService);
+  private auth = inject(AuthService);
+
+  id = input.required<string>();
+  event = signal<EventDetail | null>(null);
+  categories = signal<EventCategory[]>([]);
+  activities = signal<Activity[]>([]);
+  speakers = signal<Speaker[]>([]);
+  partners = signal<Partner[]>([]);
+
+  tab = signal<Tab>('infos');
+  tabs: { id: Tab; label: string }[] = [
+    { id: 'infos', label: 'Informations' },
+    { id: 'programme', label: 'Programme' },
+    { id: 'intervenants', label: 'Intervenants' },
+    { id: 'partenaires', label: 'Partenaires' },
+  ];
+  activityTypes = ['CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION', 'TABLE_RONDE',
+    'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE'];
+
+  saving = signal(false);
+  error = signal<string | null>(null);
+  transitionError = signal<string | null>(null);
+  editingActivityId = signal<string | null>(null);
+  editingSpeakerId = signal<string | null>(null);
+  editingPartnerId = signal<string | null>(null);
+
+  form = this.fb.nonNullable.group({
+    nom: ['', Validators.required],
+    sigle: [''],
+    categoryId: [''],
+    dateDebut: ['', Validators.required],
+    dateFin: ['', Validators.required],
+    ville: [''],
+    lieu: [''],
+    adresse: [''],
+    capaciteMax: [null as number | null],
+    contactEmail: [''],
+    inscriptionDebut: [''],
+    inscriptionFin: [''],
+    descriptionCourte: [''],
+    descriptionDetaillee: [''],
+    conditionsParticipation: [''],
+    hasActivities: [false],
+    standsActifs: [false],
+  });
+
+  activityForm = this.fb.nonNullable.group({
+    titre: ['', Validators.required],
+    typeActivite: [''],
+    salle: [''],
+    dateDebut: ['', Validators.required],
+    dateFin: [''],
+    intervenant: [''],
+    moderateur: [''],
+  });
+  speakerForm = this.fb.nonNullable.group({
+    nom: ['', Validators.required], titre: [''], organisation: [''], bio: [''],
+  });
+  partnerForm = this.fb.nonNullable.group({ nom: ['', Validators.required], niveau: [''], siteWeb: [''] });
+
+  private isAdmin = computed(() => this.auth.hasPermission('EVENT_VALIDATE'));
+
+  actions = computed(() => {
+    const e = this.event();
+    if (!e) return [];
+    const a: { action: string; label: string; class: string }[] = [];
+    const owner = e.organizerId && this.auth.user()?.id;
+    if (['BROUILLON', 'REFUSE'].includes(e.statut))
+      a.push({ action: 'submit', label: 'Soumettre à validation', class: 'btn-primary' });
+    if (e.statut === 'VALIDE')
+      a.push({ action: 'publish', label: 'Publier', class: 'btn-primary' });
+    if (['PUBLIE', 'INSCRIPTIONS_FERMEES'].includes(e.statut))
+      a.push({ action: 'open-registrations', label: 'Ouvrir les inscriptions', class: 'btn-primary' });
+    if (['PUBLIE', 'INSCRIPTIONS_OUVERTES'].includes(e.statut))
+      a.push({ action: 'close-registrations', label: 'Fermer les inscriptions', class: 'btn-ghost text-slate-600' });
+    if (this.isAdmin()) {
+      if (e.statut === 'SOUMIS') {
+        a.push({ action: 'validate', label: 'Valider (admin)', class: 'btn bg-green-600 text-white hover:bg-green-700' });
+        a.push({ action: 'reject', label: 'Refuser (admin)', class: 'btn bg-red-600 text-white hover:bg-red-700' });
+      }
+      if (!['ANNULE', 'TERMINE'].includes(e.statut))
+        a.push({ action: 'cancel', label: 'Annuler (admin)', class: 'btn-ghost text-red-700' });
+    }
+    return a;
+  });
+
+  constructor() {
+    this.service.categories().subscribe((c) => this.categories.set(c));
+    effect(() => {
+      const id = this.id();
+      if (id) this.load(id);
+    });
+  }
+
+  dt = (iso?: string) => formatDateTime(iso);
+
+  private load(id: string): void {
+    this.service.byId(id).subscribe((e) => {
+      this.event.set(e);
+      this.form.reset({
+        nom: e.nom, sigle: e.sigle ?? '', categoryId: e.categoryId ?? '',
+        dateDebut: toLocal(e.dateDebut), dateFin: toLocal(e.dateFin),
+        ville: e.ville ?? '', lieu: e.lieu ?? '', adresse: e.adresse ?? '',
+        capaciteMax: e.capaciteMax ?? null, contactEmail: e.contactEmail ?? '',
+        inscriptionDebut: toLocal(e.inscriptionDebut), inscriptionFin: toLocal(e.inscriptionFin),
+        descriptionCourte: e.descriptionCourte ?? '', descriptionDetaillee: e.descriptionDetaillee ?? '',
+        conditionsParticipation: e.conditionsParticipation ?? '',
+        hasActivities: e.hasActivities, standsActifs: e.standsActifs,
+      });
+      const editable = ['BROUILLON', 'REFUSE', 'VALIDE'].includes(e.statut) || this.isAdmin();
+      editable ? this.form.enable() : this.form.disable();
+    });
+    this.service.activities(id).subscribe((a) => this.activities.set(a));
+    this.service.speakers(id).subscribe((s) => this.speakers.set(s));
+    this.service.partners(id).subscribe((p) => this.partners.set(p));
+  }
+
+  save(): void {
+    if (this.form.invalid) return;
+    this.saving.set(true);
+    this.error.set(null);
+    const v = this.form.getRawValue();
+    const payload = {
+      ...v,
+      categoryId: v.categoryId || undefined,
+      capaciteMax: v.capaciteMax ?? undefined,
+      dateDebut: new Date(v.dateDebut).toISOString(),
+      dateFin: new Date(v.dateFin).toISOString(),
+      inscriptionDebut: v.inscriptionDebut ? new Date(v.inscriptionDebut).toISOString() : undefined,
+      inscriptionFin: v.inscriptionFin ? new Date(v.inscriptionFin).toISOString() : undefined,
+    };
+    this.service.update(this.id(), payload as any).subscribe({
+      next: (e) => {
+        this.saving.set(false);
+        this.event.set(e);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.saving.set(false);
+        this.error.set((err.error as ApiError)?.message ?? 'Enregistrement impossible.');
+      },
+    });
+  }
+
+  doTransition(action: string): void {
+    this.transitionError.set(null);
+    let body: unknown = {};
+    if (action === 'reject') {
+      const motif = prompt('Motif du refus ?');
+      if (!motif) return;
+      body = { motif };
+    }
+    this.service.transition(this.id(), action, body).subscribe({
+      next: (e) => this.event.set(e),
+      error: (err: HttpErrorResponse) =>
+        this.transitionError.set((err.error as ApiError)?.message ?? 'Action impossible.'),
+    });
+  }
+
+  // --- activities ---
+  saveActivity(): void {
+    if (this.activityForm.invalid) return;
+    const v = this.activityForm.getRawValue();
+    const body: Partial<Activity> = {
+      titre: v.titre, salle: v.salle || undefined, intervenant: v.intervenant || undefined,
+      moderateur: v.moderateur || undefined,
+      typeActivite: (v.typeActivite || undefined) as Activity['typeActivite'],
+      dateDebut: new Date(v.dateDebut).toISOString(),
+      dateFin: v.dateFin ? new Date(v.dateFin).toISOString() : undefined,
+    };
+    this.service.saveActivity(this.id(), body, this.editingActivityId() ?? undefined).subscribe(() => {
+      this.editingActivityId.set(null);
+      this.activityForm.reset();
+      this.service.activities(this.id()).subscribe((a) => this.activities.set(a));
+    });
+  }
+  editActivity(a: Activity): void {
+    this.editingActivityId.set(a.id);
+    this.activityForm.reset({
+      titre: a.titre, typeActivite: a.typeActivite ?? '', salle: a.salle ?? '',
+      dateDebut: toLocal(a.dateDebut), dateFin: toLocal(a.dateFin),
+      intervenant: a.intervenant ?? '', moderateur: a.moderateur ?? '',
+    });
+  }
+  removeActivity(a: Activity): void {
+    this.service.deleteActivity(this.id(), a.id).subscribe(() =>
+      this.service.activities(this.id()).subscribe((x) => this.activities.set(x)),
+    );
+  }
+
+  // --- speakers ---
+  saveSpeaker(): void {
+    if (this.speakerForm.invalid) return;
+    this.service.saveSpeaker(this.id(), this.speakerForm.getRawValue(), this.editingSpeakerId() ?? undefined)
+      .subscribe(() => {
+        this.editingSpeakerId.set(null);
+        this.speakerForm.reset();
+        this.service.speakers(this.id()).subscribe((s) => this.speakers.set(s));
+      });
+  }
+  editSpeaker(s: Speaker): void {
+    this.editingSpeakerId.set(s.id);
+    this.speakerForm.reset({ nom: s.nom, titre: s.titre ?? '', organisation: s.organisation ?? '', bio: s.bio ?? '' });
+  }
+  removeSpeaker(s: Speaker): void {
+    this.service.deleteSpeaker(this.id(), s.id).subscribe(() =>
+      this.service.speakers(this.id()).subscribe((x) => this.speakers.set(x)),
+    );
+  }
+
+  // --- partners ---
+  savePartner(): void {
+    if (this.partnerForm.invalid) return;
+    const v = this.partnerForm.getRawValue();
+    this.service.savePartner(this.id(),
+      { nom: v.nom, niveau: (v.niveau || undefined) as Partner['niveau'], siteWeb: v.siteWeb || undefined },
+      this.editingPartnerId() ?? undefined).subscribe(() => {
+        this.editingPartnerId.set(null);
+        this.partnerForm.reset();
+        this.service.partners(this.id()).subscribe((p) => this.partners.set(p));
+      });
+  }
+  editPartner(p: Partner): void {
+    this.editingPartnerId.set(p.id);
+    this.partnerForm.reset({ nom: p.nom, niveau: p.niveau ?? '', siteWeb: p.siteWeb ?? '' });
+  }
+  removePartner(p: Partner): void {
+    this.service.deletePartner(this.id(), p.id).subscribe(() =>
+      this.service.partners(this.id()).subscribe((x) => this.partners.set(x)),
+    );
+  }
+}
+
+function toLocal(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
