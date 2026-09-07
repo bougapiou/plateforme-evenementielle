@@ -14,14 +14,36 @@
 | M9  | Contrôle d'accès (scan) | ✅ livré |
 | M10 | Factures & reçus (PDF) | ✅ livré |
 | M11 | Notifications (in-app, email, canaux SMS/WhatsApp) | ✅ livré |
-| M12 | Statistiques & tableaux de bord | à venir |
-| M13 | Pages publiques (recherche, filtres, détail) | à venir |
+| M12 | Statistiques & tableaux de bord | ✅ livré |
+| M13 | Pages publiques (recherche, filtres, détail) | ✅ livré (avec M3) |
 | M14 | Frontends Angular + Flutter | en continu |
 | M15 | Durcissement, tests bout-en-bout, données de démo | à venir |
 
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M12 — Statistiques & tableaux de bord (contenu livré)
+
+- `StatsRepository` (requêtes d'agrégation natives PostgreSQL) + `StatsService`.
+- **Statistiques globales (admin, `STATS_GLOBAL_READ`)** : nombre d'événements
+  (total / à valider / actifs / terminés), utilisateurs, structures,
+  organisateurs actifs, inscriptions confirmées, billets vendus, chiffre
+  d'affaires (somme des paiements réussis).
+- **Synthèse organisateur (`STATS_OWN_READ`, limitée à ses événements)** :
+  événements, billets vendus / restants, inscriptions confirmées, stands
+  confirmés, revenus, paiements en attente.
+- **Par événement** : billets vendus/total, **taux de remplissage**, stands
+  réservés/disponibles, inscriptions confirmées/en attente, structures
+  participantes, revenus, paiements réussis/en attente, entrées validées.
+- **Séries** : inscriptions et revenus par jour (30 j), billets par catégorie.
+- Endpoints : `/api/stats/admin/overview` · `/api/stats/organizer/overview` ·
+  `/api/stats/events/{id}` · `/api/stats/events/{id}/series`.
+- Frontend : cartes de synthèse sur la **vue d'ensemble** (organisateur +
+  admin), onglet **Statistiques** de l'éditeur avec graphiques
+  (`app-bar-chart`, SVG sans dépendance).
+- Tests : `StatsIT` (synthèse organisateur + stats événement + séries + admin ;
+  403 pour un organisateur sur les stats globales). 28/28 verts.
 
 ## M11 — Notifications (contenu livré)
 
