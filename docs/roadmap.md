@@ -16,12 +16,25 @@
 | M11 | Notifications (in-app, email, canaux SMS/WhatsApp) | ✅ livré |
 | M12 | Statistiques & tableaux de bord | ✅ livré |
 | M13 | Pages publiques (recherche, filtres, détail) | ✅ livré (avec M3) |
-| M14 | Frontends Angular + Flutter | en continu |
-| M15 | Durcissement, tests bout-en-bout, données de démo | à venir |
+| M14 | Frontends Angular + Flutter | ✅ Angular livré en continu ; Flutter = squelette M0 |
+| M15 | Durcissement, tests bout-en-bout, données de démo | ✅ livré |
 
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M15 — Durcissement & données de démo (contenu livré)
+
+- **Rate limiting** : `RateLimitFilter` (fenêtre fixe 1 min par IP) sur
+  `POST /api/auth/login` et `/register` — `429 RATE_LIMITED` + `Retry-After` ;
+  seuil `app.security.rate-limit-per-minute` (0 = désactivé).
+- `GlobalExceptionHandler` journalise désormais les 500.
+- **Jeu de données de démonstration** (`DEMO_DATA=true`) : organisateur de démo
+  (`organisateur@plateforme.bf` / `Demo!2026`) + **SIAO 2027**, **FESPACO 2027**,
+  **Semaine du Numérique 2027** publiés, inscriptions ouvertes, avec catégories,
+  billetterie, stands (SIAO/FESPACO) et programme (Semaine du Numérique).
+- Tests : `RateLimitIT` (429 après le seuil) + `DemoDataIT` (événements de démo
+  publiés et visibles). **31 tests d'intégration**, tous verts.
 
 ## M12 — Statistiques & tableaux de bord (contenu livré)
 

@@ -59,6 +59,7 @@ app:
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
   security:
+    rate-limit-per-minute: ${RATE_LIMIT_PER_MINUTE:20}
     jwt:
       # Base64-encoded 256-bit secret. Override in production via APP_JWT_SECRET.
       secret: ${APP_JWT_SECRET:Y2hhbmdlLW1lLXRoaXMtaXMtYS1kZXYtb25seS1zZWNyZXQtMzJieXRlcyE=}
@@ -74,6 +75,7 @@ app:
     provider: ${PAYMENT_PROVIDER:sandbox}
     webhook-secret: ${PAYMENT_WEBHOOK_SECRET:dev-webhook-secret}
   bootstrap:
+    demo-data: ${DEMO_DATA:false}
     super-admin:
       email: ${SUPER_ADMIN_EMAIL:admin@plateforme.bf}
       password: ${SUPER_ADMIN_PASSWORD:ChangeMe!2026}
