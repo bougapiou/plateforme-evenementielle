@@ -35,7 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authControllerProvider.notifier)
           .login(_email.text.trim(), _password.text);
-      if (mounted) context.go('/tableau-de-bord');
+      if (mounted) context.go('/evenements');
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {

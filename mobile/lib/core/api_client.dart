@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
 import 'config.dart';
 import 'models.dart';
 import 'token_store.dart';
@@ -53,6 +55,28 @@ class ApiClient {
         }
       },
     ));
+  }
+
+  /// Authenticated GET returning raw bytes (QR images, PDF documents).
+  Future<List<int>> bytes(String path) async {
+    try {
+      final res = await dio.get<List<int>>(
+        path,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return res.data ?? const [];
+    } on DioException catch (e) {
+      throw toApiException(e);
+    }
+  }
+
+  /// Downloads an authenticated file to the app cache and returns its local path.
+  Future<String> downloadToCache(String path, String filename) async {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/$filename');
+    final data = await bytes(path);
+    await file.writeAsBytes(data, flush: true);
+    return file.path;
   }
 
   ApiException toApiException(DioException e) {

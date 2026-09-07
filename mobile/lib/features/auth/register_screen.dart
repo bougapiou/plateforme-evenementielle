@@ -47,7 +47,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
             type: _type,
           );
-      if (mounted) context.go('/tableau-de-bord');
+      if (mounted) context.go('/evenements');
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {

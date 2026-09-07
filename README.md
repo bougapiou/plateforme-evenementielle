@@ -12,7 +12,7 @@ tableaux de bord et statistiques.
 |-------------|------------------------------------------------|
 | Backend API | Spring Boot 3 · Java 21 · JPA · PostgreSQL · Flyway |
 | Frontend    | Angular 19 · Tailwind CSS                       |
-| Mobile      | Flutter (squelette : consultation, auth, wallet) |
+| Mobile      | Flutter · Riverpod · go_router (catalogue, billetterie, paiement, inscriptions, stands, portefeuille QR hors-ligne, factures, notifications, scan de contrôle) |
 | Paiement    | Abstraction `PaymentProvider` + provider *sandbox* (FasoArzeka / mobile money à brancher) |
 | PDF / QR    | PDFBox · ZXing                                  |
 | Devise      | FCFA (XOF) par défaut, multi-devises prévu      |
@@ -38,6 +38,10 @@ cd ../backend && ./mvnw spring-boot:run           # DEMO_DATA=true pour des donn
 
 # 3. Frontend
 cd ../frontend && npm install && npm start        # http://localhost:4200
+
+# 4. (optionnel) Application mobile
+cd ../mobile && flutter pub get
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api   # émulateur Android
 ```
 
 | Service | URL |
