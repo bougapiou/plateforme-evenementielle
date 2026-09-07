@@ -61,17 +61,21 @@ export class DashboardLayoutComponent {
 
   private readonly nav: NavItem[] = [
     { label: 'Vue d’ensemble', path: '/tableau-de-bord', exact: true },
+    { label: 'Mes événements', path: '/tableau-de-bord/evenements', permission: 'EVENT_CREATE' },
     { label: 'Mes structures', path: '/tableau-de-bord/structures' },
     { label: 'Espace organisateur', path: '/tableau-de-bord/organisateur' },
   ];
 
   private readonly adminNav: NavItem[] = [
+    { label: 'Événements', path: '/tableau-de-bord/admin/evenements', permission: 'EVENT_VALIDATE' },
     { label: 'Utilisateurs', path: '/tableau-de-bord/admin/utilisateurs', permission: 'USER_READ' },
     { label: 'Structures', path: '/tableau-de-bord/admin/structures', permission: 'STRUCTURE_READ' },
     { label: 'Organisateurs', path: '/tableau-de-bord/admin/organisateurs', permission: 'ORGANIZER_MANAGE' },
   ];
 
-  visibleNav = computed(() => this.nav);
+  visibleNav = computed(() =>
+    this.nav.filter((i) => !i.permission || this.auth.hasPermission(i.permission)),
+  );
 
   visibleAdminNav = computed(() =>
     this.adminNav.filter((i) => !i.permission || this.auth.hasPermission(i.permission)),

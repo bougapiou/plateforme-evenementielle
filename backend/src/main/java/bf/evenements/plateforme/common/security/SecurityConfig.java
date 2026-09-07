@@ -31,7 +31,7 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_GET = {
             "/api/public/**",
-            "/api/events/**",
+            "/api/event-categories",
             "/actuator/health",
             "/v3/api-docs/**",
             "/swagger-ui/**",

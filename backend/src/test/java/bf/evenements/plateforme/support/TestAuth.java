@@ -34,4 +34,22 @@ public final class TestAuth {
     public static String adminToken() {
         return login(ADMIN_EMAIL, ADMIN_PASSWORD);
     }
+
+    /**
+     * Registers a user, applies for an organiser profile, has the admin approve it
+     * and returns a fresh access token carrying the organiser permissions.
+     */
+    public static String organizerToken(String email) {
+        String userToken = registerAndToken(email, "PARTICULIER");
+        String organizerId = given().header("Authorization", "Bearer " + userToken)
+                .contentType(ContentType.JSON)
+                .body(Map.of("nomAffichage", "Organisateur " + email))
+                .when().post("/api/organizers/apply")
+                .then().statusCode(201)
+                .extract().path("id");
+        given().header("Authorization", "Bearer " + adminToken())
+                .when().post("/api/organizers/" + organizerId + "/approve")
+                .then().statusCode(200);
+        return login(email, "Secret123");
+    }
 }
