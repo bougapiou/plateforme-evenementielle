@@ -7,7 +7,7 @@
 | M2  | Structures & organisateurs   | ✅ livré |
 | M3  | Événements (workflow, catégories, **activités**, programme, intervenants, partenaires, pages publiques) | ✅ livré |
 | M4  | Billetterie (catégories, quotas, commandes, **portée événement / activité**) | ✅ livré |
-| M5  | Stands (types, réservation, hold 15 min, expiration) | à venir |
+| M5  | Stands (types, réservation, hold 15 min, expiration) | ✅ livré |
 | M6  | Inscriptions (particulier & structure, documents) | à venir |
 | M7  | Paiements (`PaymentProvider`, sandbox, webhook HMAC) | à venir |
 | M8  | Billets électroniques & QR codes | à venir |
@@ -22,6 +22,27 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M5 — Stands (contenu livré)
+
+- Entités (Flyway V5) : `stand_types`, `stands` (plan : numéro, position),
+  `stand_reservations`.
+- Création d'un type de stand → **génération automatique des stands** numérotés
+  (`STANDARD-001`…) ; l'ajustement du nombre ajoute / retire des stands libres.
+- Réservation : blocage temporaire **15 min** (`RESERVE_TEMP`,
+  `hold_expire_le`) ; **anti-double réservation** garanti par un index unique
+  partiel PostgreSQL (`uk_stand_active_reservation`) + verrou pessimiste sur le
+  stand ; `StandExpiryJob` libère les stands non payés.
+- Statuts : `EN_ATTENTE`, `RESERVE_TEMP`, `ATTENTE_PAIEMENT`, `PAYE`,
+  `CONFIRME`, `ANNULE`, `EXPIRE`. Réservation gratuite → `CONFIRME` immédiat.
+- Endpoints : `/api/events/{id}/stand-types` + `/stands` (organisateur),
+  `/api/stand-reservations` (réserver / mes réservations / annuler /
+  `pay-sandbox` / `for-event`), `/api/public/events/{slug}/stand-types` + `/stands`
+  (plan avec disponibilité).
+- Frontend : onglet « Stands » de l'éditeur, réservation d'un emplacement sur la
+  page publique (sélection stand → blocage → paiement simulé), « Mes stands ».
+- Tests : `StandReservationIT` (blocage + double réservation refusée + paiement ;
+  annulation → stand libéré ; stand gratuit confirmé). 14/14 verts.
 
 ## M4 — Billetterie (contenu livré)
 

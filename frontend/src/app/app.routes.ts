@@ -64,6 +64,12 @@ export const routes: Routes = [
         title: 'Mes billets',
       },
       {
+        path: 'stands',
+        loadComponent: () =>
+          import('./features/stands/my-stands.component').then((m) => m.MyStandsComponent),
+        title: 'Mes stands',
+      },
+      {
         path: 'structures',
         loadComponent: () =>
           import('./features/structures/structures-list.component').then(
