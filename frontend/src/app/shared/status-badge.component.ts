@@ -20,6 +20,22 @@ const STYLES: Record<string, string> = {
   TERMINE: 'bg-slate-100 text-slate-500',
   ANNULE: 'bg-red-100 text-red-800',
   REFUSE: 'bg-red-100 text-red-800',
+  // payments / orders / reservations
+  REUSSI: 'bg-green-100 text-green-800',
+  PAYEE: 'bg-green-100 text-green-800',
+  PAYE: 'bg-green-100 text-green-800',
+  CONFIRME: 'bg-green-100 text-green-800',
+  CONFIRMEE: 'bg-green-100 text-green-800',
+  ECHOUE: 'bg-red-100 text-red-800',
+  EXPIRE: 'bg-slate-100 text-slate-500',
+  EXPIREE: 'bg-slate-100 text-slate-500',
+  ANNULEE: 'bg-red-100 text-red-800',
+  REFUSEE: 'bg-red-100 text-red-800',
+  REMBOURSE: 'bg-purple-100 text-purple-800',
+  RESERVE_TEMP: 'bg-amber-100 text-amber-800',
+  ATTENTE_PAIEMENT: 'bg-amber-100 text-amber-800',
+  EMISE: 'bg-green-100 text-green-800',
+  UTILISE: 'bg-slate-100 text-slate-500',
 };
 
 @Component({

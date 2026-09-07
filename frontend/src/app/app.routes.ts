@@ -78,6 +78,12 @@ export const routes: Routes = [
         title: 'Mes inscriptions',
       },
       {
+        path: 'paiements',
+        loadComponent: () =>
+          import('./features/payments/my-payments.component').then((m) => m.MyPaymentsComponent),
+        title: 'Mes paiements',
+      },
+      {
         path: 'structures',
         loadComponent: () =>
           import('./features/structures/structures-list.component').then(
