@@ -9,6 +9,8 @@ public interface EventStaffRepository extends JpaRepository<EventStaff, UUID> {
 
     List<EventStaff> findByEventId(UUID eventId);
 
+    List<EventStaff> findByUserId(UUID userId);
+
     Optional<EventStaff> findByEventIdAndUserId(UUID eventId, UUID userId);
 
     boolean existsByEventIdAndUserId(UUID eventId, UUID userId);

@@ -38,6 +38,13 @@ public class CheckinController {
     private final CheckinService checkinService;
     private final EventStaffService staffService;
 
+    @GetMapping("/checkins/events")
+    @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "')")
+    @Operation(summary = "Événements que je peux contrôler (organisateur / personnel / admin)")
+    public List<bf.evenements.plateforme.event.dto.EventSummary> myControllableEvents() {
+        return checkinService.controllableEvents();
+    }
+
     @PostMapping("/checkins/scan")
     @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "')")
     @Operation(summary = "Scanner un QR code (VALIDE / DÉJÀ UTILISÉ / INVALIDE)")

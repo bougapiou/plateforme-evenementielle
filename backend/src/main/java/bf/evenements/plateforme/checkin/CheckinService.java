@@ -8,6 +8,9 @@ import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.common.web.PageResponse;
 import bf.evenements.plateforme.event.Event;
 import bf.evenements.plateforme.event.EventRepository;
+import bf.evenements.plateforme.event.EventSpecifications;
+import bf.evenements.plateforme.event.EventStatus;
+import bf.evenements.plateforme.event.dto.EventSummary;
 import bf.evenements.plateforme.qrcode.QrCode;
 import bf.evenements.plateforme.qrcode.QrCodeRepository;
 import bf.evenements.plateforme.rbac.Permissions;
@@ -15,10 +18,14 @@ import bf.evenements.plateforme.ticket.Ticket;
 import bf.evenements.plateforme.ticket.TicketRepository;
 import bf.evenements.plateforme.ticket.TicketStatus;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +41,36 @@ public class CheckinService {
     private final EventRepository eventRepository;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
+
+    /** States in which entry control makes sense. */
+    private static final Set<EventStatus> SCANNABLE = Set.of(
+            EventStatus.PUBLIE, EventStatus.INSCRIPTIONS_OUVERTES,
+            EventStatus.INSCRIPTIONS_FERMEES, EventStatus.EN_COURS);
+
+    /**
+     * Events the current user may run entry control for: those they organise,
+     * those they are assigned to as control staff, and — for an admin — all of
+     * them. Only events in a scannable state are returned.
+     */
+    @Transactional(readOnly = true)
+    public List<EventSummary> controllableEvents() {
+        UUID me = currentUser.requireId();
+        Specification<Event> scannable = EventSpecifications.statusIn(SCANNABLE);
+        Sort byDate = Sort.by(Sort.Direction.ASC, "dateDebut");
+
+        if (currentUser.hasAuthority(Permissions.EVENT_VALIDATE)) {
+            return eventRepository.findAll(scannable, byDate).stream()
+                    .map(EventSummary::from).toList();
+        }
+
+        List<UUID> staffEventIds = staffRepository.findByUserId(me).stream()
+                .map(s -> s.getEvent().getId()).toList();
+        Specification<Event> mineOrStaff = Specification.anyOf(
+                EventSpecifications.ownedByUser(me),
+                EventSpecifications.idIn(staffEventIds));
+        return eventRepository.findAll(scannable.and(mineOrStaff), byDate).stream()
+                .map(EventSummary::from).toList();
+    }
 
     @Transactional
     public ScanResponse scan(ScanRequest request) {

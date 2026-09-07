@@ -119,5 +119,17 @@ class CheckinIT extends AbstractIntegrationTest {
         as(staffToken).body(Map.of("token", decodeQr(png2), "eventId", eventId))
                 .when().post("/api/checkins/scan")
                 .then().statusCode(200).body("resultat", equalTo("VALIDE"));
+
+        // the controllable-events endpoint lists this event for the organiser,
+        // for the assigned staff member, and for an admin
+        as(orga).when().get("/api/checkins/events")
+                .then().statusCode(200).body("id", org.hamcrest.Matchers.hasItem(eventId));
+        as(staffToken).when().get("/api/checkins/events")
+                .then().statusCode(200).body("id", org.hamcrest.Matchers.hasItem(eventId));
+        as(admin).when().get("/api/checkins/events")
+                .then().statusCode(200).body("id", org.hamcrest.Matchers.hasItem(eventId));
+
+        // a plain participant has no CHECKIN_SCAN permission -> 403
+        as(buyer).when().get("/api/checkins/events").then().statusCode(403);
     }
 }
