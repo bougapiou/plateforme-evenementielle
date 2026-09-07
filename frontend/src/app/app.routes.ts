@@ -36,6 +36,56 @@ export const routes: Routes = [
           import('./pages/dashboard-overview.component').then((m) => m.DashboardOverviewComponent),
         title: 'Tableau de bord',
       },
+      {
+        path: 'structures',
+        loadComponent: () =>
+          import('./features/structures/structures-list.component').then(
+            (m) => m.StructuresListComponent,
+          ),
+        title: 'Mes structures',
+      },
+      {
+        path: 'structures/:id',
+        loadComponent: () =>
+          import('./features/structures/structure-detail.component').then(
+            (m) => m.StructureDetailComponent,
+          ),
+        title: 'Structure',
+      },
+      {
+        path: 'organisateur',
+        loadComponent: () =>
+          import('./features/organizer/organizer.component').then((m) => m.OrganizerComponent),
+        title: 'Espace organisateur',
+      },
+      {
+        path: 'admin/utilisateurs',
+        canActivate: [authGuard],
+        data: { permission: 'USER_READ' },
+        loadComponent: () =>
+          import('./features/admin/admin-users.component').then((m) => m.AdminUsersComponent),
+        title: 'Utilisateurs',
+      },
+      {
+        path: 'admin/structures',
+        canActivate: [authGuard],
+        data: { permission: 'STRUCTURE_READ' },
+        loadComponent: () =>
+          import('./features/admin/admin-structures.component').then(
+            (m) => m.AdminStructuresComponent,
+          ),
+        title: 'Structures',
+      },
+      {
+        path: 'admin/organisateurs',
+        canActivate: [authGuard],
+        data: { permission: 'ORGANIZER_MANAGE' },
+        loadComponent: () =>
+          import('./features/admin/admin-organizers.component').then(
+            (m) => m.AdminOrganizersComponent,
+          ),
+        title: 'Organisateurs',
+      },
     ],
   },
   {

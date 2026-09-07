@@ -41,6 +41,22 @@ Pagination : paramètres `page`, `size`, `sort` ; enveloppe `PageResponse`
 | GET | `/api/audit-logs` | `AUDIT_READ` |
 | GET | `/actuator/health` | public |
 
+### Disponible (M2 — structures & organisateurs)
+
+| Méthode | Endpoint | Accès |
+|--------|----------|-------|
+| POST | `/api/structures` | authentifié (créateur = propriétaire) |
+| GET | `/api/structures/mine` | authentifié |
+| GET / PUT | `/api/structures/{id}` | membre / admin de la structure ou `STRUCTURE_MANAGE` |
+| GET | `/api/structures` | `STRUCTURE_READ` |
+| PATCH | `/api/structures/{id}/status` | `STRUCTURE_MANAGE` |
+| GET / POST | `/api/structures/{id}/members` | membre (lecture) / admin structure (ajout) |
+| DELETE | `/api/structures/{id}/members/{userId}` | admin structure |
+| POST | `/api/organizers/apply` | authentifié |
+| GET / PUT | `/api/organizers/me` | authentifié |
+| GET | `/api/organizers` · `/api/organizers/{id}` | `ORGANIZER_MANAGE` |
+| POST | `/api/organizers/{id}/approve` · `/suspend` | `ORGANIZER_MANAGE` |
+
 ## Prévu (modules suivants)
 
 ```

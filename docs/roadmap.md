@@ -4,8 +4,8 @@
 |-----|----------------------------|---------------|
 | M0  | Fondations (monorepo, infra, `common/`, Flyway, OpenAPI) | ✅ livré |
 | M1  | Authentification & RBAC     | ✅ livré |
-| M2  | Structures & organisateurs   | à venir |
-| M3  | Événements (workflow, catégories, programme, intervenants, partenaires) | à venir |
+| M2  | Structures & organisateurs   | ✅ livré |
+| M3  | Événements (workflow, catégories, **activités**, programme, intervenants, partenaires) | à venir |
 | M4  | Billetterie (catégories, quotas, commandes) | à venir |
 | M5  | Stands (types, réservation, hold 15 min, expiration) | à venir |
 | M6  | Inscriptions (particulier & structure, documents) | à venir |
@@ -22,6 +22,26 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M2 — Structures & organisateurs (contenu livré)
+
+- Entités : `structures`, `structure_members`, `organizers` (Flyway V2).
+- Structure : compte pro (raison sociale, sigle, type, secteur, RCCM, IFU,
+  adresse…), statut `EN_ATTENTE`/`VERIFIEE`/`SUSPENDUE` (vérif. admin), créateur =
+  propriétaire, obtention du rôle `STRUCTURE`.
+- Représentants : ajout par e-mail (utilisateur existant), rôles internes
+  `PROPRIETAIRE`/`ADMINISTRATEUR`/`MEMBRE`, sécurité par appartenance.
+- Organisateur : demande (`/organizers/apply`) → validation admin
+  (`/organizers/{id}/approve`) qui accorde le rôle `ORGANISATEUR` (permissions
+  événements). Rattachement optionnel à une structure gérée.
+- Endpoints : `POST/GET/PUT /api/structures`, `/structures/mine`,
+  `/structures/{id}/members`, `PATCH /structures/{id}/status` ;
+  `/api/organizers/apply|me`, `GET /api/organizers`, `/organizers/{id}/approve|suspend`.
+- Frontend : « Mes structures » (+ création, représentants), « Espace
+  organisateur » (demande / suivi), écrans admin Structures / Organisateurs /
+  Utilisateurs.
+- Tests : `StructureOrganizerIT` (cycle structure + membres + vérif. admin ;
+  demande organisateur + approbation → permissions événements).
 
 ## M0 — Fondations (contenu livré)
 

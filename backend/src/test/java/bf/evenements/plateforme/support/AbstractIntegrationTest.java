@@ -4,27 +4,35 @@ import io.restassured.RestAssured;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
+/**
+ * Base class for HTTP-level integration tests. Uses a single PostgreSQL container
+ * shared by every test class (singleton pattern): it is started once and left
+ * running for the whole JVM so the cached Spring context stays valid across
+ * classes. Ryuk removes the container when the JVM exits.
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
 
-    @Container
-    @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:16-alpine");
+    static final PostgreSQLContainer<?> POSTGRES;
+
+    static {
+        POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
+                .withReuse(false);
+        POSTGRES.start();
+    }
 
     @LocalServerPort
     int port;
 
     @DynamicPropertySource
-    static void mailProps(DynamicPropertyRegistry registry) {
+    static void datasourceProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
         // no SMTP server in tests
         registry.add("spring.mail.host", () -> "localhost");
         registry.add("spring.mail.port", () -> "3025");
