@@ -6,6 +6,7 @@ interface NavItem {
   label: string;
   path: string;
   permission?: string;
+  exact?: boolean;
 }
 
 @Component({
@@ -22,10 +23,21 @@ interface NavItem {
         <nav class="space-y-1 p-3 text-sm font-medium">
           @for (item of visibleNav(); track item.path) {
             <a [routerLink]="item.path" routerLinkActive="bg-brand-50 text-brand-700"
-               [routerLinkActiveOptions]="{ exact: true }"
+               [routerLinkActiveOptions]="{ exact: !!item.exact }"
                class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">
               {{ item.label }}
             </a>
+          }
+          @if (hasAdminSection()) {
+            <p class="px-3 pb-1 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Administration
+            </p>
+            @for (item of visibleAdminNav(); track item.path) {
+              <a [routerLink]="item.path" routerLinkActive="bg-brand-50 text-brand-700"
+                 class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">
+                {{ item.label }}
+              </a>
+            }
           }
         </nav>
       </aside>
@@ -48,14 +60,22 @@ export class DashboardLayoutComponent {
   auth = inject(AuthService);
 
   private readonly nav: NavItem[] = [
-    { label: 'Vue d’ensemble', path: '/tableau-de-bord' },
-    { label: 'Événements', path: '/tableau-de-bord/evenements', permission: 'EVENT_READ' },
-    { label: 'Utilisateurs', path: '/tableau-de-bord/utilisateurs', permission: 'USER_READ' },
-    { label: 'Rôles & permissions', path: '/tableau-de-bord/roles', permission: 'ROLE_MANAGE' },
-    { label: 'Journaux', path: '/tableau-de-bord/journaux', permission: 'AUDIT_READ' },
+    { label: 'Vue d’ensemble', path: '/tableau-de-bord', exact: true },
+    { label: 'Mes structures', path: '/tableau-de-bord/structures' },
+    { label: 'Espace organisateur', path: '/tableau-de-bord/organisateur' },
   ];
 
-  visibleNav = computed(() =>
-    this.nav.filter((item) => !item.permission || this.auth.hasPermission(item.permission)),
+  private readonly adminNav: NavItem[] = [
+    { label: 'Utilisateurs', path: '/tableau-de-bord/admin/utilisateurs', permission: 'USER_READ' },
+    { label: 'Structures', path: '/tableau-de-bord/admin/structures', permission: 'STRUCTURE_READ' },
+    { label: 'Organisateurs', path: '/tableau-de-bord/admin/organisateurs', permission: 'ORGANIZER_MANAGE' },
+  ];
+
+  visibleNav = computed(() => this.nav);
+
+  visibleAdminNav = computed(() =>
+    this.adminNav.filter((i) => !i.permission || this.auth.hasPermission(i.permission)),
   );
+
+  hasAdminSection = computed(() => this.visibleAdminNav().length > 0);
 }
