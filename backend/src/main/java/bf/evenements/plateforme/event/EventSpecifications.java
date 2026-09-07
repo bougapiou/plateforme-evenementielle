@@ -23,6 +23,14 @@ public final class EventSpecifications {
         return (root, query, cb) -> root.get("statut").in(statuses);
     }
 
+    /** Matches events whose id is in the given collection; matches nothing if empty. */
+    public static Specification<Event> idIn(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return (root, query, cb) -> cb.disjunction();
+        }
+        return (root, query, cb) -> root.get("id").in(ids);
+    }
+
     public static Specification<Event> hasCategory(UUID categoryId) {
         return categoryId == null ? null
                 : (root, query, cb) -> cb.equal(root.get("category").get("id"), categoryId);

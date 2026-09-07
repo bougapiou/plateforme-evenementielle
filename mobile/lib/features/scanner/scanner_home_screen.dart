@@ -15,7 +15,7 @@ class ScannerHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _ScannerHomeScreenState extends ConsumerState<ScannerHomeScreen> {
-  late Future<Paged<EventSummary>> _future;
+  late Future<List<EventSummary>> _future;
 
   @override
   void initState() {
@@ -30,23 +30,16 @@ class _ScannerHomeScreenState extends ConsumerState<ScannerHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Contrôle à l\'entrée')),
-      body: FutureView<Paged<EventSummary>>(
+      body: FutureView<List<EventSummary>>(
         future: _future,
         onRetry: _refresh,
-        builder: (paged) {
-          final events = paged.content
-              .where((e) =>
-                  e.statut == 'EN_COURS' ||
-                  e.statut == 'INSCRIPTIONS_FERMEES' ||
-                  e.statut == 'INSCRIPTIONS_OUVERTES' ||
-                  e.statut == 'PUBLIE')
-              .toList();
+        builder: (events) {
           if (events.isEmpty) {
             return const EmptyState(
               icon: Icons.qr_code_scanner,
               title: 'Aucun événement à contrôler',
               subtitle:
-                  'Sélectionnez un événement dont vous êtes organisateur ou personnel de contrôle.',
+                  'Vous devez être organisateur de l\'événement, y être ajouté comme personnel de contrôle, ou être administrateur ; l\'événement doit être publié.',
             );
           }
           return ListView(

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiBase } from '../../core/api';
 import { Page } from '../../core/models';
+import { EventSummary } from '../events/event.models';
 
 export type CheckinResult = 'VALIDE' | 'DEJA_UTILISE' | 'INVALIDE';
 
@@ -34,6 +35,10 @@ export interface StaffMember {
 
 @Injectable({ providedIn: 'root' })
 export class CheckinService extends ApiBase {
+  /** Events the signed-in user may run entry control for. */
+  controllableEvents(): Observable<EventSummary[]> {
+    return this.get<EventSummary[]>('/checkins/events');
+  }
   scan(token: string, eventId: string): Observable<ScanResponse> {
     return this.http.post<ScanResponse>(`${this.base}/checkins/scan`, { token, eventId });
   }

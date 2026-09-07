@@ -1,7 +1,6 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CheckinService, ScanResponse } from './checkin.service';
-import { EventsService } from '../events/events.service';
 import { EventSummary } from '../events/event.models';
 import { formatDateTime } from '../../shared/format';
 
@@ -20,6 +19,13 @@ declare const window: Window & { BarcodeDetector?: any };
         <option value="">— Choisir —</option>
         @for (e of events(); track e.id) { <option [value]="e.id">{{ e.nom }}</option> }
       </select>
+      @if (loaded() && events().length === 0) {
+        <p class="mt-2 text-xs text-slate-400">
+          Aucun événement à contrôler. Vous devez être l'organisateur de l'événement,
+          y être ajouté comme personnel de contrôle, ou être administrateur ;
+          l'événement doit être publié.
+        </p>
+      }
     </div>
 
     @if (eventId) {
@@ -93,9 +99,9 @@ declare const window: Window & { BarcodeDetector?: any };
 })
 export class ScannerComponent implements OnDestroy {
   private checkin = inject(CheckinService);
-  private eventsService = inject(EventsService);
 
   events = signal<EventSummary[]>([]);
+  loaded = signal(false);
   eventId = '';
   manualToken = '';
   last = signal<ScanResponse | null>(null);
@@ -108,11 +114,13 @@ export class ScannerComponent implements OnDestroy {
   private busy = false;
 
   constructor() {
-    this.eventsService.mine({ statut: '' }).subscribe((p) =>
-      this.events.set(p.content.filter((e) =>
-        ['PUBLIE', 'INSCRIPTIONS_OUVERTES', 'INSCRIPTIONS_FERMEES', 'EN_COURS'].includes(e.statut),
-      )),
-    );
+    this.checkin.controllableEvents().subscribe({
+      next: (list) => {
+        this.events.set(list);
+        this.loaded.set(true);
+      },
+      error: () => this.loaded.set(true),
+    });
   }
 
   ngOnDestroy(): void {
