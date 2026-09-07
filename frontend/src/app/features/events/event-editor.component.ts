@@ -3,13 +3,14 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { EventsService } from './events.service';
-import { Activity, EventCategory, EventDetail, Partner, Speaker } from './event.models';
+import { Activity, EventCategory, EventDetail, EventTicket, Partner, Speaker } from './event.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
-import { formatDateTime } from '../../shared/format';
+import { formatDateTime, formatFcfa } from '../../shared/format';
 import { ApiError } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
+import { TicketsService } from '../tickets/tickets.service';
 
-type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires';
+type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie';
 
 @Component({
   selector: 'app-event-editor',
@@ -217,6 +218,61 @@ type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires';
           } @empty { <li class="text-sm text-slate-400">Aucun partenaire.</li> }
         </ul>
       }
+
+      <!-- BILLETTERIE -->
+      @if (tab() === 'billetterie') {
+        <form class="card mt-4 grid gap-3 p-4 sm:grid-cols-2" [formGroup]="ticketForm"
+              (ngSubmit)="saveTicket()">
+          <input class="form-input" placeholder="Nom (ex : Standard, VIP…)" formControlName="nom" />
+          <input type="number" class="form-input" placeholder="Prix (FCFA)" formControlName="prixMontant" />
+          <input type="number" class="form-input" placeholder="Quantité disponible"
+                 formControlName="quantiteTotale" />
+          <input type="number" class="form-input" placeholder="Limite par personne"
+                 formControlName="limiteParUtilisateur" />
+          <select class="form-input" formControlName="portee">
+            <option value="EVENEMENT">Accès à tout l'événement</option>
+            <option value="ACTIVITE">Accès à des activités précises</option>
+          </select>
+          <input class="form-input" placeholder="Description" formControlName="description" />
+          @if (ticketForm.value.portee === 'ACTIVITE') {
+            <div class="sm:col-span-2 rounded-lg border border-slate-200 p-2 text-sm">
+              <p class="mb-1 font-medium text-slate-600">Activités couvertes par ce ticket</p>
+              @for (a of activities(); track a.id) {
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" [value]="a.id" (change)="toggleActivity(a.id, $event)"
+                         [checked]="selectedActivityIds().includes(a.id)" />
+                  {{ a.titre }}
+                </label>
+              } @empty {
+                <p class="text-slate-400">Ajoutez d'abord des activités dans l'onglet Programme.</p>
+              }
+            </div>
+          }
+          @if (ticketError()) {
+            <p class="sm:col-span-2 text-sm text-red-700">{{ ticketError() }}</p>
+          }
+          <button type="submit" class="btn-primary sm:col-span-2">
+            {{ editingTicketId() ? 'Modifier la catégorie' : 'Ajouter la catégorie' }}
+          </button>
+        </form>
+        <ul class="mt-4 space-y-2">
+          @for (t of tickets(); track t.id) {
+            <li class="card flex items-center justify-between p-3 text-sm">
+              <div>
+                <p class="font-medium text-slate-700">{{ t.nom }} — {{ fcfa(t.prixMontant) }}</p>
+                <p class="text-slate-400">
+                  {{ t.quantiteVendue }}/{{ t.quantiteTotale }} vendus · {{ t.quantiteRestante }} restants
+                  · {{ t.portee === 'ACTIVITE' ? (t.activites.length + ' activité(s)') : 'événement entier' }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button class="text-xs text-brand-700" (click)="editTicket(t)">Modifier</button>
+                <button class="text-xs text-red-600" (click)="removeTicket(t)">Supprimer</button>
+              </div>
+            </li>
+          } @empty { <li class="text-sm text-slate-400">Aucune catégorie de tickets.</li> }
+        </ul>
+      }
     } @else {
       <p class="mt-6 text-sm text-slate-500">Chargement…</p>
     }
@@ -225,6 +281,7 @@ type Tab = 'infos' | 'programme' | 'intervenants' | 'partenaires';
 export class EventEditorComponent {
   private fb = inject(FormBuilder);
   private service = inject(EventsService);
+  private ticketsService = inject(TicketsService);
   private auth = inject(AuthService);
 
   id = input.required<string>();
@@ -233,6 +290,8 @@ export class EventEditorComponent {
   activities = signal<Activity[]>([]);
   speakers = signal<Speaker[]>([]);
   partners = signal<Partner[]>([]);
+  tickets = signal<EventTicket[]>([]);
+  selectedActivityIds = signal<string[]>([]);
 
   tab = signal<Tab>('infos');
   tabs: { id: Tab; label: string }[] = [
@@ -240,6 +299,7 @@ export class EventEditorComponent {
     { id: 'programme', label: 'Programme' },
     { id: 'intervenants', label: 'Intervenants' },
     { id: 'partenaires', label: 'Partenaires' },
+    { id: 'billetterie', label: 'Billetterie' },
   ];
   activityTypes = ['CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION', 'TABLE_RONDE',
     'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE'];
@@ -250,6 +310,8 @@ export class EventEditorComponent {
   editingActivityId = signal<string | null>(null);
   editingSpeakerId = signal<string | null>(null);
   editingPartnerId = signal<string | null>(null);
+  editingTicketId = signal<string | null>(null);
+  ticketError = signal<string | null>(null);
 
   form = this.fb.nonNullable.group({
     nom: ['', Validators.required],
@@ -284,6 +346,14 @@ export class EventEditorComponent {
     nom: ['', Validators.required], titre: [''], organisation: [''], bio: [''],
   });
   partnerForm = this.fb.nonNullable.group({ nom: ['', Validators.required], niveau: [''], siteWeb: [''] });
+  ticketForm = this.fb.nonNullable.group({
+    nom: ['', Validators.required],
+    prixMontant: [0, [Validators.required, Validators.min(0)]],
+    quantiteTotale: [100, [Validators.required, Validators.min(1)]],
+    limiteParUtilisateur: [10, [Validators.min(1)]],
+    portee: ['EVENEMENT' as 'EVENEMENT' | 'ACTIVITE'],
+    description: [''],
+  });
 
   private isAdmin = computed(() => this.auth.hasPermission('EVENT_VALIDATE'));
 
@@ -320,6 +390,7 @@ export class EventEditorComponent {
   }
 
   dt = (iso?: string) => formatDateTime(iso);
+  fcfa = (n?: number) => formatFcfa(n);
 
   private load(id: string): void {
     this.service.byId(id).subscribe((e) => {
@@ -340,6 +411,55 @@ export class EventEditorComponent {
     this.service.activities(id).subscribe((a) => this.activities.set(a));
     this.service.speakers(id).subscribe((s) => this.speakers.set(s));
     this.service.partners(id).subscribe((p) => this.partners.set(p));
+    this.ticketsService.forEvent(id).subscribe((t) => this.tickets.set(t));
+  }
+
+  // --- billetterie ---
+  toggleActivity(activityId: string, ev: Event): void {
+    const checked = (ev.target as HTMLInputElement).checked;
+    const cur = this.selectedActivityIds();
+    this.selectedActivityIds.set(
+      checked ? [...cur, activityId] : cur.filter((x) => x !== activityId),
+    );
+  }
+  saveTicket(): void {
+    if (this.ticketForm.invalid) return;
+    this.ticketError.set(null);
+    const v = this.ticketForm.getRawValue();
+    const body = {
+      nom: v.nom,
+      prixMontant: Number(v.prixMontant),
+      quantiteTotale: Number(v.quantiteTotale),
+      limiteParUtilisateur: Number(v.limiteParUtilisateur),
+      portee: v.portee,
+      description: v.description || undefined,
+      activityIds: v.portee === 'ACTIVITE' ? this.selectedActivityIds() : undefined,
+    };
+    this.ticketsService.save(this.id(), body, this.editingTicketId() ?? undefined).subscribe({
+      next: () => {
+        this.editingTicketId.set(null);
+        this.selectedActivityIds.set([]);
+        this.ticketForm.reset({ prixMontant: 0, quantiteTotale: 100, limiteParUtilisateur: 10, portee: 'EVENEMENT' });
+        this.ticketsService.forEvent(this.id()).subscribe((t) => this.tickets.set(t));
+      },
+      error: (err: HttpErrorResponse) =>
+        this.ticketError.set((err.error as ApiError)?.message ?? 'Enregistrement impossible.'),
+    });
+  }
+  editTicket(t: EventTicket): void {
+    this.editingTicketId.set(t.id);
+    this.selectedActivityIds.set(t.activites.map((a) => a.id));
+    this.ticketForm.reset({
+      nom: t.nom, prixMontant: t.prixMontant, quantiteTotale: t.quantiteTotale,
+      limiteParUtilisateur: t.limiteParUtilisateur, portee: t.portee, description: t.description ?? '',
+    });
+  }
+  removeTicket(t: EventTicket): void {
+    this.ticketsService.remove(this.id(), t.id).subscribe({
+      next: () => this.ticketsService.forEvent(this.id()).subscribe((x) => this.tickets.set(x)),
+      error: (err: HttpErrorResponse) =>
+        this.ticketError.set((err.error as ApiError)?.message ?? 'Suppression impossible.'),
+    });
   }
 
   save(): void {

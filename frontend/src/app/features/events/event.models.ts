@@ -144,6 +144,76 @@ export interface EventPublic extends Omit<EventDetail, 'statut'> {
   partenaires: Partner[];
 }
 
+export type TicketScope = 'EVENEMENT' | 'ACTIVITE';
+
+export interface EventTicket {
+  id: string;
+  eventId: string;
+  nom: string;
+  description?: string;
+  prixMontant: number;
+  devise: string;
+  prixFormatte: string;
+  portee: TicketScope;
+  quantiteTotale: number;
+  quantiteVendue: number;
+  quantiteReservee: number;
+  quantiteRestante: number;
+  limiteParUtilisateur: number;
+  venteDebut?: string;
+  venteFin?: string;
+  actif: boolean;
+  enVente: boolean;
+  ordre: number;
+  activites: { id: string; titre: string }[];
+}
+
+export interface EventTicketPayload {
+  nom: string;
+  description?: string;
+  prixMontant: number;
+  devise?: string;
+  portee: TicketScope;
+  quantiteTotale: number;
+  limiteParUtilisateur?: number;
+  venteDebut?: string;
+  venteFin?: string;
+  actif?: boolean;
+  activityIds?: string[];
+}
+
+export type OrderStatus = 'EN_ATTENTE' | 'PAYEE' | 'ANNULEE' | 'EXPIREE';
+
+export interface TicketOrder {
+  id: string;
+  reference: string;
+  eventId: string;
+  eventNom: string;
+  statut: OrderStatus;
+  montantTotal: number;
+  devise: string;
+  montantFormatte: string;
+  acheteurNom?: string;
+  acheteurEmail?: string;
+  expireLe?: string;
+  payeLe?: string;
+  createdAt: string;
+  lignes: { ticketNom: string; quantite: number; prixUnitaire: number }[];
+}
+
+export interface MyTicket {
+  id: string;
+  numero: string;
+  eventId: string;
+  eventNom: string;
+  eventDateDebut: string;
+  lieu?: string;
+  categorieNom: string;
+  participantNom?: string;
+  statut: 'EMISE' | 'UTILISE' | 'ANNULE';
+  orderReference: string;
+}
+
 export const ACTIVITY_TYPES: ActivityType[] = [
   'CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION',
   'TABLE_RONDE', 'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE',
