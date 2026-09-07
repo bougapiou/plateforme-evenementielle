@@ -32,6 +32,7 @@ public class EventService {
     private final EventRepository eventRepository;
     private final EventCategoryRepository categoryRepository;
     private final OrganizerService organizerService;
+    private final bf.evenements.plateforme.notification.NotificationService notificationService;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
 
@@ -124,6 +125,9 @@ public class EventService {
         event.setStatut(EventStatus.VALIDE);
         event.setValideLe(Instant.now());
         event.setValidePar(currentUser.requireId());
+        notifyOrganizer(event, bf.evenements.plateforme.notification.NotificationType.EVENEMENT_VALIDE,
+                "Événement validé",
+                "Votre événement « " + event.getNom() + " » a été validé. Vous pouvez le publier.");
         audit("EVENT_VALIDATED", event);
         return EventResponse.from(event);
     }
@@ -134,6 +138,9 @@ public class EventService {
         require(event, EnumSet.of(EventStatus.SOUMIS));
         event.setStatut(EventStatus.REFUSE);
         event.setMotifRefus(motif);
+        notifyOrganizer(event, bf.evenements.plateforme.notification.NotificationType.EVENEMENT_REFUSE,
+                "Événement refusé",
+                "Votre événement « " + event.getNom() + " » a été refusé. Motif : " + motif);
         audit("EVENT_REJECTED", event);
         return EventResponse.from(event);
     }
@@ -285,6 +292,15 @@ public class EventService {
         }
         return categoryRepository.findById(categoryId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Catégorie", categoryId));
+    }
+
+    private void notifyOrganizer(Event event,
+                                 bf.evenements.plateforme.notification.NotificationType type,
+                                 String titre, String contenu) {
+        if (event.getOrganizer() != null && event.getOrganizer().getUser() != null) {
+            notificationService.notify(event.getOrganizer().getUser().getId(), type, titre, contenu,
+                    "/tableau-de-bord/evenements/" + event.getId());
+        }
     }
 
     private void audit(String action, Event event) {

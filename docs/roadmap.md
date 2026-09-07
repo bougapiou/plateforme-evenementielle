@@ -13,7 +13,7 @@
 | M8  | Billets électroniques & QR codes | ✅ livré |
 | M9  | Contrôle d'accès (scan) | ✅ livré |
 | M10 | Factures & reçus (PDF) | ✅ livré |
-| M11 | Notifications (in-app, email, canaux SMS/WhatsApp) | à venir |
+| M11 | Notifications (in-app, email, canaux SMS/WhatsApp) | ✅ livré |
 | M12 | Statistiques & tableaux de bord | à venir |
 | M13 | Pages publiques (recherche, filtres, détail) | à venir |
 | M14 | Frontends Angular + Flutter | en continu |
@@ -22,6 +22,30 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M11 — Notifications (contenu livré)
+
+- Entité (Flyway V11) : `notifications` (utilisateur, type, canal, titre,
+  contenu, lien, lu). Types : inscription confirmée, paiement confirmé, billet
+  disponible, réservation confirmée/expirée, événement validé/refusé/publié/
+  modifié/annulé, rappel, message organisateur.
+- `NotificationService.notify()` : crée une notification **in-app** + envoie un
+  **e-mail** (SMTP / Mailpit) ; l'échec e-mail est absorbé (statut `ECHEC`) et ne
+  bloque jamais la transaction. Canaux **SMS / WhatsApp** = valeurs
+  `NotificationChannel` supplémentaires à câbler.
+- Déclencheurs : `NotificationListener` sur `PaymentSucceededEvent` (billets /
+  stand), `RegistrationService` (inscription confirmée / refusée),
+  `EventService` (validation / refus).
+- Message de l'organisateur : `POST /api/events/{id}/broadcast` → notifie tous
+  les inscrits confirmés.
+- Endpoints : `GET /api/notifications` · `/unread-count` ·
+  `POST /notifications/{id}/read` · `/read-all`.
+- Frontend : **cloche de notifications** dans l'en-tête du tableau de bord
+  (badge non-lus, liste déroulante, marquage lu) ; formulaire de diffusion dans
+  l'onglet Inscriptions de l'éditeur.
+- Tests : `NotificationIT` (inscription confirmée → notif ; diffusion
+  organisateur ; paiement → notif ; compteur non-lus → 0 après « tout lire »).
+  27/27 verts.
 
 ## M10 — Factures & reçus (contenu livré)
 
