@@ -37,6 +37,25 @@ import { formatDateRange } from '../../shared/format';
               <button class="btn-ghost text-green-700" (click)="act(e, 'validate')">Valider</button>
               <button class="btn-ghost text-red-700" (click)="reject(e)">Refuser</button>
             }
+            @if (e.statut === 'VALIDE') {
+              <button class="btn-ghost text-green-700" (click)="act(e, 'publish')">Publier</button>
+            }
+            @if (e.statut === 'PUBLIE' || e.statut === 'INSCRIPTIONS_FERMEES') {
+              <button class="btn-ghost text-green-700" (click)="act(e, 'open-registrations')">
+                Ouvrir les inscriptions
+              </button>
+            }
+            @if (e.statut === 'PUBLIE' || e.statut === 'INSCRIPTIONS_OUVERTES') {
+              <button class="btn-ghost" (click)="act(e, 'close-registrations')">
+                Fermer les inscriptions
+              </button>
+            }
+            @if (canSuspend(e.statut)) {
+              <button class="btn-ghost text-amber-700" (click)="act(e, 'suspend')">Suspendre</button>
+            }
+            @if (e.statut !== 'ANNULE' && e.statut !== 'TERMINE') {
+              <button class="btn-ghost text-red-700" (click)="confirmCancel(e)">Annuler</button>
+            }
           </div>
         </div>
       } @empty {
@@ -65,12 +84,22 @@ export class AdminEventsComponent {
     );
   }
 
+  canSuspend = (statut: string): boolean =>
+    ['PUBLIE', 'INSCRIPTIONS_OUVERTES', 'INSCRIPTIONS_FERMEES', 'EN_COURS'].includes(statut);
+
   act(e: EventSummary, action: string): void {
-    this.service.transition(e.id, action).subscribe(() => this.reload());
+    this.service.transition(e.id, action).subscribe({
+      next: () => this.reload(),
+      error: (err) => alert(err?.error?.message ?? 'Action impossible.'),
+    });
   }
 
   reject(e: EventSummary): void {
     const motif = prompt('Motif du refus ?');
     if (motif) this.service.transition(e.id, 'reject', { motif }).subscribe(() => this.reload());
+  }
+
+  confirmCancel(e: EventSummary): void {
+    if (confirm(`Annuler définitivement « ${e.nom} » ?`)) this.act(e, 'cancel');
   }
 }

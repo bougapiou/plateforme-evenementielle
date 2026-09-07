@@ -120,6 +120,33 @@ class EventWorkflowIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void admin_can_publish_and_open_registrations_on_a_validated_event() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("orga-adm-pub-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+
+        String eventId = as(orga).body(Map.of(
+                        "nom", "Salon régional " + n,
+                        "descriptionCourte", "Salon des produits du terroir",
+                        "dateDebut", "2027-09-01T08:00:00Z",
+                        "dateFin", "2027-09-03T18:00:00Z",
+                        "ville", "Fada N'Gourma"))
+                .when().post("/api/events").then().statusCode(201).extract().path("id");
+
+        as(orga).when().post("/api/events/" + eventId + "/submit").then().statusCode(200);
+        as(admin).when().post("/api/events/" + eventId + "/validate")
+                .then().statusCode(200).body("statut", equalTo("VALIDE"));
+
+        // the admin (not the owner) can drive publication and registrations
+        as(admin).when().post("/api/events/" + eventId + "/publish")
+                .then().statusCode(200).body("statut", equalTo("PUBLIE"));
+        as(admin).when().post("/api/events/" + eventId + "/open-registrations")
+                .then().statusCode(200).body("statut", equalTo("INSCRIPTIONS_OUVERTES"));
+        as(admin).when().post("/api/events/" + eventId + "/close-registrations")
+                .then().statusCode(200).body("statut", equalTo("INSCRIPTIONS_FERMEES"));
+    }
+
+    @Test
     void admin_can_reject_a_submitted_event_with_a_reason() {
         long n = System.nanoTime();
         String orga = TestAuth.organizerToken("orga-rej-" + n + "@example.bf");
