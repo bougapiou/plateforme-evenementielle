@@ -1,0 +1,35 @@
+# Java / Maven
+backend/target/
+*.class
+*.jar
+!**/src/**/*.jar
+hs_err_pid*
+
+# Node / Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.settings/
+.project
+.classpath
+
+# Env & data
+.env
+*.local
+backend/data/
+data/
+
+# OS
+.DS_Store
+Thumbs.db
