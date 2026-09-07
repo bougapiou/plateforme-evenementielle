@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { EventsService } from './events.service';
@@ -13,14 +13,16 @@ import { StandsService } from '../stands/stands.service';
 import { StandType } from '../stands/stand.models';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
+import { CheckinService, CheckinView, StaffMember } from '../checkin/checkin.service';
 
 type Tab =
-  | 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie' | 'stands' | 'inscriptions';
+  | 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie' | 'stands'
+  | 'inscriptions' | 'controle';
 
 @Component({
   selector: 'app-event-editor',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, StatusBadgeComponent],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent],
   template: `
     <a routerLink="/tableau-de-bord/evenements" class="text-sm text-slate-500">← Mes événements</a>
 
@@ -359,6 +361,44 @@ type Tab =
           } @empty { <p class="text-sm text-slate-400">Aucune inscription.</p> }
         </div>
       }
+
+      <!-- CONTROLE -->
+      @if (tab() === 'controle') {
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          <div class="card p-4">
+            <h3 class="font-semibold text-slate-800">Personnel de contrôle</h3>
+            <form class="mt-3 flex gap-2" (ngSubmit)="addStaff()">
+              <input class="form-input" placeholder="E-mail d'un utilisateur inscrit"
+                     [(ngModel)]="staffEmail" name="staffEmail" />
+              <button type="submit" class="btn-primary">Ajouter</button>
+            </form>
+            @if (staffError()) { <p class="mt-2 text-sm text-red-700">{{ staffError() }}</p> }
+            <ul class="mt-3 divide-y divide-slate-100 text-sm">
+              @for (s of staff(); track s.id) {
+                <li class="flex items-center justify-between py-2">
+                  <span>{{ s.fullName }} · {{ s.email }}</span>
+                  <button class="text-xs text-red-600" (click)="removeStaff(s)">Retirer</button>
+                </li>
+              } @empty { <li class="py-2 text-slate-400">Aucun personnel.</li> }
+            </ul>
+            <p class="mt-2 text-xs text-slate-400">
+              Le personnel accède au scanner via « Contrôle à l'entrée ».
+            </p>
+          </div>
+
+          <div class="card p-4">
+            <h3 class="font-semibold text-slate-800">Journal des contrôles</h3>
+            <ul class="mt-3 divide-y divide-slate-100 text-sm">
+              @for (c of checkins(); track c.id) {
+                <li class="flex items-center justify-between py-2">
+                  <span>{{ dt(c.scannedAt) }}</span>
+                  <app-status-badge [value]="c.resultat" />
+                </li>
+              } @empty { <li class="py-2 text-slate-400">Aucun scan.</li> }
+            </ul>
+          </div>
+        </div>
+      }
     } @else {
       <p class="mt-6 text-sm text-slate-500">Chargement…</p>
     }
@@ -370,6 +410,7 @@ export class EventEditorComponent {
   private ticketsService = inject(TicketsService);
   private standsService = inject(StandsService);
   private registrationsService = inject(RegistrationsService);
+  private checkinService = inject(CheckinService);
   private auth = inject(AuthService);
 
   id = input.required<string>();
@@ -383,6 +424,10 @@ export class EventEditorComponent {
   standTypes = signal<StandType[]>([]);
   standReservations = signal<any[]>([]);
   registrations = signal<Registration[]>([]);
+  staff = signal<StaffMember[]>([]);
+  checkins = signal<CheckinView[]>([]);
+  staffEmail = '';
+  staffError = signal<string | null>(null);
   editingStandTypeId = signal<string | null>(null);
   standError = signal<string | null>(null);
 
@@ -395,6 +440,7 @@ export class EventEditorComponent {
     { id: 'billetterie', label: 'Billetterie' },
     { id: 'stands', label: 'Stands' },
     { id: 'inscriptions', label: 'Inscriptions' },
+    { id: 'controle', label: 'Contrôle' },
   ];
   activityTypes = ['CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION', 'TABLE_RONDE',
     'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE'];
@@ -519,6 +565,26 @@ export class EventEditorComponent {
     this.standsService.types(id).subscribe((t) => this.standTypes.set(t));
     this.standsService.reservationsForEvent(id).subscribe((p) => this.standReservations.set(p.content));
     this.registrationsService.forEvent(id).subscribe((p) => this.registrations.set(p.content));
+    this.checkinService.staff(id).subscribe({ next: (s) => this.staff.set(s), error: () => {} });
+    this.checkinService.checkins(id).subscribe({ next: (p) => this.checkins.set(p.content), error: () => {} });
+  }
+
+  addStaff(): void {
+    if (!this.staffEmail.trim()) return;
+    this.staffError.set(null);
+    this.checkinService.addStaff(this.id(), this.staffEmail.trim()).subscribe({
+      next: () => {
+        this.staffEmail = '';
+        this.checkinService.staff(this.id()).subscribe((s) => this.staff.set(s));
+      },
+      error: (err: HttpErrorResponse) =>
+        this.staffError.set((err.error as ApiError)?.message ?? 'Ajout impossible.'),
+    });
+  }
+  removeStaff(s: StaffMember): void {
+    this.checkinService.removeStaff(this.id(), s.userId).subscribe(() =>
+      this.checkinService.staff(this.id()).subscribe((x) => this.staff.set(x)),
+    );
   }
 
   confirmRegistration(r: Registration): void {

@@ -62,6 +62,7 @@ export class DashboardLayoutComponent {
   private readonly nav: NavItem[] = [
     { label: 'Vue d’ensemble', path: '/tableau-de-bord', exact: true },
     { label: 'Mes événements', path: '/tableau-de-bord/evenements', permission: 'EVENT_CREATE' },
+    { label: 'Contrôle à l’entrée', path: '/tableau-de-bord/controle', permission: 'CHECKIN_SCAN' },
     { label: 'Mes inscriptions', path: '/tableau-de-bord/inscriptions' },
     { label: 'Mes billets', path: '/tableau-de-bord/billets' },
     { label: 'Mes stands', path: '/tableau-de-bord/stands' },
