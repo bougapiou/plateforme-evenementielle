@@ -147,7 +147,7 @@ public class EventService {
 
     @Transactional
     public EventResponse publish(UUID id) {
-        Event event = loadOwned(id);
+        Event event = loadForManage(id);
         require(event, EnumSet.of(EventStatus.VALIDE));
         event.setStatut(EventStatus.PUBLIE);
         event.setPublieLe(Instant.now());
@@ -157,7 +157,7 @@ public class EventService {
 
     @Transactional
     public EventResponse openRegistrations(UUID id) {
-        Event event = loadOwned(id);
+        Event event = loadForManage(id);
         require(event, EnumSet.of(EventStatus.PUBLIE, EventStatus.INSCRIPTIONS_FERMEES));
         event.setStatut(EventStatus.INSCRIPTIONS_OUVERTES);
         audit("EVENT_REGISTRATIONS_OPENED", event);
@@ -166,7 +166,7 @@ public class EventService {
 
     @Transactional
     public EventResponse closeRegistrations(UUID id) {
-        Event event = loadOwned(id);
+        Event event = loadForManage(id);
         require(event, EnumSet.of(EventStatus.PUBLIE, EventStatus.INSCRIPTIONS_OUVERTES));
         event.setStatut(EventStatus.INSCRIPTIONS_FERMEES);
         audit("EVENT_REGISTRATIONS_CLOSED", event);
