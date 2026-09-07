@@ -1,5 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { TicketsService } from './tickets.service';
 import { MyTicket, TicketOrder } from '../events/event.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
@@ -19,12 +20,21 @@ import { formatDate, formatDateTime } from '../../shared/format';
             <div>
               <p class="font-semibold text-slate-800">{{ t.eventNom }}</p>
               <p class="text-sm text-slate-500">{{ t.categorieNom }} · {{ date(t.eventDateDebut) }}</p>
+              <p class="mt-1 font-mono text-xs text-slate-400">N° {{ t.numero }}</p>
             </div>
             <app-status-badge [value]="t.statut" />
           </div>
-          <p class="mt-3 font-mono text-xs text-slate-500">N° {{ t.numero }}</p>
-          <div class="mt-3 grid h-24 w-24 place-items-center rounded-lg border border-dashed border-slate-300 text-[10px] text-slate-400">
-            QR (module M8)
+          <div class="mt-3 flex items-center gap-4">
+            @if (qr()[t.id]; as src) {
+              <img [src]="src" alt="QR code" class="h-28 w-28 rounded border border-slate-200" />
+            } @else {
+              <div class="grid h-28 w-28 place-items-center rounded border border-dashed border-slate-300 text-xs text-slate-300">
+                QR…
+              </div>
+            }
+            <button class="btn-ghost border border-slate-300" (click)="downloadPdf(t)">
+              Télécharger le PDF
+            </button>
           </div>
         </div>
       } @empty {
@@ -59,10 +69,14 @@ import { formatDate, formatDateTime } from '../../shared/format';
     </div>
   `,
 })
-export class MyTicketsComponent {
+export class MyTicketsComponent implements OnDestroy {
   private service = inject(TicketsService);
+  private sanitizer = inject(DomSanitizer);
+
   tickets = signal<MyTicket[]>([]);
   orders = signal<TicketOrder[]>([]);
+  qr = signal<Record<string, SafeUrl>>({});
+  private objectUrls: string[] = [];
 
   date = (iso?: string) => formatDate(iso);
   dt = (iso?: string) => formatDateTime(iso);
@@ -71,9 +85,33 @@ export class MyTicketsComponent {
     this.reload();
   }
 
+  ngOnDestroy(): void {
+    this.objectUrls.forEach((u) => URL.revokeObjectURL(u));
+  }
+
   reload(): void {
-    this.service.myTickets().subscribe((t) => this.tickets.set(t));
+    this.service.myTickets().subscribe((t) => {
+      this.tickets.set(t);
+      t.forEach((ticket) =>
+        this.service.qrBlob(ticket.id).subscribe((blob) => {
+          const url = URL.createObjectURL(blob);
+          this.objectUrls.push(url);
+          this.qr.set({ ...this.qr(), [ticket.id]: this.sanitizer.bypassSecurityTrustUrl(url) });
+        }),
+      );
+    });
     this.service.myOrders().subscribe((p) => this.orders.set(p.content));
+  }
+
+  downloadPdf(t: MyTicket): void {
+    this.service.pdfBlob(t.id).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `billet-${t.numero}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    });
   }
 
   pay(o: TicketOrder): void {

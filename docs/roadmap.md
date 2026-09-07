@@ -10,7 +10,7 @@
 | M5  | Stands (types, réservation, hold 15 min, expiration) | ✅ livré |
 | M6  | Inscriptions (particulier & structure, documents) | ✅ livré |
 | M7  | Paiements (`PaymentProvider`, sandbox, webhook HMAC) | ✅ livré |
-| M8  | Billets électroniques & QR codes | à venir |
+| M8  | Billets électroniques & QR codes | ✅ livré |
 | M9  | Contrôle d'accès (scan) | à venir |
 | M10 | Factures & reçus (PDF) | à venir |
 | M11 | Notifications (in-app, email, canaux SMS/WhatsApp) | à venir |
@@ -22,6 +22,22 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M8 — Billets électroniques & QR codes (contenu livré)
+
+- Entité (Flyway V8) : `qr_codes` (token unique par billet).
+- QR code émis automatiquement à la génération de chaque billet (paiement réussi).
+- `common/web/QrImages` (ZXing) : image PNG ; `TicketPdfService` (PDFBox) :
+  billet A5 avec nom de l'événement, participant, catégorie, numéro, date, lieu
+  et QR code.
+- Endpoints : `GET /api/tickets/{id}` · `/qr.png` (image/png) · `/pdf`
+  (application/pdf, téléchargement). Accès : titulaire du billet, organisateur
+  de l'événement, ou personnel de contrôle (`CHECKIN_SCAN`).
+- Le token du QR n'est jamais exposé en JSON — seulement dans l'image.
+- Frontend : « Mes billets » affiche le vrai QR (blob authentifié) et permet le
+  téléchargement du PDF.
+- Tests : `TicketQrIT` (billet payé → image PNG + PDF `%PDF` ; inconnu 403,
+  organisateur 200). 22/22 verts.
 
 ## M7 — Paiements (contenu livré)
 

@@ -54,4 +54,10 @@ export class TicketsService extends ApiBase {
   myTickets(): Observable<MyTicket[]> {
     return this.get<MyTicket[]>('/tickets/my');
   }
+  qrBlob(ticketId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/tickets/${ticketId}/qr.png`, { responseType: 'blob' });
+  }
+  pdfBlob(ticketId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/tickets/${ticketId}/pdf`, { responseType: 'blob' });
+  }
 }
