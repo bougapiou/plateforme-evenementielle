@@ -14,15 +14,17 @@ import { StandType } from '../stands/stand.models';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
 import { CheckinService, CheckinView, StaffMember } from '../checkin/checkin.service';
+import { StatsService, StatMap, EventSeries } from '../stats/stats.service';
+import { BarChartComponent } from '../../shared/bar-chart.component';
 
 type Tab =
   | 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie' | 'stands'
-  | 'inscriptions' | 'controle';
+  | 'inscriptions' | 'controle' | 'stats';
 
 @Component({
   selector: 'app-event-editor',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent, BarChartComponent],
   template: `
     <a routerLink="/tableau-de-bord/evenements" class="text-sm text-slate-500">← Mes événements</a>
 
@@ -407,6 +409,40 @@ type Tab =
           </div>
         </div>
       }
+
+      <!-- STATS -->
+      @if (tab() === 'stats' && stats(); as s) {
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="card p-4"><p class="text-xs uppercase text-slate-400">Billets vendus</p>
+            <p class="mt-2 text-2xl font-bold">{{ s['billetsVendus'] }} / {{ s['billetsTotal'] }}</p></div>
+          <div class="card p-4"><p class="text-xs uppercase text-slate-400">Remplissage</p>
+            <p class="mt-2 text-2xl font-bold">{{ s['tauxRemplissage'] }} %</p></div>
+          <div class="card p-4"><p class="text-xs uppercase text-slate-400">Revenus</p>
+            <p class="mt-2 text-2xl font-bold">{{ fcfa(num(s['revenus'])) }}</p></div>
+          <div class="card p-4"><p class="text-xs uppercase text-slate-400">Stands réservés</p>
+            <p class="mt-2 text-2xl font-bold">{{ s['standsReserves'] }} / {{ s['standsTotal'] }}</p></div>
+          <div class="card p-4"><p class="text-xs uppercase text-slate-400">Inscriptions confirmées</p>
+            <p class="mt-2 text-2xl font-bold">{{ s['inscriptionsConfirmees'] }}</p></div>
+          <div class="card p-4"><p class="text-xs uppercase text-slate-400">En attente</p>
+            <p class="mt-2 text-2xl font-bold">{{ s['inscriptionsEnAttente'] }}</p></div>
+          <div class="card p-4"><p class="text-xs uppercase text-slate-400">Structures participantes</p>
+            <p class="mt-2 text-2xl font-bold">{{ s['structuresParticipantes'] }}</p></div>
+          <div class="card p-4"><p class="text-xs uppercase text-slate-400">Entrées validées</p>
+            <p class="mt-2 text-2xl font-bold">{{ s['entreesValidees'] }}</p></div>
+        </div>
+        @if (series()) {
+          <div class="mt-4 grid gap-4 lg:grid-cols-2">
+            <div class="card p-4">
+              <h3 class="font-semibold text-slate-700">Billets par catégorie</h3>
+              <app-bar-chart [data]="categorieBars()" />
+            </div>
+            <div class="card p-4">
+              <h3 class="font-semibold text-slate-700">Inscriptions (30 j)</h3>
+              <app-bar-chart [data]="inscriptionBars()" />
+            </div>
+          </div>
+        }
+      }
     } @else {
       <p class="mt-6 text-sm text-slate-500">Chargement…</p>
     }
@@ -419,6 +455,7 @@ export class EventEditorComponent {
   private standsService = inject(StandsService);
   private registrationsService = inject(RegistrationsService);
   private checkinService = inject(CheckinService);
+  private statsService = inject(StatsService);
   private auth = inject(AuthService);
 
   id = input.required<string>();
@@ -439,6 +476,8 @@ export class EventEditorComponent {
   broadcastTitre = '';
   broadcastContenu = '';
   broadcastInfo = signal<string | null>(null);
+  stats = signal<StatMap | null>(null);
+  series = signal<EventSeries | null>(null);
   editingStandTypeId = signal<string | null>(null);
   standError = signal<string | null>(null);
 
@@ -452,6 +491,7 @@ export class EventEditorComponent {
     { id: 'stands', label: 'Stands' },
     { id: 'inscriptions', label: 'Inscriptions' },
     { id: 'controle', label: 'Contrôle' },
+    { id: 'stats', label: 'Statistiques' },
   ];
   activityTypes = ['CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION', 'TABLE_RONDE',
     'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE'];
@@ -578,7 +618,17 @@ export class EventEditorComponent {
     this.registrationsService.forEvent(id).subscribe((p) => this.registrations.set(p.content));
     this.checkinService.staff(id).subscribe({ next: (s) => this.staff.set(s), error: () => {} });
     this.checkinService.checkins(id).subscribe({ next: (p) => this.checkins.set(p.content), error: () => {} });
+    this.statsService.eventStats(id).subscribe({ next: (s) => this.stats.set(s), error: () => {} });
+    this.statsService.eventSeries(id).subscribe({ next: (s) => this.series.set(s), error: () => {} });
   }
+
+  num = (v: number | string) => (typeof v === 'number' ? v : Number(v));
+  categorieBars = () =>
+    (this.series()?.billetsParCategorie ?? []).map((c) => ({ label: c.label, value: c.valeur }));
+  inscriptionBars = () =>
+    (this.series()?.quotidien ?? [])
+      .filter((d) => d.inscriptions > 0)
+      .map((d) => ({ label: d.jour.slice(5), value: d.inscriptions }));
 
   addStaff(): void {
     if (!this.staffEmail.trim()) return;
