@@ -17,7 +17,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
 
-    static final PostgreSQLContainer<?> POSTGRES;
+    public static final PostgreSQLContainer<?> POSTGRES;
 
     static {
         POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -36,6 +36,8 @@ public abstract class AbstractIntegrationTest {
         // no SMTP server in tests
         registry.add("spring.mail.host", () -> "localhost");
         registry.add("spring.mail.port", () -> "3025");
+        // rate limiter off for integration tests (many auth calls from 127.0.0.1)
+        registry.add("app.security.rate-limit-per-minute", () -> "0");
     }
 
     @BeforeEach

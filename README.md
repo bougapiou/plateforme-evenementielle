@@ -3,56 +3,77 @@
 Plateforme de digitalisation des grands événements (SIAO, FESPACO, Semaine du
 Numérique, salons, foires, forums, conférences…) : création et administration
 d'événements, inscriptions, billetterie électronique, réservation de stands,
-paiement en ligne, contrôle d'accès par QR code, tableaux de bord et statistiques.
+paiement en ligne, contrôle d'accès par QR code, factures/reçus, notifications,
+tableaux de bord et statistiques.
 
 ## Stack
 
 | Composant   | Technologie                                    |
 |-------------|------------------------------------------------|
 | Backend API | Spring Boot 3 · Java 21 · JPA · PostgreSQL · Flyway |
-| Frontend    | Angular · Tailwind CSS                          |
-| Mobile      | Flutter                                         |
+| Frontend    | Angular 19 · Tailwind CSS                       |
+| Mobile      | Flutter (squelette : consultation, auth, wallet) |
 | Paiement    | Abstraction `PaymentProvider` + provider *sandbox* (FasoArzeka / mobile money à brancher) |
+| PDF / QR    | PDFBox · ZXing                                  |
 | Devise      | FCFA (XOF) par défaut, multi-devises prévu      |
 
 ## Arborescence
 
 ```
-backend/    API REST (bf.evenements.plateforme)
-frontend/   Application Angular
+backend/    API REST (bf.evenements.plateforme, package-by-feature)
+frontend/   Application Angular (site public + 4 espaces)
 mobile/     Application Flutter
 infra/      docker-compose (postgres, mailpit, minio)
-docs/       Architecture, base de données, workflows, API
+docs/       architecture, base de données, workflows, api, roadmap
 ```
 
-## Démarrage rapide (backend)
+## Démarrage (3 terminaux)
 
 ```bash
-# 1. Services d'infrastructure
+# 1. Infrastructure : PostgreSQL (port 5433), Mailpit, MinIO
 cd infra && docker compose up -d
 
 # 2. API
-cd ../backend && ./mvnw spring-boot:run
+cd ../backend && ./mvnw spring-boot:run           # DEMO_DATA=true pour des données d'exemple
+
+# 3. Frontend
+cd ../frontend && npm install && npm start        # http://localhost:4200
 ```
 
-- API : http://localhost:8080
-- Swagger UI : http://localhost:8080/swagger-ui.html
-- Santé : http://localhost:8080/actuator/health
-- Mailpit (emails) : http://localhost:8025
-- MinIO (fichiers) : http://localhost:9001
+| Service | URL |
+|---|---|
+| Site + espaces | http://localhost:4200 |
+| API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| Santé | http://localhost:8080/actuator/health |
+| Mailpit (emails) | http://localhost:8025 |
+| MinIO (fichiers) | http://localhost:9001 |
 
-### Compte super-administrateur par défaut
+### Comptes par défaut
 
-`admin@plateforme.bf` / `ChangeMe!2026` — **à changer immédiatement** (variables
-`SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`).
+| Rôle | Identifiants |
+|---|---|
+| Super-administrateur | `admin@plateforme.bf` / `ChangeMe!2026` |
+| Organisateur de démo (`DEMO_DATA=true`) | `organisateur@plateforme.bf` / `Demo!2026` |
 
-## Roadmap (livraison module par module)
+**À changer en production** (`SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`,
+`APP_JWT_SECRET`, `PAYMENT_WEBHOOK_SECRET`). Voir [`.env.example`](.env.example).
 
-Voir [`docs/roadmap.md`](docs/roadmap.md). État actuel : **M0 (fondations)** et
-**M1 (authentification & RBAC)**.
+## Modules livrés
+
+M0 fondations · M1 auth & RBAC · M2 structures & organisateurs · M3 événements
+(workflow, **activités/programme**, intervenants, partenaires, site public) ·
+M4 billetterie (quotas, portée événement/activité) · M5 stands (blocage 15 min,
+anti-double réservation) · M6 inscriptions (particulier/structure, documents) ·
+M7 paiements (`PaymentProvider`, sandbox, webhook HMAC) · M8 billets QR (PNG + PDF) ·
+M9 contrôle à l'entrée (scan) · M10 factures & reçus (PDF) · M11 notifications ·
+M12 statistiques & dashboards · M15 durcissement + données de démo.
+
+Détail : [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Tests
 
 ```bash
-cd backend && ./mvnw test        # nécessite Docker (Testcontainers PostgreSQL)
+cd backend && ./mvnw test    # 31 tests d'intégration — nécessite Docker (Testcontainers PostgreSQL)
+cd frontend && npm run build
 ```
