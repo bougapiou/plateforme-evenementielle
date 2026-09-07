@@ -12,7 +12,7 @@
 | M7  | Paiements (`PaymentProvider`, sandbox, webhook HMAC) | ✅ livré |
 | M8  | Billets électroniques & QR codes | ✅ livré |
 | M9  | Contrôle d'accès (scan) | ✅ livré |
-| M10 | Factures & reçus (PDF) | à venir |
+| M10 | Factures & reçus (PDF) | ✅ livré |
 | M11 | Notifications (in-app, email, canaux SMS/WhatsApp) | à venir |
 | M12 | Statistiques & tableaux de bord | à venir |
 | M13 | Pages publiques (recherche, filtres, détail) | à venir |
@@ -22,6 +22,25 @@
 Chaque module est livré avec : structure de fichiers, entités, DTO, services,
 controllers, routes API, validation, gestion d'erreurs, sécurité, tests,
 migration Flyway.
+
+## M10 — Factures & reçus (contenu livré)
+
+- Entité (Flyway V10) : `invoices` (numéro séquentiel `FAC-2027-00001` /
+  `REC-2027-00001`, type FACTURE / REÇU, lié au paiement).
+- **Génération automatique** : à chaque paiement réussi, `InvoiceService`
+  (écoute `PaymentSucceededEvent`) émet une **facture** + un **reçu** ;
+  idempotent, snapshot du client (raison sociale / RCCM / IFU pour une structure).
+- `common/pdf/SimplePdf` (PDFBox) : constructeur de documents A4.
+- `ConfirmationPdfService` : **confirmation d'inscription** et **confirmation de
+  réservation de stand** en PDF.
+- Endpoints : `/api/invoices/my` · `/api/invoices/{id}` · `/api/invoices/{id}/pdf`
+  · `/api/payments/{id}/invoices` ;
+  `/api/registrations/{id}/confirmation.pdf` ·
+  `/api/stand-reservations/{id}/confirmation.pdf`.
+- Frontend : page « Mes factures & reçus » (téléchargement PDF) ; boutons
+  « Confirmation PDF » sur les inscriptions et réservations confirmées.
+- Tests : `InvoiceIT` (paiement → facture + reçu + PDF `%PDF`, accès refusé à un
+  tiers ; confirmation d'inscription PDF). 25/25 verts.
 
 ## M9 — Contrôle à l'entrée (contenu livré)
 

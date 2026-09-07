@@ -44,6 +44,7 @@ public class StandReservationService {
     private final StructureMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final EventService eventService;
+    private final bf.evenements.plateforme.invoice.ConfirmationPdfService confirmationPdfService;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
@@ -130,6 +131,16 @@ public class StandReservationService {
     @Transactional(readOnly = true)
     public StandReservationResponse get(UUID id) {
         return StandReservationResponse.from(loadForActor(id));
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] confirmationPdf(UUID id) {
+        StandReservation r = loadForActor(id);
+        if (r.getStatut() != StandReservationStatus.CONFIRME) {
+            throw new BusinessException("NOT_CONFIRMED",
+                    "La confirmation n'est disponible qu'une fois la réservation confirmée.");
+        }
+        return confirmationPdfService.standReservation(r);
     }
 
     @Transactional(readOnly = true)

@@ -68,6 +68,15 @@ public class RegistrationController {
         return registrationService.cancel(id);
     }
 
+    @GetMapping(value = "/registrations/{id}/confirmation.pdf",
+            produces = org.springframework.http.MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Confirmation d'inscription (PDF)")
+    public ResponseEntity<byte[]> confirmation(@PathVariable UUID id) {
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(registrationService.confirmationPdf(id));
+    }
+
     @GetMapping("/events/{eventId}/registrations")
     @PreAuthorize("hasAuthority('" + Permissions.REGISTRATION_MANAGE + "')")
     @Operation(summary = "Inscriptions d'un événement (organisateur)")

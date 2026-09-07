@@ -69,6 +69,15 @@ public class StandReservationController {
         return service.cancel(id);
     }
 
+    @org.springframework.web.bind.annotation.GetMapping(value = "/{id}/confirmation.pdf",
+            produces = org.springframework.http.MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Confirmation de réservation de stand (PDF)")
+    public org.springframework.http.ResponseEntity<byte[]> confirmation(@PathVariable UUID id) {
+        return org.springframework.http.ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(service.confirmationPdf(id));
+    }
+
     @PostMapping("/{id}/pay-sandbox")
     @Operation(summary = "[SANDBOX] Confirmer le paiement d'une réservation (dev / démo)")
     public StandReservationResponse paySandbox(@PathVariable UUID id) {
