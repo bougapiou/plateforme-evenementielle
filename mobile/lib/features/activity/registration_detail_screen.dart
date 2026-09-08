@@ -1,10 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -82,7 +80,11 @@ class _RegistrationDetailScreenState
             '/api/registrations/${widget.registrationId}/confirmation.pdf',
             'confirmation-${widget.registrationId}.pdf',
           );
-      await OpenFilex.open(path);
+      final res = await OpenFilex.open(path);
+      if (res.type != ResultType.done && mounted) {
+        showSnack(context, 'PDF enregistré ; aucune application pour l\'ouvrir.',
+            error: true);
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Téléchargement impossible : $e', error: true);
     } finally {
@@ -149,14 +151,13 @@ class _RegistrationDetailScreenState
   Future<void> _openDocument(DocumentFile doc) async {
     setState(() => _busy = true);
     try {
-      // Documents are stored in MinIO; the url may be absolute or a key.
-      final url = doc.url.startsWith('http')
-          ? doc.url
-          : '${ref.read(apiClientProvider).dio.options.baseUrl}${doc.url}';
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/${doc.nom}');
-      await ref.read(apiClientProvider).dio.download(url, file.path);
-      await OpenFilex.open(file.path);
+      final path = await ref
+          .read(apiClientProvider)
+          .downloadToCache(doc.url, doc.nom.isEmpty ? 'document' : doc.nom);
+      final res = await OpenFilex.open(path);
+      if (res.type != ResultType.done && mounted) {
+        showSnack(context, 'Aucune application pour ouvrir ce fichier.', error: true);
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Ouverture impossible : $e', error: true);
     } finally {

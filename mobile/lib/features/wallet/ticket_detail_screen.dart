@@ -49,12 +49,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       throw Exception('Billet introuvable et non disponible hors-ligne.');
     }
 
+    final qrPath = '/api/tickets/${widget.ticketId}/qr.png';
     Uint8List? qr;
+
     if (kIsWeb) {
-      // No filesystem in the browser — fetch each time, no offline cache.
       try {
-        qr = Uint8List.fromList(
-            await api.bytes('/api/tickets/${widget.ticketId}/qr.png'));
+        qr = Uint8List.fromList(await api.bytes(qrPath));
       } catch (_) {
         qr = null;
       }
@@ -63,13 +63,15 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
     final dir = await getApplicationDocumentsDirectory();
     final file = File('${dir.path}/qr_${widget.ticketId}.png');
-    if (await file.exists()) {
+    if (await file.exists() && await file.length() > 0) {
       qr = await file.readAsBytes();
     } else {
       try {
-        final bytes = await api.bytes('/api/tickets/${widget.ticketId}/qr.png');
-        qr = Uint8List.fromList(bytes);
-        await file.writeAsBytes(qr, flush: true);
+        final bytes = await api.bytes(qrPath);
+        if (bytes.isNotEmpty) {
+          qr = Uint8List.fromList(bytes);
+          await file.writeAsBytes(qr, flush: true);
+        }
       } catch (_) {
         qr = null;
       }
@@ -85,7 +87,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
         '/api/tickets/${t.id}/pdf',
         'billet-${t.numero}.pdf',
       );
-      await OpenFilex.open(path);
+      final res = await OpenFilex.open(path);
+      if (res.type != ResultType.done && mounted) {
+        showSnack(context,
+            'PDF enregistré, mais aucune application ne peut l\'ouvrir.',
+            error: true);
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Téléchargement impossible : $e', error: true);
     } finally {
