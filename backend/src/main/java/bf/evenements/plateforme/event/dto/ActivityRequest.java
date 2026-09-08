@@ -18,6 +18,7 @@ public record ActivityRequest(
         @Size(max = 200) String lieu,
         @Size(max = 255) String intervenant,
         @Size(max = 255) String moderateur,
+        @Size(max = 500) String imageUrl,
         UUID speakerId,
         @PositiveOrZero Integer capacite,
         Integer ordre) {

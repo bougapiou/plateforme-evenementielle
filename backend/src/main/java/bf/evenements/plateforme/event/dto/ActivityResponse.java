@@ -17,6 +17,7 @@ public record ActivityResponse(
         String lieu,
         String intervenant,
         String moderateur,
+        String imageUrl,
         UUID speakerId,
         Integer capacite,
         int ordre) {
@@ -25,7 +26,7 @@ public record ActivityResponse(
         return new ActivityResponse(
                 a.getId(), a.getEvent().getId(), a.getTitre(), a.getDescription(),
                 a.getTypeActivite(), a.getDateDebut(), a.getDateFin(), a.getSalle(), a.getLieu(),
-                a.getIntervenant(), a.getModerateur(), a.getSpeakerId(), a.getCapacite(),
-                a.getOrdre());
+                a.getIntervenant(), a.getModerateur(), a.getImageUrl(), a.getSpeakerId(),
+                a.getCapacite(), a.getOrdre());
     }
 }

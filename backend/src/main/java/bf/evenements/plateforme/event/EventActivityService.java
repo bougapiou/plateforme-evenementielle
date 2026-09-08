@@ -80,6 +80,7 @@ public class EventActivityService {
         a.setLieu(r.lieu());
         a.setIntervenant(r.intervenant());
         a.setModerateur(r.moderateur());
+        a.setImageUrl(r.imageUrl());
         a.setCapacite(r.capacite());
         if (r.ordre() != null) {
             a.setOrdre(r.ordre());

@@ -112,6 +112,7 @@ export interface Activity {
   lieu?: string;
   intervenant?: string;
   moderateur?: string;
+  imageUrl?: string;
   speakerId?: string;
   capacite?: number;
   ordre: number;
