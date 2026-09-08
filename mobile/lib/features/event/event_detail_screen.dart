@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/faso.dart';
 import '../../core/format.dart';
 import '../../core/media.dart';
 import '../../core/providers.dart';
@@ -71,8 +72,10 @@ class _Body extends ConsumerWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        if (e.coverUrl != null)
+        if (e.coverUrl != null) ...[
           AspectRatio(aspectRatio: 16 / 8, child: RemoteImage(url: e.coverUrl)),
+          const FasoDanFaniBar(height: 5),
+        ],
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           child: Column(
@@ -263,8 +266,21 @@ class _Section extends StatelessWidget {
   const _Section(this.title);
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+        padding: const EdgeInsets.only(bottom: 8, top: 2),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 18,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
       );
 }
 

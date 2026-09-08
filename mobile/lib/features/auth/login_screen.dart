@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/faso.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 
@@ -55,6 +56,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              const SizedBox(height: 8),
+              const FasoHeader(),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _email,
                 decoration: const InputDecoration(labelText: 'Adresse e-mail'),
