@@ -19,6 +19,25 @@
 | M14 | Frontends Angular + Flutter | ✅ Angular livré en continu ; **app mobile Flutter livrée** (catalogue, billetterie, paiement sandbox, inscriptions, stands, portefeuille QR hors-ligne, factures, notifications, scan de contrôle) |
 | M15 | Durcissement, tests bout-en-bout, données de démo | ✅ livré |
 
+## Images & médias (transverse)
+
+- `POST /api/uploads/image` (multipart, authentifié) → URL publique `/files/**`
+  via `FileStorageService` (disque local). Formats : PNG / JPEG / WEBP, 15 Mo.
+- `events.logo_url` / `cover_url` (déjà présents) ; **`event_activities.image_url`**
+  ajouté (migration V12).
+- **Web** : `shared/ImageUploadComponent` (aperçu + upload + URL) branché dans
+  l'éditeur d'événement — couverture, logo, et visuel par activité du programme ;
+  affichage sur la page publique.
+- **Mobile** : `core/media.dart` — `resolveMediaUrl()` réécrit l'hôte des URLs
+  `/files/**` vers l'hôte de l'API (localhost / 10.0.2.2 / IP LAN) ; widget
+  `RemoteImage` (placeholder + repli). Couvertures dans le catalogue et le détail
+  événement, vignettes d'activités.
+- **Jeu de démo** : 12 bannières générées et bundlées
+  (`backend/src/main/resources/demo-images/`) ; les 3 événements à venir ont une
+  couverture ; **3 éditions passées** ajoutées — SIAO 2024, FESPACO 2023,
+  Semaine du Numérique 2025 (statut `TERMINE`, couverture + activités illustrées)
+  pour visualiser le rendu.
+
 ## M14 — Application mobile Flutter (contenu livré)
 
 - **Navigation** : `go_router` avec `StatefulShellRoute` — 4 onglets (Événements,
