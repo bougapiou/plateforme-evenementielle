@@ -58,11 +58,20 @@ class ApiClient {
     ));
   }
 
-  /// Authenticated GET returning raw bytes (QR images, PDF documents).
-  Future<List<int>> bytes(String path) async {
+  /// Authenticated GET returning raw bytes (QR images, PDF documents, files).
+  ///
+  /// [pathOrUrl] may be:
+  /// - a full `http(s)://…` URL (host is normalised to the API host), or
+  /// - a server-root path such as `/api/tickets/…/qr.png` or `/files/…`.
+  /// The Dio `baseUrl` already ends with `/api`, so these are resolved against
+  /// the server **origin**, not the base URL (avoids a doubled `/api`).
+  Future<List<int>> bytes(String pathOrUrl) async {
+    final url = pathOrUrl.startsWith('http')
+        ? (AppConfig.resolveHost(pathOrUrl) ?? pathOrUrl)
+        : '${AppConfig.apiOrigin}$pathOrUrl';
     try {
       final res = await dio.get<List<int>>(
-        path,
+        url,
         options: Options(responseType: ResponseType.bytes),
       );
       return res.data ?? const [];

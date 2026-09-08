@@ -3,27 +3,8 @@ import 'brand.dart';
 import 'config.dart';
 
 /// Rewrites a backend media URL so its host matches the configured API host.
-///
-/// The backend serves files at `http://localhost:8080/files/...`; that host is
-/// unreachable from an Android emulator (`10.0.2.2`) or a physical device (LAN
-/// IP). External URLs are returned untouched.
-String? resolveMediaUrl(String? url) {
-  if (url == null || url.trim().isEmpty) return null;
-  final api = Uri.tryParse(AppConfig.apiBaseUrl);
-  final u = Uri.tryParse(url.trim());
-  if (api == null || u == null || !u.hasScheme) return url;
-  const localHosts = {'localhost', '127.0.0.1', '10.0.2.2', '0.0.0.0'};
-  if (localHosts.contains(u.host) || u.host == api.host) {
-    return u
-        .replace(
-          scheme: api.scheme,
-          host: api.host,
-          port: api.hasPort ? api.port : (u.hasPort ? u.port : null),
-        )
-        .toString();
-  }
-  return url;
-}
+/// See [AppConfig.resolveHost].
+String? resolveMediaUrl(String? url) => AppConfig.resolveHost(url);
 
 /// Network image with a branded placeholder while loading and on failure.
 class RemoteImage extends StatelessWidget {

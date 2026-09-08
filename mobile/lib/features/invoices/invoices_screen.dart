@@ -34,7 +34,11 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
         inv.pdfUrl,
         '${inv.type.toLowerCase()}-${inv.numero}.pdf',
       );
-      await OpenFilex.open(path);
+      final res = await OpenFilex.open(path);
+      if (res.type != ResultType.done && mounted) {
+        showSnack(context, 'PDF enregistré ; aucune application pour l\'ouvrir.',
+            error: true);
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Téléchargement impossible : $e', error: true);
     } finally {
