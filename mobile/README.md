@@ -5,14 +5,31 @@ image_picker · open_filex · path_provider.
 
 ## Lancer
 
+L'URL de l'API est **résolue automatiquement** selon la cible (voir
+`lib/core/config.dart`) ; `--dart-define=API_BASE_URL=...` la remplace toujours.
+
 ```bash
 flutter pub get
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api   # émulateur Android
+
+# Émulateur Android (cible principale) — API sur 10.0.2.2:8080, pas de CORS
+flutter run
+
+# Chrome / navigateur — API sur localhost:8080 (résolu tout seul)
+flutter run -d chrome
+
+# Appareil physique — indiquer l'IP LAN de la machine qui héberge l'API
+flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 ```
 
-- `10.0.2.2` = machine hôte vue depuis l'émulateur Android.
-- iOS simulateur / web : utiliser `http://localhost:8080/api`.
-- Build APK : `flutter build apk` (NDK 27 requis, fixé dans `android/app/build.gradle.kts`).
+- `10.0.2.2` = machine hôte vue depuis l'émulateur Android ; **inutilisable**
+  depuis un navigateur (utiliser `localhost`, ce que fait déjà la config web).
+- **CORS** : le backend accepte par défaut tout port `localhost` / `127.0.0.1`
+  (`CORS_ORIGINS` dans `application.yml`). En production, pointer `CORS_ORIGINS`
+  sur le vrai domaine.
+- Build APK : `flutter build apk` · Build web : `flutter build web`.
+- Sur **web**, le cache QR hors-ligne et le téléchargement des PDF sont
+  désactivés (pas de système de fichiers dans le navigateur) ; le QR reste
+  affiché en ligne.
 
 ## Fonctionnalités
 

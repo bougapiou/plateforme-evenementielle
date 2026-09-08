@@ -93,7 +93,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.asList(appProperties.cors().originsArray()));
+        // Patterns (not plain origins) so a dev value like "http://localhost:[*]"
+        // matches any local port used by `ng serve` / `flutter run -d chrome`,
+        // while production pins CORS_ORIGINS to the real domain.
+        config.setAllowedOriginPatterns(Arrays.asList(appProperties.cors().originsArray()));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Content-Disposition"));

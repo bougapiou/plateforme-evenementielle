@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'config.dart';
 import 'models.dart';
@@ -71,13 +72,21 @@ class ApiClient {
   }
 
   /// Downloads an authenticated file to the app cache and returns its local path.
+  /// Not supported on Flutter web (no filesystem) — throws [UnsupportedError].
   Future<String> downloadToCache(String path, String filename) async {
+    if (kIsWeb) {
+      throw UnsupportedError(
+          'Le téléchargement de fichiers n\'est pas disponible dans le navigateur.');
+    }
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$filename');
     final data = await bytes(path);
     await file.writeAsBytes(data, flush: true);
     return file.path;
   }
+
+  /// True when file download / caching is available (native platforms).
+  bool get supportsFileDownload => !kIsWeb;
 
   ApiException toApiException(DioException e) {
     final data = e.response?.data;
