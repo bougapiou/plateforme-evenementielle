@@ -88,6 +88,25 @@ class ApiClient {
   /// True when file download / caching is available (native platforms).
   bool get supportsFileDownload => !kIsWeb;
 
+  /// Uploads an image to `POST /api/uploads/image`, returns its public URL.
+  Future<String> uploadImage({
+    required String filePath,
+    required String fileName,
+    String folder = 'images',
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+        'dossier': folder,
+      });
+      final res = await dio.post('/uploads/image', data: form,
+          options: Options(contentType: 'multipart/form-data'));
+      return (res.data as Map<String, dynamic>)['url'] as String;
+    } on DioException catch (e) {
+      throw toApiException(e);
+    }
+  }
+
   ApiException toApiException(DioException e) {
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {

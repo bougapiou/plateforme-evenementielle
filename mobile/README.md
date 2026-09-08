@@ -51,12 +51,13 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 | **Mon compte** | modifier le profil (nom / téléphone), changer le mot de passe | `GET/PATCH /users/me`, `POST /users/me/password` |
 | **Mes structures** | liste, création, modification, représentants (ajout / retrait) | `/structures`, `/structures/{id}/members` |
 | **Devenir organisateur** | formulaire de demande (rattachement structure optionnel) | `POST /organizers/apply`, `GET /organizers/me` |
+| **Mes événements** (organisateurs) | liste, **création**, gestion complète : infos + image, programme (activités + visuel), billetterie (catégories, quotas, portée), stands, intervenants (photo), partenaires (logo), workflow (soumettre / publier / ouvrir-fermer les inscriptions) | `POST/PUT /events`, `/events/mine`, `/events/{id}/activities|tickets|stand-types|speakers|partners`, `/events/{id}/submit\|publish\|…`, `POST /uploads/image` |
 | Contrôle à l'entrée | scan caméra du QR → VALIDE / DÉJÀ UTILISÉ / INVALIDE | `POST /checkins/scan`, `GET /checkins/events` |
 | Profil | compte, rôles, déconnexion | — |
 
-La **création / gestion d'événements** (workflow, billetterie, programme…) et la
-**supervision admin** restent sur le portail web ; la demande pour devenir
-organisateur, elle, se fait depuis l'app.
+Un **organisateur** peut désormais créer et gérer ses événements de bout en bout
+depuis l'app (Profil → *Mes événements*). La **supervision admin** (validation
+des événements, des structures, des organisateurs) reste sur le portail web.
 
 ## Structure
 
@@ -85,7 +86,7 @@ lib/
     ├── wallet/              portefeuille de billets + QR hors-ligne
     ├── activity/            listes + écrans de détail (commande / inscription / stand)
     ├── structures/          mes structures : liste, formulaire, détail + membres
-    ├── organizer/           demande pour devenir organisateur
+    ├── organizer/           devenir organisateur + Mes événements (création & gestion complète)
     ├── invoices/            factures & reçus
     ├── notifications/       centre de notifications (+ deep-link)
     ├── scanner/             contrôle d'accès (mobile_scanner)

@@ -112,6 +112,8 @@ class Activity {
   final String? salle;
   final String? lieu;
   final String? intervenant;
+  final String? moderateur;
+  final int? capacite;
   final String? imageUrl;
 
   Activity({
@@ -124,6 +126,8 @@ class Activity {
     this.salle,
     this.lieu,
     this.intervenant,
+    this.moderateur,
+    this.capacite,
     this.imageUrl,
   });
 
@@ -137,9 +141,113 @@ class Activity {
         salle: j['salle'] as String?,
         lieu: j['lieu'] as String?,
         intervenant: j['intervenant'] as String?,
+        moderateur: j['moderateur'] as String?,
+        capacite: j['capacite'] as int?,
         imageUrl: j['imageUrl'] as String?,
       );
 }
+
+/// Full editable event (from `GET /api/events/{id}` — organiser view).
+class EventFull {
+  final String id;
+  final String nom;
+  final String? sigle;
+  final String slug;
+  final String? descriptionCourte;
+  final String? descriptionDetaillee;
+  final String? categoryId;
+  final String? logoUrl;
+  final String? coverUrl;
+  final DateTime? dateDebut;
+  final DateTime? dateFin;
+  final String? lieu;
+  final String? adresse;
+  final String? ville;
+  final String? contactEmail;
+  final String? contactTelephone;
+  final String? siteWeb;
+  final String? conditionsParticipation;
+  final int? capaciteMax;
+  final bool hasActivities;
+  final bool standsActifs;
+  final bool validationInscription;
+  final DateTime? inscriptionDebut;
+  final DateTime? inscriptionFin;
+  final String statut;
+  final String? motifRefus;
+
+  EventFull({
+    required this.id,
+    required this.nom,
+    required this.slug,
+    this.sigle,
+    this.descriptionCourte,
+    this.descriptionDetaillee,
+    this.categoryId,
+    this.logoUrl,
+    this.coverUrl,
+    this.dateDebut,
+    this.dateFin,
+    this.lieu,
+    this.adresse,
+    this.ville,
+    this.contactEmail,
+    this.contactTelephone,
+    this.siteWeb,
+    this.conditionsParticipation,
+    this.capaciteMax,
+    this.hasActivities = false,
+    this.standsActifs = false,
+    this.validationInscription = false,
+    this.inscriptionDebut,
+    this.inscriptionFin,
+    this.statut = 'BROUILLON',
+    this.motifRefus,
+  });
+
+  bool get modifiable =>
+      statut == 'BROUILLON' || statut == 'REFUSE' || statut == 'VALIDE';
+  bool get soumissible => statut == 'BROUILLON' || statut == 'REFUSE';
+
+  factory EventFull.fromJson(Map<String, dynamic> j) => EventFull(
+        id: j['id'] as String,
+        nom: j['nom'] as String,
+        slug: j['slug'] as String? ?? '',
+        sigle: j['sigle'] as String?,
+        descriptionCourte: j['descriptionCourte'] as String?,
+        descriptionDetaillee: j['descriptionDetaillee'] as String?,
+        categoryId: j['categoryId'] as String?,
+        logoUrl: j['logoUrl'] as String?,
+        coverUrl: j['coverUrl'] as String?,
+        dateDebut: parseDate(j['dateDebut']),
+        dateFin: parseDate(j['dateFin']),
+        lieu: j['lieu'] as String?,
+        adresse: j['adresse'] as String?,
+        ville: j['ville'] as String?,
+        contactEmail: j['contactEmail'] as String?,
+        contactTelephone: j['contactTelephone'] as String?,
+        siteWeb: j['siteWeb'] as String?,
+        conditionsParticipation: j['conditionsParticipation'] as String?,
+        capaciteMax: j['capaciteMax'] as int?,
+        hasActivities: j['hasActivities'] as bool? ?? false,
+        standsActifs: j['standsActifs'] as bool? ?? false,
+        validationInscription: j['validationInscription'] as bool? ?? false,
+        inscriptionDebut: parseDate(j['inscriptionDebut']),
+        inscriptionFin: parseDate(j['inscriptionFin']),
+        statut: j['statut'] as String? ?? 'BROUILLON',
+        motifRefus: j['motifRefus'] as String?,
+      );
+}
+
+const activityTypes = [
+  'CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION',
+  'TABLE_RONDE', 'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE',
+];
+
+const partnerLevels = [
+  'PLATINE', 'OR', 'ARGENT', 'BRONZE',
+  'PARTENAIRE', 'PARTENAIRE_MEDIA', 'PARTENAIRE_INSTITUTIONNEL',
+];
 
 class Speaker {
   final String id;
@@ -293,10 +401,13 @@ class EventTicketType {
   final String devise;
   final String prixFormatte;
   final String portee;
+  final int quantiteTotale;
   final int quantiteRestante;
   final int limiteParUtilisateur;
+  final bool actif;
   final bool enVente;
   final List<String> activites;
+  final List<String> activiteIds;
 
   EventTicketType({
     required this.id,
@@ -306,30 +417,41 @@ class EventTicketType {
     required this.devise,
     required this.prixFormatte,
     required this.portee,
+    this.quantiteTotale = 0,
     required this.quantiteRestante,
     required this.limiteParUtilisateur,
+    this.actif = true,
     required this.enVente,
     this.activites = const [],
+    this.activiteIds = const [],
   });
 
   bool get gratuit => prixMontant == 0;
 
-  factory EventTicketType.fromJson(Map<String, dynamic> j) => EventTicketType(
-        id: j['id'] as String,
-        nom: j['nom'] as String,
-        description: j['description'] as String?,
-        prixMontant: (j['prixMontant'] as num?) ?? 0,
-        devise: j['devise'] as String? ?? 'XOF',
-        prixFormatte: j['prixFormatte'] as String? ?? '',
-        portee: j['portee'] as String? ?? 'EVENEMENT',
-        quantiteRestante: j['quantiteRestante'] as int? ?? 0,
-        limiteParUtilisateur: j['limiteParUtilisateur'] as int? ?? 0,
-        enVente: j['enVente'] as bool? ?? false,
-        activites: (j['activites'] as List<dynamic>? ?? [])
-            .map((e) => (e as Map<String, dynamic>)['titre'] as String? ?? '')
-            .where((s) => s.isNotEmpty)
-            .toList(),
-      );
+  factory EventTicketType.fromJson(Map<String, dynamic> j) {
+    final acts = (j['activites'] as List<dynamic>? ?? [])
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
+    return EventTicketType(
+      id: j['id'] as String,
+      nom: j['nom'] as String,
+      description: j['description'] as String?,
+      prixMontant: (j['prixMontant'] as num?) ?? 0,
+      devise: j['devise'] as String? ?? 'XOF',
+      prixFormatte: j['prixFormatte'] as String? ?? '',
+      portee: j['portee'] as String? ?? 'EVENEMENT',
+      quantiteTotale: j['quantiteTotale'] as int? ?? 0,
+      quantiteRestante: j['quantiteRestante'] as int? ?? 0,
+      limiteParUtilisateur: j['limiteParUtilisateur'] as int? ?? 0,
+      actif: j['actif'] as bool? ?? true,
+      enVente: j['enVente'] as bool? ?? false,
+      activites: acts
+          .map((a) => a['titre'] as String? ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      activiteIds: acts.map((a) => a['id'] as String? ?? '').where((s) => s.isNotEmpty).toList(),
+    );
+  }
 }
 
 class StandType {
@@ -340,8 +462,10 @@ class StandType {
   final num prixMontant;
   final String devise;
   final String prixFormatte;
+  final int quantiteTotale;
   final int quantiteRestante;
   final String? equipements;
+  final String? conditions;
 
   StandType({
     required this.id,
@@ -351,8 +475,10 @@ class StandType {
     required this.prixMontant,
     required this.devise,
     required this.prixFormatte,
+    this.quantiteTotale = 0,
     required this.quantiteRestante,
     this.equipements,
+    this.conditions,
   });
 
   factory StandType.fromJson(Map<String, dynamic> j) => StandType(
@@ -363,6 +489,8 @@ class StandType {
         prixMontant: (j['prixMontant'] as num?) ?? 0,
         devise: j['devise'] as String? ?? 'XOF',
         prixFormatte: j['prixFormatte'] as String? ?? '',
+        quantiteTotale: j['quantiteTotale'] as int? ?? 0,
+        conditions: j['conditions'] as String?,
         quantiteRestante: j['quantiteRestante'] as int? ?? 0,
         equipements: j['equipements'] as String?,
       );

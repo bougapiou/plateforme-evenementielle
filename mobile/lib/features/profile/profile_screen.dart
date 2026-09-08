@@ -10,6 +10,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authControllerProvider).valueOrNull;
     final canScan = ref.watch(hasPermissionProvider('CHECKIN_SCAN'));
+    final canCreateEvents = ref.watch(hasPermissionProvider('EVENT_CREATE'));
 
     if (user == null) {
       return Scaffold(
@@ -96,13 +97,22 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const Divider(height: 16),
           _sectionLabel(context, 'Organisation'),
-          ListTile(
-            leading: const Icon(Icons.campaign_outlined),
-            title: const Text('Devenir organisateur'),
-            subtitle: const Text('Demander à créer des événements'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/devenir-organisateur'),
-          ),
+          if (canCreateEvents)
+            ListTile(
+              leading: const Icon(Icons.event_available_outlined),
+              title: const Text('Mes événements'),
+              subtitle: const Text('Créer et gérer mes événements'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/mes-evenements'),
+            )
+          else
+            ListTile(
+              leading: const Icon(Icons.campaign_outlined),
+              title: const Text('Devenir organisateur'),
+              subtitle: const Text('Demander à créer des événements'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/devenir-organisateur'),
+            ),
           if (canScan)
             ListTile(
               leading: const Icon(Icons.qr_code_scanner),

@@ -20,6 +20,13 @@ import '../features/structures/structures_screen.dart';
 import '../features/structures/structure_form_screen.dart';
 import '../features/structures/structure_detail_screen.dart';
 import '../features/organizer/become_organizer_screen.dart';
+import '../features/organizer/organizer_events_screen.dart';
+import '../features/organizer/event_form_screen.dart';
+import '../features/organizer/event_manage_screen.dart';
+import '../features/organizer/programme_editor_screen.dart';
+import '../features/organizer/tickets_editor_screen.dart';
+import '../features/organizer/stands_editor_screen.dart';
+import '../features/organizer/people_editor_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/change_password_screen.dart';
 import '../features/invoices/invoices_screen.dart';
@@ -170,6 +177,54 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/devenir-organisateur',
         parentNavigatorKey: _rootKey,
         builder: (_, __) => const BecomeOrganizerScreen(),
+      ),
+      GoRoute(
+        path: '/mes-evenements',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const OrganizerEventsScreen(),
+      ),
+      GoRoute(
+        path: '/mes-evenements/nouveau',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const EventFormScreen(),
+      ),
+      GoRoute(
+        path: '/mes-evenements/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) => EventManageScreen(eventId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/mes-evenements/:id/infos',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) => EventFormScreen(eventId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/mes-evenements/:id/programme',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) =>
+            ProgrammeEditorScreen(eventId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/mes-evenements/:id/billetterie',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) => TicketsEditorScreen(eventId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/mes-evenements/:id/stands',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) => StandsEditorScreen(eventId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/mes-evenements/:id/intervenants',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) => PeopleEditorScreen(
+            eventId: s.pathParameters['id']!, kind: 'speakers'),
+      ),
+      GoRoute(
+        path: '/mes-evenements/:id/partenaires',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) => PeopleEditorScreen(
+            eventId: s.pathParameters['id']!, kind: 'partners'),
       ),
       GoRoute(
         path: '/profil/modifier',
