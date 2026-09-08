@@ -1,6 +1,7 @@
 # Application mobile — Plateforme des Événements
 
-Flutter · Riverpod · go_router · Dio · flutter_secure_storage · mobile_scanner.
+Flutter · Riverpod · go_router · Dio · flutter_secure_storage · mobile_scanner ·
+image_picker · open_filex · path_provider.
 
 ## Lancer
 
@@ -19,18 +20,26 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api   # émulateur A
 |------|-------|-----|
 | Catalogue | recherche + filtres catégorie, cartes événement | `GET /public/events` |
 | Détail événement | infos, programme (activités), intervenants, partenaires, billetterie, stands | `GET /public/events/{slug}` (+ `/tickets`, `/stand-types`, `/stands`) |
-| Achat de billets | sélection catégories + quantités, total, création de commande | `POST /ticket-orders` |
+| Achat de billets | sélection catégories + quantités, total, commande (option **au nom d'une structure**) | `POST /ticket-orders` |
 | Paiement | choix du moyen (Orange/Moov/Telecel Money, FasoArzeka, carte), sandbox | `POST /payments` + `/payments/{ref}/simulate` |
-| Inscription | formulaire particulier + participants | `POST /events/{id}/registrations` |
-| Réservation de stand | plan par type, blocage 15 min, paiement | `POST /stand-reservations` |
+| Inscription | formulaire **particulier ou structure** + participants | `POST /events/{id}/registrations` |
+| Détail inscription | participants, **pièces jointes** (photo/galerie → upload/suppression), annulation, confirmation PDF | `GET/POST/DELETE /registrations/{id}/documents`, `/registrations/{id}/confirmation.pdf` |
+| Réservation de stand | plan par type, blocage 15 min, paiement (option **structure**) | `POST /stand-reservations` |
+| Détail réservation | annulation, confirmation PDF | `/stand-reservations/{id}/confirmation.pdf` |
+| Détail commande | lignes, total, payer / annuler | `GET /ticket-orders/{id}` |
 | Portefeuille | liste des billets, QR **mis en cache pour l'affichage hors-ligne**, PDF | `GET /tickets/my`, `/tickets/{id}/qr.png`, `/tickets/{id}/pdf` |
-| Mon activité | commandes, inscriptions, réservations, paiements | `*/my` |
+| Mon activité | commandes, inscriptions, réservations, paiements (chaque ligne ouvre son détail) | `*/my` |
 | Factures & reçus | liste + téléchargement PDF | `GET /invoices/my` |
-| Notifications | liste in-app, badge non-lus, tout marquer lu | `GET /notifications` |
-| Contrôle à l'entrée | scan caméra du QR → VALIDE / DÉJÀ UTILISÉ / INVALIDE | `POST /checkins/scan` |
+| Notifications | liste in-app, badge non-lus, tout marquer lu, **ouverture du contenu lié** | `GET /notifications` |
+| **Mon compte** | modifier le profil (nom / téléphone), changer le mot de passe | `GET/PATCH /users/me`, `POST /users/me/password` |
+| **Mes structures** | liste, création, modification, représentants (ajout / retrait) | `/structures`, `/structures/{id}/members` |
+| **Devenir organisateur** | formulaire de demande (rattachement structure optionnel) | `POST /organizers/apply`, `GET /organizers/me` |
+| Contrôle à l'entrée | scan caméra du QR → VALIDE / DÉJÀ UTILISÉ / INVALIDE | `POST /checkins/scan`, `GET /checkins/events` |
 | Profil | compte, rôles, déconnexion | — |
 
-Les inscriptions de structures/entreprises et l'espace organisateur restent sur le portail web.
+La **création / gestion d'événements** (workflow, billetterie, programme…) et la
+**supervision admin** restent sur le portail web ; la demande pour devenir
+organisateur, elle, se fait depuis l'app.
 
 ## Structure
 
@@ -55,13 +64,15 @@ lib/
     ├── shell/               conteneur de navigation (bottom bar)
     ├── catalogue/           liste + recherche + filtres
     ├── event/               détail d'un événement
-    ├── purchase/            billets, inscription, stand, paiement
+    ├── purchase/            billets, inscription, stand, paiement, structure_toggle
     ├── wallet/              portefeuille de billets + QR hors-ligne
-    ├── activity/            commandes / inscriptions / réservations / paiements
+    ├── activity/            listes + écrans de détail (commande / inscription / stand)
+    ├── structures/          mes structures : liste, formulaire, détail + membres
+    ├── organizer/           demande pour devenir organisateur
     ├── invoices/            factures & reçus
-    ├── notifications/       centre de notifications
+    ├── notifications/       centre de notifications (+ deep-link)
     ├── scanner/             contrôle d'accès (mobile_scanner)
-    └── profile/             profil & déconnexion
+    └── profile/             profil, édition, mot de passe, déconnexion
 ```
 
 ## QR hors-ligne

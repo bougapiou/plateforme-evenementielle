@@ -18,6 +18,11 @@ class TokenStore {
     await _storage.write(key: _user, value: jsonEncode(res.user.toJson()));
   }
 
+  /// Refreshes only the cached user (tokens untouched).
+  Future<void> saveUser(UserSummary user) async {
+    await _storage.write(key: _user, value: jsonEncode(user.toJson()));
+  }
+
   Future<void> clear() async {
     await _storage.deleteAll();
   }

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/domain.dart';
 import '../data/repositories.dart';
 import 'api_client.dart';
 import 'auth_repository.dart';
@@ -33,6 +34,20 @@ final notificationsRepositoryProvider =
     Provider((ref) => NotificationsRepository(ref.watch(apiClientProvider)));
 final checkinRepositoryProvider =
     Provider((ref) => CheckinRepository(ref.watch(apiClientProvider)));
+final usersRepositoryProvider =
+    Provider((ref) => UsersRepository(ref.watch(apiClientProvider)));
+final structuresRepositoryProvider =
+    Provider((ref) => StructuresRepository(ref.watch(apiClientProvider)));
+final organizersRepositoryProvider =
+    Provider((ref) => OrganizersRepository(ref.watch(apiClientProvider)));
+
+/// The signed-in user's structures (for structure-scoped registrations / stands).
+final myStructuresProvider =
+    FutureProvider.autoDispose<List<StructureSummary>>((ref) async {
+  final user = ref.watch(authControllerProvider).valueOrNull;
+  if (user == null) return const [];
+  return ref.watch(structuresRepositoryProvider).mine();
+});
 
 /// True when the signed-in user carries [permission].
 final hasPermissionProvider = Provider.family<bool, String>((ref, permission) {
@@ -91,6 +106,12 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
   Future<void> logout() async {
     await _repo.logout();
     state = const AsyncValue.data(null);
+  }
+
+  /// Replaces the cached user after a profile change (name / phone / roles).
+  Future<void> setUser(UserSummary user) async {
+    await _repo.cacheUser(user);
+    state = AsyncValue.data(user);
   }
 }
 

@@ -43,6 +43,8 @@ class AuthRepository {
 
   Future<UserSummary?> restoreSession() => _store.user;
 
+  Future<void> cacheUser(UserSummary user) => _store.saveUser(user);
+
   Future<AuthResponse> _post(String path, Map<String, dynamic> body) async {
     try {
       final res = await _api.dio.post(path, data: body);

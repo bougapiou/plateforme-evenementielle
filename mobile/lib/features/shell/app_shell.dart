@@ -16,10 +16,10 @@ class AppShell extends ConsumerWidget {
       body: shell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
-        onDestinationSelected: (i) => shell.goBranch(
-          i,
-          initialLocation: i == shell.currentIndex,
-        ),
+        onDestinationSelected: (i) {
+          ref.invalidate(unreadCountProvider);
+          shell.goBranch(i, initialLocation: i == shell.currentIndex);
+        },
         destinations: [
           const NavigationDestination(
             icon: Icon(Icons.event_outlined),

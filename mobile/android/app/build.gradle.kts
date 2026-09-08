@@ -8,7 +8,9 @@ plugins {
 android {
     namespace = "bf.evenements.plateforme_mobile"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // Flutter's bundled NDK (26.3.x). The bundled plugins advertise NDK 27 but
+    // are backward compatible, so the advisory warning at build time is benign.
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

@@ -5,6 +5,7 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
+import 'structure_toggle.dart';
 
 class ReserveStandScreen extends ConsumerStatefulWidget {
   final String slug;
@@ -24,6 +25,8 @@ class _Data {
 class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
   late Future<_Data> _future;
   String? _busyStandId;
+  bool _asStructure = false;
+  String? _structureId;
 
   @override
   void initState() {
@@ -40,11 +43,16 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
   }
 
   Future<void> _reserve(EventDetail event, Stand stand) async {
+    if (_asStructure && _structureId == null) {
+      showSnack(context, 'Choisissez la structure.', error: true);
+      return;
+    }
     setState(() => _busyStandId = stand.id);
     try {
       final r = await ref.read(standsRepositoryProvider).reserve(
             eventId: event.id,
             standId: stand.id,
+            structureId: _asStructure ? _structureId : null,
           );
       if (!mounted) return;
       showSnack(context,
@@ -87,6 +95,17 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
               Text(
                 'Sélectionnez un stand. Il sera bloqué 15 minutes, le temps du paiement.',
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              StructureToggle(
+                label: 'Réserver au nom d\'une structure',
+                asStructure: _asStructure,
+                structureId: _structureId,
+                onModeChanged: (v) => setState(() {
+                  _asStructure = v;
+                  if (!v) _structureId = null;
+                }),
+                onStructureChanged: (id) => setState(() => _structureId = id),
               ),
               const SizedBox(height: 16),
               ...byType.entries.map((entry) {
