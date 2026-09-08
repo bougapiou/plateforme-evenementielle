@@ -152,9 +152,13 @@ import { ApiError } from '../../core/models';
             @for (a of e.programme; track a.id) {
               <li class="flex gap-3 text-sm">
                 <span class="w-14 shrink-0 font-semibold text-brand-700">{{ time(a.dateDebut) }}</span>
+                @if (a.imageUrl) {
+                  <img [src]="a.imageUrl" alt="" class="h-14 w-20 shrink-0 rounded-lg object-cover" />
+                }
                 <div>
                   <p class="font-medium text-slate-800">{{ a.titre }}</p>
                   <p class="text-slate-400">{{ a.salle }}{{ a.intervenant ? ' · ' + a.intervenant : '' }}</p>
+                  @if (a.description) { <p class="mt-1 text-slate-500">{{ a.description }}</p> }
                 </div>
               </li>
             }

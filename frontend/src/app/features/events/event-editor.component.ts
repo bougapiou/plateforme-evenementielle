@@ -16,6 +16,7 @@ import { Registration } from '../registrations/registration.models';
 import { CheckinService, CheckinView, StaffMember } from '../checkin/checkin.service';
 import { StatsService, StatMap, EventSeries } from '../stats/stats.service';
 import { BarChartComponent } from '../../shared/bar-chart.component';
+import { ImageUploadComponent } from '../../shared/image-upload.component';
 
 type Tab =
   | 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie' | 'stands'
@@ -24,7 +25,10 @@ type Tab =
 @Component({
   selector: 'app-event-editor',
   standalone: true,
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent, BarChartComponent],
+  imports: [
+    ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent, BarChartComponent,
+    ImageUploadComponent,
+  ],
   template: `
     <a routerLink="/tableau-de-bord/evenements" class="text-sm text-slate-500">← Mes événements</a>
 
@@ -102,6 +106,24 @@ type Tab =
               <textarea rows="4" class="form-input" formControlName="descriptionDetaillee"></textarea></div>
             <div class="sm:col-span-2"><label class="form-label">Conditions de participation</label>
               <textarea rows="3" class="form-input" formControlName="conditionsParticipation"></textarea></div>
+            <div class="sm:col-span-2">
+              <label class="form-label">Image de couverture</label>
+              <app-image-upload
+                folder="evenements"
+                [value]="form.controls.coverUrl.value"
+                [disabled]="form.disabled"
+                (valueChange)="form.controls.coverUrl.setValue($event); form.markAsDirty()"
+              />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="form-label">Logo</label>
+              <app-image-upload
+                folder="evenements"
+                [value]="form.controls.logoUrl.value"
+                [disabled]="form.disabled"
+                (valueChange)="form.controls.logoUrl.setValue($event); form.markAsDirty()"
+              />
+            </div>
           </div>
           <div class="flex flex-wrap gap-6">
             <label class="flex items-center gap-2 text-sm">
@@ -146,14 +168,25 @@ type Tab =
           <input type="datetime-local" class="form-input" formControlName="dateFin" />
           <input class="form-input" placeholder="Intervenant" formControlName="intervenant" />
           <input class="form-input" placeholder="Modérateur" formControlName="moderateur" />
+          <div class="sm:col-span-2">
+            <label class="form-label">Visuel de l'activité</label>
+            <app-image-upload
+              folder="activites"
+              [value]="activityForm.controls.imageUrl.value"
+              (valueChange)="activityForm.controls.imageUrl.setValue($event)"
+            />
+          </div>
           <button type="submit" class="btn-primary sm:col-span-2">
             {{ editingActivityId() ? 'Modifier le créneau' : 'Ajouter au programme' }}
           </button>
         </form>
         <ul class="mt-4 space-y-2">
           @for (a of activities(); track a.id) {
-            <li class="card flex items-center justify-between p-3 text-sm">
-              <div>
+            <li class="card flex items-center gap-3 p-3 text-sm">
+              @if (a.imageUrl) {
+                <img [src]="a.imageUrl" alt="" class="h-12 w-16 shrink-0 rounded object-cover" />
+              }
+              <div class="min-w-0 flex-1">
                 <p class="font-medium text-slate-700">{{ a.titre }}</p>
                 <p class="text-slate-400">
                   {{ dt(a.dateDebut) }}{{ a.salle ? ' · ' + a.salle : '' }}{{ a.typeActivite ? ' · ' + a.typeActivite : '' }}
@@ -521,6 +554,8 @@ export class EventEditorComponent {
     descriptionCourte: [''],
     descriptionDetaillee: [''],
     conditionsParticipation: [''],
+    logoUrl: [null as string | null],
+    coverUrl: [null as string | null],
     hasActivities: [false],
     standsActifs: [false],
     validationInscription: [false],
@@ -534,6 +569,7 @@ export class EventEditorComponent {
     dateFin: [''],
     intervenant: [''],
     moderateur: [''],
+    imageUrl: [null as string | null],
   });
   speakerForm = this.fb.nonNullable.group({
     nom: ['', Validators.required], titre: [''], organisation: [''], bio: [''],
@@ -603,6 +639,7 @@ export class EventEditorComponent {
         inscriptionDebut: toLocal(e.inscriptionDebut), inscriptionFin: toLocal(e.inscriptionFin),
         descriptionCourte: e.descriptionCourte ?? '', descriptionDetaillee: e.descriptionDetaillee ?? '',
         conditionsParticipation: e.conditionsParticipation ?? '',
+        logoUrl: e.logoUrl ?? null, coverUrl: e.coverUrl ?? null,
         hasActivities: e.hasActivities, standsActifs: e.standsActifs,
         validationInscription: e.validationInscription ?? false,
       });
@@ -803,6 +840,7 @@ export class EventEditorComponent {
     const body: Partial<Activity> = {
       titre: v.titre, salle: v.salle || undefined, intervenant: v.intervenant || undefined,
       moderateur: v.moderateur || undefined,
+      imageUrl: v.imageUrl || undefined,
       typeActivite: (v.typeActivite || undefined) as Activity['typeActivite'],
       dateDebut: new Date(v.dateDebut).toISOString(),
       dateFin: v.dateFin ? new Date(v.dateFin).toISOString() : undefined,
@@ -819,6 +857,7 @@ export class EventEditorComponent {
       titre: a.titre, typeActivite: a.typeActivite ?? '', salle: a.salle ?? '',
       dateDebut: toLocal(a.dateDebut), dateFin: toLocal(a.dateFin),
       intervenant: a.intervenant ?? '', moderateur: a.moderateur ?? '',
+      imageUrl: a.imageUrl ?? null,
     });
   }
   removeActivity(a: Activity): void {

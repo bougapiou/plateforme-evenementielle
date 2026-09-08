@@ -57,6 +57,10 @@ public class EventActivity extends BaseEntity {
     @Column(length = 255)
     private String moderateur;
 
+    /** Optional illustration for the activity (URL to an uploaded image). */
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     /** Optional link to a detailed {@link Speaker} profile. */
     @Column(name = "speaker_id")
     private java.util.UUID speakerId;

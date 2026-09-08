@@ -70,6 +70,35 @@ public class FileStorageService {
                 file.getOriginalFilename());
     }
 
+    /** Stores raw bytes (used by the demo-data seeder for bundled images). */
+    public StoredFile storeBytes(byte[] content, String originalName, String contentType,
+                                 String folder) {
+        if (content == null || content.length == 0) {
+            throw new BusinessException("EMPTY_FILE", "Le fichier est vide.");
+        }
+        if (content.length > MAX_SIZE) {
+            throw new BusinessException("FILE_TOO_LARGE", "Le fichier dépasse 15 Mo.");
+        }
+        if (contentType == null || !ALLOWED.contains(contentType)) {
+            throw new BusinessException("UNSUPPORTED_FILE_TYPE",
+                    "Formats acceptés : PDF, PNG, JPEG, WEBP.");
+        }
+        String safeFolder = folder == null ? "misc" : folder.replaceAll("[^a-zA-Z0-9/_-]", "");
+        String ext = StringUtils.getFilenameExtension(originalName);
+        String key = safeFolder + "/" + UUID.randomUUID() + (ext != null ? "." + ext : "");
+        Path target = basePath.resolve(key).normalize();
+        if (!target.startsWith(basePath)) {
+            throw new BusinessException("INVALID_PATH", "Chemin de fichier invalide.");
+        }
+        try {
+            Files.createDirectories(target.getParent());
+            Files.write(target, content);
+        } catch (IOException e) {
+            throw new IllegalStateException("Échec de l'enregistrement du fichier", e);
+        }
+        return new StoredFile(key, baseUrl + "/" + key, contentType, content.length, originalName);
+    }
+
     public Path resolve(String key) {
         Path p = basePath.resolve(key).normalize();
         if (!p.startsWith(basePath)) {
