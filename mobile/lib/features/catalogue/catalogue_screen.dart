@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
+import '../../core/media.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -164,27 +165,36 @@ class _EventCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () => context.push('/evenements/${event.slug}'),
-        child: Padding(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 7,
+                  child: RemoteImage(url: event.coverUrl, fallbackIcon: Icons.event),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: StatusChip(event.statut),
+                ),
+              ],
+            ),
+            Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  if (event.categoryNom != null)
-                    Expanded(
-                      child: Text(
-                        event.categoryNom!.toUpperCase(),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              letterSpacing: .5,
-                            ),
+              if (event.categoryNom != null)
+                Text(
+                  event.categoryNom!.toUpperCase(),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        letterSpacing: .5,
                       ),
-                    ),
-                  StatusChip(event.statut),
-                ],
-              ),
-              const SizedBox(height: 6),
+                ),
+              const SizedBox(height: 4),
               Text(event.nom,
                   style: Theme.of(context).textTheme.titleMedium,
                   maxLines: 2,
@@ -207,6 +217,8 @@ class _EventCard extends StatelessWidget {
                     'Réservation de stands ouverte'),
             ],
           ),
+            ),
+          ],
         ),
       ),
     );

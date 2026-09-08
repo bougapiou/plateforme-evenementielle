@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
+import '../../core/media.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -68,8 +69,15 @@ class _Body extends ConsumerWidget {
     final canRegister = e.inscriptionsOuvertes;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: EdgeInsets.zero,
       children: [
+        if (e.coverUrl != null)
+          AspectRatio(aspectRatio: 16 / 8, child: RemoteImage(url: e.coverUrl)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
         Row(children: [
           if (e.categoryNom != null)
             Expanded(
@@ -211,11 +219,16 @@ class _Body extends ConsumerWidget {
         ] else
           Card(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Les inscriptions ne sont pas ouvertes pour cet événement.'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(e.termine
+                  ? 'Cet événement est terminé.'
+                  : 'Les inscriptions ne sont pas ouvertes pour cet événement.'),
             ),
           ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -252,26 +265,36 @@ class _ActivityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(a.titre, style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text([
-              if (a.dateDebut != null)
-                '${Fmt.dateTime(a.dateDebut)}${a.dateFin != null ? ' → ${Fmt.time(a.dateFin)}' : ''}',
-              if (a.salle != null) 'Salle : ${a.salle}',
-              if (a.intervenant != null) a.intervenant!,
-            ].join('\n'), style: Theme.of(context).textTheme.bodySmall),
-            if (a.description != null) ...[
-              const SizedBox(height: 6),
-              Text(a.description!, style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (a.imageUrl != null)
+            AspectRatio(aspectRatio: 16 / 6, child: RemoteImage(url: a.imageUrl)),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(a.titre,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text([
+                  if (a.dateDebut != null)
+                    '${Fmt.dateTime(a.dateDebut)}${a.dateFin != null ? ' → ${Fmt.time(a.dateFin)}' : ''}',
+                  if (a.salle != null) 'Salle : ${a.salle}',
+                  if (a.intervenant != null) a.intervenant!,
+                ].join('\n'), style: Theme.of(context).textTheme.bodySmall),
+                if (a.description != null) ...[
+                  const SizedBox(height: 6),
+                  Text(a.description!,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

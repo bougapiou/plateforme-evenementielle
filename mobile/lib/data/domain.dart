@@ -55,6 +55,8 @@ class EventSummary {
   final String slug;
   final String? descriptionCourte;
   final String? categoryNom;
+  final String? coverUrl;
+  final String? logoUrl;
   final DateTime? dateDebut;
   final DateTime? dateFin;
   final String? ville;
@@ -70,6 +72,8 @@ class EventSummary {
     this.sigle,
     this.descriptionCourte,
     this.categoryNom,
+    this.coverUrl,
+    this.logoUrl,
     this.dateDebut,
     this.dateFin,
     this.ville,
@@ -86,6 +90,8 @@ class EventSummary {
         sigle: j['sigle'] as String?,
         descriptionCourte: j['descriptionCourte'] as String?,
         categoryNom: j['categoryNom'] as String?,
+        coverUrl: j['coverUrl'] as String?,
+        logoUrl: j['logoUrl'] as String?,
         dateDebut: parseDate(j['dateDebut']),
         dateFin: parseDate(j['dateFin']),
         ville: j['ville'] as String?,
@@ -106,6 +112,7 @@ class Activity {
   final String? salle;
   final String? lieu;
   final String? intervenant;
+  final String? imageUrl;
 
   Activity({
     required this.id,
@@ -117,6 +124,7 @@ class Activity {
     this.salle,
     this.lieu,
     this.intervenant,
+    this.imageUrl,
   });
 
   factory Activity.fromJson(Map<String, dynamic> j) => Activity(
@@ -129,6 +137,7 @@ class Activity {
         salle: j['salle'] as String?,
         lieu: j['lieu'] as String?,
         intervenant: j['intervenant'] as String?,
+        imageUrl: j['imageUrl'] as String?,
       );
 }
 
@@ -172,6 +181,8 @@ class EventDetail {
   final String? descriptionCourte;
   final String? descriptionDetaillee;
   final String? categoryNom;
+  final String? coverUrl;
+  final String? logoUrl;
   final DateTime? dateDebut;
   final DateTime? dateFin;
   final String? lieu;
@@ -199,6 +210,8 @@ class EventDetail {
     this.descriptionCourte,
     this.descriptionDetaillee,
     this.categoryNom,
+    this.coverUrl,
+    this.logoUrl,
     this.dateDebut,
     this.dateFin,
     this.lieu,
@@ -222,6 +235,8 @@ class EventDetail {
   bool get inscriptionsOuvertes =>
       statut == 'PUBLIE' || statut == 'INSCRIPTIONS_OUVERTES';
 
+  bool get termine => statut == 'TERMINE';
+
   factory EventDetail.fromJson(Map<String, dynamic> j) => EventDetail(
         id: j['id'] as String,
         nom: j['nom'] as String,
@@ -230,6 +245,8 @@ class EventDetail {
         descriptionCourte: j['descriptionCourte'] as String?,
         descriptionDetaillee: j['descriptionDetaillee'] as String?,
         categoryNom: j['categoryNom'] as String?,
+        coverUrl: j['coverUrl'] as String?,
+        logoUrl: j['logoUrl'] as String?,
         dateDebut: parseDate(j['dateDebut']),
         dateFin: parseDate(j['dateFin']),
         lieu: j['lieu'] as String?,
