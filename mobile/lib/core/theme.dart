@@ -34,7 +34,7 @@ ThemeData _build() {
       labelSmall: TextStyle(color: Brand.s400, fontWeight: FontWeight.w600),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFFFFFDF8),
+      backgroundColor: Colors.white,
       foregroundColor: Brand.s900,
       elevation: 0,
       scrolledUnderElevation: 0.5,
@@ -48,7 +48,7 @@ ThemeData _build() {
       shape: Border(bottom: BorderSide(color: Brand.gold, width: 2)),
     ),
     cardTheme: CardThemeData(
-      color: const Color(0xFFFFFDF8),
+      color: Colors.white,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
@@ -63,7 +63,7 @@ ThemeData _build() {
       labelStyle: TextStyle(color: Brand.s700, fontSize: 12),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: const Color(0xFFFFFDF8),
+      backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       elevation: 3,
       height: 64,

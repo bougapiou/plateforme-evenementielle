@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Palette « Faso » — inspirée du Burkina Faso : vert et rouge du drapeau,
-/// étoile dorée, et neutres chauds (terre du Sahel, coton Faso Dan Fani).
-///
-/// Les noms `bXX` / `sXX` sont conservés (compat écrans existants) mais portent
-/// désormais des valeurs chaudes : `b*` = vert Burkina, `s*` = sable → argile.
+/// Palette : vert et rouge du drapeau du Burkina Faso + étoile dorée, sur des
+/// neutres (échelle « slate »). Les noms `bXX` (vert) / `sXX` (neutres) sont
+/// conservés pour compat avec les écrans existants.
 class Brand {
   Brand._();
 
@@ -17,16 +15,16 @@ class Brand {
   static const b700 = Color(0xFF0A5F2E);
   static const b800 = Color(0xFF07461F);
 
-  // Neutres chauds (sable du Sahel → argile / bogolan)
-  static const s50 = Color(0xFFFAF6EF); // fond application
-  static const s100 = Color(0xFFF1E9DA);
-  static const s200 = Color(0xFFE3D6BF); // bordures
-  static const s300 = Color(0xFFCDBB9C);
-  static const s400 = Color(0xFFA8916E); // texte secondaire clair
-  static const s500 = Color(0xFF7A6247); // texte secondaire
-  static const s700 = Color(0xFF4A3A28);
-  static const s800 = Color(0xFF33281B); // titres
-  static const s900 = Color(0xFF241B12); // texte fort
+  // Neutres (slate)
+  static const s50 = Color(0xFFF8FAFC);
+  static const s100 = Color(0xFFF1F5F9);
+  static const s200 = Color(0xFFE2E8F0);
+  static const s300 = Color(0xFFCBD5E1);
+  static const s400 = Color(0xFF94A3B8);
+  static const s500 = Color(0xFF64748B);
+  static const s700 = Color(0xFF334155);
+  static const s800 = Color(0xFF1E293B);
+  static const s900 = Color(0xFF0F172A);
 
   // Accents drapeau
   static const green = Color(0xFF0E7A3C);

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/brand.dart';
-import '../../core/faso.dart';
+import '../../core/faso.dart' show FasoStar;
 import '../../core/format.dart';
 import '../../core/media.dart';
 import '../../core/providers.dart';
@@ -88,7 +88,6 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
               ],
             ),
           ),
-          const FasoDanFaniBar(height: 5),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             child: TextField(

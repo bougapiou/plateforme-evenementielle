@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/faso.dart';
 import '../../core/format.dart';
 import '../../core/media.dart';
 import '../../core/providers.dart';
@@ -72,10 +71,8 @@ class _Body extends ConsumerWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        if (e.coverUrl != null) ...[
+        if (e.coverUrl != null)
           AspectRatio(aspectRatio: 16 / 8, child: RemoteImage(url: e.coverUrl)),
-          const FasoDanFaniBar(height: 5),
-        ],
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           child: Column(
