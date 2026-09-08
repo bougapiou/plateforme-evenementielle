@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/faso.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 
@@ -67,6 +68,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              const SizedBox(height: 8),
+              const FasoHeader(subtitle: 'Créez votre compte'),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _firstName,
                 decoration: const InputDecoration(labelText: 'Prénom'),

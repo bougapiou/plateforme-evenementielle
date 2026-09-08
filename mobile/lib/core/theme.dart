@@ -34,7 +34,7 @@ ThemeData _build() {
       labelSmall: TextStyle(color: Brand.s400, fontWeight: FontWeight.w600),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFFFFDF8),
       foregroundColor: Brand.s900,
       elevation: 0,
       scrolledUnderElevation: 0.5,
@@ -44,10 +44,11 @@ ThemeData _build() {
         fontSize: 18,
         fontWeight: FontWeight.w700,
       ),
-      shape: Border(bottom: BorderSide(color: Brand.s200)),
+      // liseré doré (étoile du drapeau) sous chaque barre
+      shape: Border(bottom: BorderSide(color: Brand.gold, width: 2)),
     ),
     cardTheme: CardThemeData(
-      color: Colors.white,
+      color: const Color(0xFFFFFDF8),
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
@@ -62,11 +63,11 @@ ThemeData _build() {
       labelStyle: TextStyle(color: Brand.s700, fontSize: 12),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFDF8),
       surfaceTintColor: Colors.transparent,
       elevation: 3,
       height: 64,
-      indicatorColor: Brand.b50,
+      indicatorColor: Brand.gold.withValues(alpha: .28),
       labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,

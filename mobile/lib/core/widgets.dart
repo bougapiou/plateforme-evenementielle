@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/domain.dart';
+import 'brand.dart';
+import 'faso.dart';
 
 /// Coloured status pill used across orders / registrations / tickets.
 class StatusChip extends StatelessWidget {
@@ -80,8 +82,22 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 12),
+            Container(
+              width: 84,
+              height: 84,
+              decoration: const BoxDecoration(
+                color: Brand.b50,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, size: 38, color: Brand.b600),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: 120,
+              child: KassenaMotif(height: 10, color: Brand.s200),
+            ),
+            const SizedBox(height: 14),
             Text(title,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/brand.dart';
+import '../../core/faso.dart';
 import '../../core/format.dart';
 import '../../core/media.dart';
 import '../../core/providers.dart';
@@ -52,7 +54,11 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Événements'),
+        title: Row(mainAxisSize: MainAxisSize.min, children: const [
+          FasoStar(size: 18),
+          SizedBox(width: 8),
+          Text('Événements'),
+        ]),
         actions: [
           if (!signedIn)
             TextButton(
@@ -63,6 +69,26 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
       ),
       body: Column(
         children: [
+          Container(
+            width: double.infinity,
+            color: Brand.b700,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Grands événements du Burkina Faso',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text('SIAO · FESPACO · Semaine du Numérique · salons & foires',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: Colors.white70)),
+              ],
+            ),
+          ),
+          const FasoDanFaniBar(height: 5),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             child: TextField(
