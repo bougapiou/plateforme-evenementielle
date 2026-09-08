@@ -133,7 +133,12 @@ class _Body extends ConsumerWidget {
           _Section('Intervenants'),
           ...e.intervenants.map((s) => ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const CircleAvatar(child: Icon(Icons.person)),
+                leading: CircleAvatar(
+                  backgroundImage: resolveMediaUrl(s.photoUrl) != null
+                      ? NetworkImage(resolveMediaUrl(s.photoUrl)!)
+                      : null,
+                  child: s.photoUrl == null ? const Icon(Icons.person) : null,
+                ),
                 title: Text(s.nom),
                 subtitle: Text(
                     [s.titre, s.organisation].where((x) => x != null).join(' · ')),
@@ -145,11 +150,30 @@ class _Body extends ConsumerWidget {
           const SizedBox(height: 20),
           _Section('Partenaires'),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: e.partenaires
-                .map((p) => Chip(label: Text(p.nom)))
-                .toList(),
+            spacing: 10,
+            runSpacing: 10,
+            children: e.partenaires.map((p) {
+              final logo = resolveMediaUrl(p.logoUrl);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (logo != null) ...[
+                      Image.network(logo,
+                          height: 22,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(p.nom, style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
         ],
 
