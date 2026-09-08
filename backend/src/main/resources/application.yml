@@ -57,7 +57,10 @@ springdoc:
 
 app:
   cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+    # Origin patterns (comma-separated). Dev default covers any localhost port
+    # (Angular `ng serve`, `flutter run -d chrome`). Pin CORS_ORIGINS to the real
+    # domain(s) in production, e.g. https://plateforme.bf
+    allowed-origins: ${CORS_ORIGINS:http://localhost:[*],http://127.0.0.1:[*]}
   security:
     rate-limit-per-minute: ${RATE_LIMIT_PER_MINUTE:20}
     jwt:

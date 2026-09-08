@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
@@ -48,9 +49,20 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       throw Exception('Billet introuvable et non disponible hors-ligne.');
     }
 
+    Uint8List? qr;
+    if (kIsWeb) {
+      // No filesystem in the browser — fetch each time, no offline cache.
+      try {
+        qr = Uint8List.fromList(
+            await api.bytes('/api/tickets/${widget.ticketId}/qr.png'));
+      } catch (_) {
+        qr = null;
+      }
+      return _TicketView(ticket, qr);
+    }
+
     final dir = await getApplicationDocumentsDirectory();
     final file = File('${dir.path}/qr_${widget.ticketId}.png');
-    Uint8List? qr;
     if (await file.exists()) {
       qr = await file.readAsBytes();
     } else {
@@ -127,22 +139,24 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               if (t.orderReference != null)
                 _row('Commande', t.orderReference!),
               const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: _downloading ? null : () => _openPdf(t),
-                icon: _downloading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('Télécharger le PDF'),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Le QR code est enregistré sur l\'appareil et reste affichable '
-                'sans connexion à l\'entrée de l\'événement.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              if (!kIsWeb) ...[
+                OutlinedButton.icon(
+                  onPressed: _downloading ? null : () => _openPdf(t),
+                  icon: _downloading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('Télécharger le PDF'),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Le QR code est enregistré sur l\'appareil et reste affichable '
+                  'sans connexion à l\'entrée de l\'événement.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ],
           );
         },
