@@ -5,6 +5,7 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
+import 'structure_toggle.dart';
 
 class RegisterEventScreen extends ConsumerStatefulWidget {
   final String slug;
@@ -29,7 +30,8 @@ class _Participant {
 class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
   final _formKey = GlobalKey<FormState>();
   late Future<EventDetail> _future;
-  static const _type = 'PARTICULIER';
+  bool _asStructure = false;
+  String? _structureId;
   final _contactNom = TextEditingController();
   final _contactEmail = TextEditingController();
   final _contactTel = TextEditingController();
@@ -62,6 +64,10 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
 
   Future<void> _submit(EventDetail event) async {
     if (!_formKey.currentState!.validate()) return;
+    if (_asStructure && _structureId == null) {
+      showSnack(context, 'Choisissez la structure.', error: true);
+      return;
+    }
     setState(() => _submitting = true);
     try {
       final participants = _participants
@@ -75,7 +81,8 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
           .toList();
       final reg = await ref.read(registrationsRepositoryProvider).register(
             eventId: event.id,
-            type: _type,
+            type: _asStructure ? 'STRUCTURE' : 'PARTICULIER',
+            structureId: _asStructure ? _structureId : null,
             contactNom: _contactNom.text.trim(),
             contactEmail: _contactEmail.text.trim(),
             contactTelephone:
@@ -125,10 +132,15 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
             children: [
               Text(event.nom, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              Text(
-                'Inscription au nom d\'un particulier. Les inscriptions de '
-                'structures / entreprises se font depuis le portail web.',
-                style: Theme.of(context).textTheme.bodySmall,
+              StructureToggle(
+                label: 'S\'inscrire au nom d\'une structure',
+                asStructure: _asStructure,
+                structureId: _structureId,
+                onModeChanged: (v) => setState(() {
+                  _asStructure = v;
+                  if (!v) _structureId = null;
+                }),
+                onStructureChanged: (id) => setState(() => _structureId = id),
               ),
               const SizedBox(height: 16),
               TextFormField(

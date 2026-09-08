@@ -13,6 +13,15 @@ import '../features/purchase/payment_screen.dart';
 import '../features/wallet/wallet_screen.dart';
 import '../features/wallet/ticket_detail_screen.dart';
 import '../features/activity/my_activity_screen.dart';
+import '../features/activity/registration_detail_screen.dart';
+import '../features/activity/stand_reservation_detail_screen.dart';
+import '../features/activity/ticket_order_detail_screen.dart';
+import '../features/structures/structures_screen.dart';
+import '../features/structures/structure_form_screen.dart';
+import '../features/structures/structure_detail_screen.dart';
+import '../features/organizer/become_organizer_screen.dart';
+import '../features/profile/edit_profile_screen.dart';
+import '../features/profile/change_password_screen.dart';
 import '../features/invoices/invoices_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../features/scanner/scanner_home_screen.dart';
@@ -113,9 +122,64 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const MyActivityScreen(),
       ),
       GoRoute(
+        path: '/activite/commandes/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) =>
+            TicketOrderDetailScreen(orderId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/activite/inscriptions/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) =>
+            RegistrationDetailScreen(registrationId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/activite/stands/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) =>
+            StandReservationDetailScreen(reservationId: s.pathParameters['id']!),
+      ),
+      GoRoute(
         path: '/factures',
         parentNavigatorKey: _rootKey,
         builder: (_, __) => const InvoicesScreen(),
+      ),
+      GoRoute(
+        path: '/structures',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const StructuresScreen(),
+      ),
+      GoRoute(
+        path: '/structures/nouvelle',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const StructureFormScreen(),
+      ),
+      GoRoute(
+        path: '/structures/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) =>
+            StructureDetailScreen(structureId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/structures/:id/modifier',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) =>
+            StructureFormScreen(structureId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/devenir-organisateur',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const BecomeOrganizerScreen(),
+      ),
+      GoRoute(
+        path: '/profil/modifier',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profil/mot-de-passe',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const ChangePasswordScreen(),
       ),
       GoRoute(
         path: '/scanner',

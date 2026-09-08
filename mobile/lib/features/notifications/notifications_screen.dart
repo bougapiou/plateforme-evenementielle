@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
+
+/// Maps a backend notification link (web dashboard paths) to a mobile route.
+String? mobileRouteFor(String? lien) {
+  if (lien == null || lien.isEmpty) return null;
+  if (lien.contains('/billets')) return '/billets';
+  if (lien.contains('/inscriptions') || lien.contains('/stands')) {
+    return '/activite';
+  }
+  if (lien.contains('/factures')) return '/factures';
+  final ev = RegExp(r'/evenements/([\w-]+)').firstMatch(lien);
+  if (ev != null) return '/evenements/${ev.group(1)}';
+  return null;
+}
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -37,6 +51,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       await ref.read(notificationsRepositoryProvider).markRead(n.id);
       _refresh();
     }
+    final route = mobileRouteFor(n.lien);
+    if (route != null && mounted) context.push(route);
   }
 
   @override

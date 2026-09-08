@@ -479,38 +479,63 @@ class Ticket {
 class Registration {
   final String id;
   final String reference;
+  final String eventId;
   final String eventNom;
   final String type;
   final String statut;
+  final String? structureNom;
+  final String? contactNom;
+  final String? contactEmail;
+  final String? contactTelephone;
   final int nombreParticipants;
+  final String? informations;
   final String? motifRefus;
   final String? ticketOrderId;
   final String? ticketOrderStatut;
+  final List<ParticipantView> participants;
   final DateTime? createdAt;
 
   Registration({
     required this.id,
     required this.reference,
+    this.eventId = '',
     required this.eventNom,
     required this.type,
     required this.statut,
+    this.structureNom,
+    this.contactNom,
+    this.contactEmail,
+    this.contactTelephone,
     required this.nombreParticipants,
+    this.informations,
     this.motifRefus,
     this.ticketOrderId,
     this.ticketOrderStatut,
+    this.participants = const [],
     this.createdAt,
   });
+
+  bool get annulable => statut == 'EN_ATTENTE' || statut == 'CONFIRMEE';
 
   factory Registration.fromJson(Map<String, dynamic> j) => Registration(
         id: j['id'] as String,
         reference: j['reference'] as String? ?? '',
+        eventId: j['eventId'] as String? ?? '',
         eventNom: j['eventNom'] as String? ?? '',
         type: j['type'] as String? ?? '',
         statut: j['statut'] as String? ?? '',
+        structureNom: j['structureNom'] as String?,
+        contactNom: j['contactNom'] as String?,
+        contactEmail: j['contactEmail'] as String?,
+        contactTelephone: j['contactTelephone'] as String?,
         nombreParticipants: j['nombreParticipants'] as int? ?? 0,
+        informations: j['informations'] as String?,
         motifRefus: j['motifRefus'] as String?,
         ticketOrderId: j['ticketOrderId'] as String?,
         ticketOrderStatut: j['ticketOrderStatut'] as String?,
+        participants: (j['participants'] as List<dynamic>? ?? [])
+            .map((e) => ParticipantView.fromJson(e as Map<String, dynamic>))
+            .toList(),
         createdAt: parseDate(j['createdAt']),
       );
 }
@@ -637,6 +662,7 @@ class AppNotification {
   final String id;
   final String titre;
   final String contenu;
+  final String? lien;
   final bool lu;
   final DateTime? createdAt;
 
@@ -644,6 +670,7 @@ class AppNotification {
     required this.id,
     required this.titre,
     required this.contenu,
+    this.lien,
     required this.lu,
     this.createdAt,
   });
@@ -652,8 +679,256 @@ class AppNotification {
         id: j['id'] as String,
         titre: (j['titre'] ?? j['sujet'] ?? '') as String,
         contenu: (j['contenu'] ?? j['message'] ?? '') as String,
+        lien: j['lien'] as String?,
         lu: (j['lu'] ?? j['read'] ?? false) as bool,
         createdAt: parseDate(j['createdAt'] ?? j['envoyeeLe']),
+      );
+}
+
+class Me {
+  final String id;
+  final String email;
+  final String firstName;
+  final String lastName;
+  final String fullName;
+  final String? phone;
+  final String type;
+  final String status;
+  final List<String> roles;
+  final List<String> permissions;
+
+  Me({
+    required this.id,
+    required this.email,
+    required this.firstName,
+    required this.lastName,
+    required this.fullName,
+    this.phone,
+    required this.type,
+    required this.status,
+    this.roles = const [],
+    this.permissions = const [],
+  });
+
+  factory Me.fromJson(Map<String, dynamic> j) => Me(
+        id: j['id'] as String,
+        email: j['email'] as String,
+        firstName: j['firstName'] as String? ?? '',
+        lastName: j['lastName'] as String? ?? '',
+        fullName: j['fullName'] as String? ?? '',
+        phone: j['phone'] as String?,
+        type: j['type'] as String? ?? 'PARTICULIER',
+        status: j['status'] as String? ?? 'ACTIF',
+        roles: (j['roles'] as List<dynamic>? ?? []).cast<String>(),
+        permissions: (j['permissions'] as List<dynamic>? ?? []).cast<String>(),
+      );
+}
+
+class StructureSummary {
+  final String id;
+  final String raisonSociale;
+  final String? sigle;
+  final String typeStructure;
+  final String? ville;
+  final String statut;
+
+  StructureSummary({
+    required this.id,
+    required this.raisonSociale,
+    this.sigle,
+    required this.typeStructure,
+    this.ville,
+    required this.statut,
+  });
+
+  bool get verifiee => statut == 'VERIFIEE';
+
+  factory StructureSummary.fromJson(Map<String, dynamic> j) => StructureSummary(
+        id: j['id'] as String,
+        raisonSociale: j['raisonSociale'] as String? ?? '',
+        sigle: j['sigle'] as String?,
+        typeStructure: j['typeStructure'] as String? ?? 'AUTRE',
+        ville: j['ville'] as String?,
+        statut: j['statut'] as String? ?? 'EN_ATTENTE',
+      );
+}
+
+class Structure {
+  final String id;
+  final String raisonSociale;
+  final String? sigle;
+  final String typeStructure;
+  final String? secteurActivite;
+  final String? rccm;
+  final String? ifu;
+  final String? adresse;
+  final String? ville;
+  final String? pays;
+  final String? telephone;
+  final String? email;
+  final String? siteWeb;
+  final String? description;
+  final String statut;
+  final String? ownerId;
+  final int memberCount;
+  final String? myRole;
+
+  Structure({
+    required this.id,
+    required this.raisonSociale,
+    this.sigle,
+    required this.typeStructure,
+    this.secteurActivite,
+    this.rccm,
+    this.ifu,
+    this.adresse,
+    this.ville,
+    this.pays,
+    this.telephone,
+    this.email,
+    this.siteWeb,
+    this.description,
+    required this.statut,
+    this.ownerId,
+    this.memberCount = 0,
+    this.myRole,
+  });
+
+  bool get canManage => myRole == 'PROPRIETAIRE' || myRole == 'ADMINISTRATEUR';
+
+  factory Structure.fromJson(Map<String, dynamic> j) => Structure(
+        id: j['id'] as String,
+        raisonSociale: j['raisonSociale'] as String? ?? '',
+        sigle: j['sigle'] as String?,
+        typeStructure: j['typeStructure'] as String? ?? 'AUTRE',
+        secteurActivite: j['secteurActivite'] as String?,
+        rccm: j['rccm'] as String?,
+        ifu: j['ifu'] as String?,
+        adresse: j['adresse'] as String?,
+        ville: j['ville'] as String?,
+        pays: j['pays'] as String?,
+        telephone: j['telephone'] as String?,
+        email: j['email'] as String?,
+        siteWeb: j['siteWeb'] as String?,
+        description: j['description'] as String?,
+        statut: j['statut'] as String? ?? 'EN_ATTENTE',
+        ownerId: j['ownerId'] as String?,
+        memberCount: j['memberCount'] as int? ?? 0,
+        myRole: j['myRole'] as String?,
+      );
+}
+
+class StructureMember {
+  final String id;
+  final String userId;
+  final String fullName;
+  final String email;
+  final String roleInterne;
+  final String? fonction;
+  final bool active;
+
+  StructureMember({
+    required this.id,
+    required this.userId,
+    required this.fullName,
+    required this.email,
+    required this.roleInterne,
+    this.fonction,
+    this.active = true,
+  });
+
+  factory StructureMember.fromJson(Map<String, dynamic> j) => StructureMember(
+        id: j['id'] as String,
+        userId: j['userId'] as String,
+        fullName: j['fullName'] as String? ?? '',
+        email: j['email'] as String? ?? '',
+        roleInterne: j['roleInterne'] as String? ?? 'MEMBRE',
+        fonction: j['fonction'] as String?,
+        active: j['active'] as bool? ?? true,
+      );
+}
+
+class ParticipantView {
+  final String nom;
+  final String? prenom;
+  final String? email;
+  final String? telephone;
+  final String? fonction;
+
+  ParticipantView({
+    required this.nom,
+    this.prenom,
+    this.email,
+    this.telephone,
+    this.fonction,
+  });
+
+  factory ParticipantView.fromJson(Map<String, dynamic> j) => ParticipantView(
+        nom: j['nom'] as String? ?? '',
+        prenom: j['prenom'] as String?,
+        email: j['email'] as String?,
+        telephone: j['telephone'] as String?,
+        fonction: j['fonction'] as String?,
+      );
+}
+
+class DocumentFile {
+  final String id;
+  final String nom;
+  final String? typeDocument;
+  final String url;
+  final String? mime;
+  final int? taille;
+
+  DocumentFile({
+    required this.id,
+    required this.nom,
+    this.typeDocument,
+    required this.url,
+    this.mime,
+    this.taille,
+  });
+
+  factory DocumentFile.fromJson(Map<String, dynamic> j) => DocumentFile(
+        id: j['id'] as String,
+        nom: j['nom'] as String? ?? 'document',
+        typeDocument: j['typeDocument'] as String?,
+        url: j['url'] as String? ?? '',
+        mime: j['mime'] as String?,
+        taille: (j['taille'] as num?)?.toInt(),
+      );
+}
+
+class Organizer {
+  final String id;
+  final String nomAffichage;
+  final String? description;
+  final String? contactEmail;
+  final String? contactTelephone;
+  final String? siteWeb;
+  final String? structureNom;
+  final String statut;
+
+  Organizer({
+    required this.id,
+    required this.nomAffichage,
+    this.description,
+    this.contactEmail,
+    this.contactTelephone,
+    this.siteWeb,
+    this.structureNom,
+    required this.statut,
+  });
+
+  factory Organizer.fromJson(Map<String, dynamic> j) => Organizer(
+        id: j['id'] as String,
+        nomAffichage: j['nomAffichage'] as String? ?? '',
+        description: j['description'] as String?,
+        contactEmail: j['contactEmail'] as String?,
+        contactTelephone: j['contactTelephone'] as String?,
+        siteWeb: j['siteWeb'] as String?,
+        structureNom: j['structureName'] as String?,
+        statut: j['statut'] as String? ?? 'EN_ATTENTE',
       );
 }
 
@@ -692,6 +967,13 @@ String statutLabel(String code) {
   switch (code) {
     case 'EN_ATTENTE':
       return 'En attente';
+    case 'VERIFIEE':
+      return 'Vérifiée';
+    case 'SUSPENDUE':
+    case 'SUSPENDU':
+      return 'Suspendue';
+    case 'APPROUVE':
+      return 'Approuvé';
     case 'PAYEE':
     case 'PAYE':
       return 'Payé';

@@ -46,7 +46,9 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>La caméra est utilisée pour scanner les QR codes des billets lors du contrôle à l'entrée.</string>
+	<string>La caméra est utilisée pour scanner les QR codes des billets et photographier les pièces jointes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>L'accès aux photos permet de joindre un document à une inscription.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

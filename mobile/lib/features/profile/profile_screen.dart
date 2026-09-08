@@ -53,6 +53,21 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
+          _sectionLabel(context, 'Mon compte'),
+          ListTile(
+            leading: const Icon(Icons.badge_outlined),
+            title: const Text('Modifier mon profil'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profil/modifier'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Changer mon mot de passe'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profil/mot-de-passe'),
+          ),
+          const Divider(height: 16),
+          _sectionLabel(context, 'Mes activités'),
           ListTile(
             leading: const Icon(Icons.history),
             title: const Text('Mon activité'),
@@ -71,6 +86,22 @@ class ProfileScreen extends ConsumerWidget {
             title: const Text('Factures & reçus'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/factures'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.domain_outlined),
+            title: const Text('Mes structures'),
+            subtitle: const Text('S\'inscrire / réserver au nom d\'une structure'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/structures'),
+          ),
+          const Divider(height: 16),
+          _sectionLabel(context, 'Organisation'),
+          ListTile(
+            leading: const Icon(Icons.campaign_outlined),
+            title: const Text('Devenir organisateur'),
+            subtitle: const Text('Demander à créer des événements'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/devenir-organisateur'),
           ),
           if (canScan)
             ListTile(
@@ -110,6 +141,17 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _sectionLabel(BuildContext context, String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        child: Text(
+          text.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+                letterSpacing: .6,
+              ),
+        ),
+      );
 
   String _typeLabel(String type) {
     switch (type) {

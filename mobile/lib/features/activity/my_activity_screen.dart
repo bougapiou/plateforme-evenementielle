@@ -73,7 +73,13 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
             children: paged.content.map((o) {
               return Card(
                 margin: const EdgeInsets.only(bottom: 10),
-                child: Padding(
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () async {
+                    await context.push('/activite/commandes/${o.id}');
+                    _refresh();
+                  },
+                  child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,6 +125,7 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
                       ],
                     ],
                   ),
+                  ),
                 ),
               );
             }).toList(),
@@ -161,7 +168,13 @@ class _RegistrationsTabState extends ConsumerState<_RegistrationsTab> {
             children: paged.content.map((r) {
               return Card(
                 margin: const EdgeInsets.only(bottom: 10),
-                child: Padding(
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () async {
+                    await context.push('/activite/inscriptions/${r.id}');
+                    _refresh();
+                  },
+                  child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,6 +209,7 @@ class _RegistrationsTabState extends ConsumerState<_RegistrationsTab> {
                         ),
                       ],
                     ],
+                  ),
                   ),
                 ),
               );
@@ -241,7 +255,13 @@ class _StandsTabState extends ConsumerState<_StandsTab> {
             children: paged.content.map((r) {
               return Card(
                 margin: const EdgeInsets.only(bottom: 10),
-                child: Padding(
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () async {
+                    await context.push('/activite/stands/${r.id}');
+                    _refresh();
+                  },
+                  child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,6 +302,7 @@ class _StandsTabState extends ConsumerState<_StandsTab> {
                         ]),
                       ],
                     ],
+                  ),
                   ),
                 ),
               );
