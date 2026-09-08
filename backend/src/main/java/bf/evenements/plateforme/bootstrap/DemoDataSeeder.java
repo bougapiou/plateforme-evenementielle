@@ -84,7 +84,7 @@ public class DemoDataSeeder {
         Event siao = event("SIAO 2027", "SIAO",
                 "Salon International de l'Artisanat de Ouagadougou",
                 "foire-commerciale", organizer, "Ouagadougou", "SIEPA - Zone du Bois",
-                60, EventStatus.INSCRIPTIONS_OUVERTES, true, false, "siao");
+                145, EventStatus.INSCRIPTIONS_OUVERTES, true, false, "siao");
         standTypes(siao);
         tickets(siao,
                 new String[] {"Entrée visiteur", "1000", "5000"},
@@ -93,7 +93,7 @@ public class DemoDataSeeder {
         Event fespaco = event("FESPACO 2027", "FESPACO",
                 "Festival Panafricain du Cinéma et de la Télévision de Ouagadougou",
                 "festival", organizer, "Ouagadougou", "Ciné Burkina & Canal Olympia",
-                90, EventStatus.INSCRIPTIONS_OUVERTES, true, false, "fespaco");
+                200, EventStatus.INSCRIPTIONS_OUVERTES, true, false, "fespaco");
         standTypes(fespaco);
         tickets(fespaco,
                 new String[] {"Projection standard", "2000", "3000"},
@@ -102,7 +102,7 @@ public class DemoDataSeeder {
         Event sdn = event("Semaine du Numérique 2027", "SDN",
                 "Rendez-vous national de la transformation numérique",
                 "semaine-thematique", organizer, "Ouagadougou", "Palais des Sports de Ouaga 2000",
-                45, EventStatus.INSCRIPTIONS_OUVERTES, false, true, "sdn");
+                110, EventStatus.INSCRIPTIONS_OUVERTES, false, true, "sdn");
         activity(sdn, "Cérémonie d'ouverture", ActivityType.CEREMONIE, 0, "Grand amphi", "act-ceremonie");
         activity(sdn, "Conférence : IA et services publics", ActivityType.CONFERENCE, 3, "Salle A", "act-conference");
         activity(sdn, "Panel : souveraineté numérique", ActivityType.PANEL, 6, "Salle B", "act-panel");
@@ -116,14 +116,14 @@ public class DemoDataSeeder {
         Event siao24 = event("SIAO 2024", "SIAO",
                 "Salon International de l'Artisanat de Ouagadougou — édition 2024",
                 "foire-commerciale", organizer, "Ouagadougou", "SIEPA - Zone du Bois",
-                -400, EventStatus.TERMINE, true, false, "siao-2024");
+                -676, EventStatus.TERMINE, true, false, "siao-2024");
         standTypes(siao24);
         tickets(siao24, new String[] {"Entrée visiteur", "1000", "5000"});
 
         Event fespaco23 = event("FESPACO 2023", "FESPACO",
                 "Festival Panafricain du Cinéma et de la Télévision — édition 2023",
                 "festival", organizer, "Ouagadougou", "Ciné Burkina & Canal Olympia",
-                -900, EventStatus.TERMINE, false, true, "fespaco-2023");
+                -1290, EventStatus.TERMINE, false, true, "fespaco-2023");
         activity(fespaco23, "Cérémonie d'ouverture", ActivityType.CEREMONIE, 0, "Ciné Burkina", "act-ceremonie");
         activity(fespaco23, "Projection : Étalon d'or de Yennenga", ActivityType.SPECTACLE, 5, "Canal Olympia", "act-projection");
         activity(fespaco23, "Table ronde : cinéma africain et diffusion", ActivityType.TABLE_RONDE, 26, "CENASA", "act-panel");
@@ -132,7 +132,7 @@ public class DemoDataSeeder {
         Event sdn25 = event("Semaine du Numérique 2025", "SDN",
                 "Rendez-vous national de la transformation numérique — édition 2025",
                 "semaine-thematique", organizer, "Ouagadougou", "Palais des Sports de Ouaga 2000",
-                -250, EventStatus.TERMINE, false, true, "sdn-2025");
+                -323, EventStatus.TERMINE, false, true, "sdn-2025");
         activity(sdn25, "Cérémonie d'ouverture", ActivityType.CEREMONIE, 0, "Grand amphi", "act-ceremonie");
         activity(sdn25, "Conférence : administration numérique", ActivityType.CONFERENCE, 4, "Salle A", "act-conference");
         activity(sdn25, "Exposition des startups", ActivityType.NETWORKING, 24, "Hall d'exposition", "act-expo");
