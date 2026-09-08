@@ -209,14 +209,25 @@ type Tab =
           <input class="form-input" placeholder="Titre / fonction" formControlName="titre" />
           <input class="form-input sm:col-span-2" placeholder="Organisation" formControlName="organisation" />
           <textarea class="form-input sm:col-span-2" rows="2" placeholder="Bio" formControlName="bio"></textarea>
+          <div class="sm:col-span-2">
+            <label class="form-label">Photo</label>
+            <app-image-upload
+              folder="activites"
+              [value]="speakerForm.controls.photoUrl.value"
+              (valueChange)="speakerForm.controls.photoUrl.setValue($event)"
+            />
+          </div>
           <button type="submit" class="btn-primary sm:col-span-2">
             {{ editingSpeakerId() ? 'Modifier' : 'Ajouter l\\'intervenant' }}
           </button>
         </form>
         <ul class="mt-4 space-y-2">
           @for (s of speakers(); track s.id) {
-            <li class="card flex items-center justify-between p-3 text-sm">
-              <div>
+            <li class="card flex items-center gap-3 p-3 text-sm">
+              @if (s.photoUrl) {
+                <img [src]="s.photoUrl" alt="" class="h-10 w-10 shrink-0 rounded-full object-cover" />
+              }
+              <div class="min-w-0 flex-1">
                 <p class="font-medium text-slate-700">{{ s.nom }}</p>
                 <p class="text-slate-400">{{ s.titre }}{{ s.organisation ? ' · ' + s.organisation : '' }}</p>
               </div>
@@ -245,14 +256,25 @@ type Tab =
             <option value="PARTENAIRE_INSTITUTIONNEL">Partenaire institutionnel</option>
           </select>
           <input class="form-input sm:col-span-2" placeholder="Site web" formControlName="siteWeb" />
+          <div class="sm:col-span-2">
+            <label class="form-label">Logo du partenaire</label>
+            <app-image-upload
+              folder="activites"
+              [value]="partnerForm.controls.logoUrl.value"
+              (valueChange)="partnerForm.controls.logoUrl.setValue($event)"
+            />
+          </div>
           <button type="submit" class="btn-primary sm:col-span-2">
             {{ editingPartnerId() ? 'Modifier' : 'Ajouter le partenaire' }}
           </button>
         </form>
         <ul class="mt-4 space-y-2">
           @for (p of partners(); track p.id) {
-            <li class="card flex items-center justify-between p-3 text-sm">
-              <div>
+            <li class="card flex items-center gap-3 p-3 text-sm">
+              @if (p.logoUrl) {
+                <img [src]="p.logoUrl" alt="" class="h-10 w-16 shrink-0 rounded object-contain" />
+              }
+              <div class="min-w-0 flex-1">
                 <p class="font-medium text-slate-700">{{ p.nom }}</p>
                 <p class="text-slate-400">{{ p.niveau }}</p>
               </div>
@@ -573,8 +595,12 @@ export class EventEditorComponent {
   });
   speakerForm = this.fb.nonNullable.group({
     nom: ['', Validators.required], titre: [''], organisation: [''], bio: [''],
+    photoUrl: [null as string | null],
   });
-  partnerForm = this.fb.nonNullable.group({ nom: ['', Validators.required], niveau: [''], siteWeb: [''] });
+  partnerForm = this.fb.nonNullable.group({
+    nom: ['', Validators.required], niveau: [''], siteWeb: [''],
+    logoUrl: [null as string | null],
+  });
   ticketForm = this.fb.nonNullable.group({
     nom: ['', Validators.required],
     prixMontant: [0, [Validators.required, Validators.min(0)]],
@@ -869,8 +895,12 @@ export class EventEditorComponent {
   // --- speakers ---
   saveSpeaker(): void {
     if (this.speakerForm.invalid) return;
-    this.service.saveSpeaker(this.id(), this.speakerForm.getRawValue(), this.editingSpeakerId() ?? undefined)
-      .subscribe(() => {
+    const v = this.speakerForm.getRawValue();
+    this.service.saveSpeaker(
+      this.id(),
+      { ...v, photoUrl: v.photoUrl || undefined },
+      this.editingSpeakerId() ?? undefined,
+    ).subscribe(() => {
         this.editingSpeakerId.set(null);
         this.speakerForm.reset();
         this.service.speakers(this.id()).subscribe((s) => this.speakers.set(s));
@@ -878,7 +908,10 @@ export class EventEditorComponent {
   }
   editSpeaker(s: Speaker): void {
     this.editingSpeakerId.set(s.id);
-    this.speakerForm.reset({ nom: s.nom, titre: s.titre ?? '', organisation: s.organisation ?? '', bio: s.bio ?? '' });
+    this.speakerForm.reset({
+      nom: s.nom, titre: s.titre ?? '', organisation: s.organisation ?? '', bio: s.bio ?? '',
+      photoUrl: s.photoUrl ?? null,
+    });
   }
   removeSpeaker(s: Speaker): void {
     this.service.deleteSpeaker(this.id(), s.id).subscribe(() =>
@@ -891,7 +924,10 @@ export class EventEditorComponent {
     if (this.partnerForm.invalid) return;
     const v = this.partnerForm.getRawValue();
     this.service.savePartner(this.id(),
-      { nom: v.nom, niveau: (v.niveau || undefined) as Partner['niveau'], siteWeb: v.siteWeb || undefined },
+      {
+        nom: v.nom, niveau: (v.niveau || undefined) as Partner['niveau'],
+        siteWeb: v.siteWeb || undefined, logoUrl: v.logoUrl || undefined,
+      },
       this.editingPartnerId() ?? undefined).subscribe(() => {
         this.editingPartnerId.set(null);
         this.partnerForm.reset();
@@ -900,7 +936,10 @@ export class EventEditorComponent {
   }
   editPartner(p: Partner): void {
     this.editingPartnerId.set(p.id);
-    this.partnerForm.reset({ nom: p.nom, niveau: p.niveau ?? '', siteWeb: p.siteWeb ?? '' });
+    this.partnerForm.reset({
+      nom: p.nom, niveau: p.niveau ?? '', siteWeb: p.siteWeb ?? '',
+      logoUrl: p.logoUrl ?? null,
+    });
   }
   removePartner(p: Partner): void {
     this.service.deletePartner(this.id(), p.id).subscribe(() =>

@@ -147,8 +147,16 @@ class Speaker {
   final String? titre;
   final String? organisation;
   final String? bio;
+  final String? photoUrl;
 
-  Speaker({required this.id, required this.nom, this.titre, this.organisation, this.bio});
+  Speaker({
+    required this.id,
+    required this.nom,
+    this.titre,
+    this.organisation,
+    this.bio,
+    this.photoUrl,
+  });
 
   factory Speaker.fromJson(Map<String, dynamic> j) => Speaker(
         id: j['id'] as String,
@@ -156,6 +164,7 @@ class Speaker {
         titre: j['titre'] as String?,
         organisation: j['organisation'] as String?,
         bio: j['bio'] as String?,
+        photoUrl: j['photoUrl'] as String?,
       );
 }
 
@@ -163,13 +172,15 @@ class Partner {
   final String id;
   final String nom;
   final String? niveau;
+  final String? logoUrl;
 
-  Partner({required this.id, required this.nom, this.niveau});
+  Partner({required this.id, required this.nom, this.niveau, this.logoUrl});
 
   factory Partner.fromJson(Map<String, dynamic> j) => Partner(
         id: j['id'] as String,
         nom: j['nom'] as String,
         niveau: j['niveau'] as String?,
+        logoUrl: j['logoUrl'] as String?,
       );
 }
 
