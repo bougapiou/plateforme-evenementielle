@@ -46,7 +46,7 @@ public class InvoiceController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header("Content-Disposition",
-                        ContentDisposition.attachment().filename("document-" + id + ".pdf").toString())
+                        ContentDisposition.attachment().filename("document-" + id + ".pdf").build().toString())
                 .body(invoiceService.pdf(id));
     }
 }

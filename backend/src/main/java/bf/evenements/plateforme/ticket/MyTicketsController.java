@@ -49,7 +49,7 @@ public class MyTicketsController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header("Content-Disposition",
-                        ContentDisposition.attachment().filename("billet-" + id + ".pdf").toString())
+                        ContentDisposition.attachment().filename("billet-" + id + ".pdf").build().toString())
                 .body(pdf);
     }
 }

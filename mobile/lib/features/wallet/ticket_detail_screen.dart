@@ -3,8 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../core/documents.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
@@ -82,16 +82,17 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   Future<void> _openPdf(Ticket t) async {
     setState(() => _downloading = true);
     try {
-      final api = ref.read(apiClientProvider);
-      final path = await api.downloadToCache(
-        '/api/tickets/${t.id}/pdf',
-        'billet-${t.numero}.pdf',
+      final outcome = await fetchAndPresentDocument(
+        ref.read(apiClientProvider),
+        path: '/api/tickets/${t.id}/pdf',
+        filename: 'billet-${t.numero}.pdf',
       );
-      final res = await OpenFilex.open(path);
-      if (res.type != ResultType.done && mounted) {
+      if (mounted && outcome == DocOutcome.savedNoViewer) {
         showSnack(context,
             'PDF enregistré, mais aucune application ne peut l\'ouvrir.',
             error: true);
+      } else if (mounted && outcome == DocOutcome.downloaded) {
+        showSnack(context, 'Téléchargement du billet lancé.');
       }
     } catch (e) {
       if (mounted) showSnack(context, 'Téléchargement impossible : $e', error: true);
@@ -146,17 +147,17 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               if (t.orderReference != null)
                 _row('Commande', t.orderReference!),
               const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: _downloading ? null : () => _openPdf(t),
+                icon: _downloading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Télécharger le PDF'),
+              ),
               if (!kIsWeb) ...[
-                OutlinedButton.icon(
-                  onPressed: _downloading ? null : () => _openPdf(t),
-                  icon: _downloading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('Télécharger le PDF'),
-                ),
                 const SizedBox(height: 8),
                 Text(
                   'Le QR code est enregistré sur l\'appareil et reste affichable '
