@@ -37,9 +37,9 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 |------|-------|-----|
 | Catalogue | recherche + filtres catégorie, cartes événement | `GET /public/events` |
 | Détail événement | infos, programme (activités), intervenants, partenaires, billetterie, stands | `GET /public/events/{slug}` (+ `/tickets`, `/stand-types`, `/stands`) |
-| Achat de billets | sélection catégories + quantités, total, commande (option **au nom d'une structure**) | `POST /ticket-orders` |
+| Achat de billets | sélection catégories + quantités, total, commande (option **au nom d'une structure**). **Sans compte** : une session invité (nom + e-mail) est ouverte à la volée | `POST /ticket-orders`, `POST /auth/guest` |
 | Paiement | choix du moyen (Orange/Moov/Telecel Money, FasoArzeka, carte), sandbox | `POST /payments` + `/payments/{ref}/simulate` |
-| Inscription | formulaire **particulier ou structure** + participants | `POST /events/{id}/registrations` |
+| Inscription | formulaire **particulier ou structure** + participants. **Sans compte** pour un particulier : session invité à la volée | `POST /events/{id}/registrations`, `POST /auth/guest` |
 | Détail inscription | participants, **pièces jointes** (photo/galerie → upload/suppression), annulation, confirmation PDF | `GET/POST/DELETE /registrations/{id}/documents`, `/registrations/{id}/confirmation.pdf` |
 | Réservation de stand | plan par type, blocage 15 min, paiement (option **structure**) | `POST /stand-reservations` |
 | Détail réservation | annulation, confirmation PDF | `/stand-reservations/{id}/confirmation.pdf` |
@@ -49,6 +49,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 | Factures & reçus | liste + téléchargement PDF | `GET /invoices/my` |
 | Notifications | liste in-app, badge non-lus, tout marquer lu, **ouverture du contenu lié** | `GET /notifications` |
 | **Mon compte** | modifier le profil (nom / téléphone), changer le mot de passe | `GET/PATCH /users/me`, `POST /users/me/password` |
+| **Finaliser mon compte** (invités) | après un achat / une inscription : choix d'un mot de passe → la session invité devient un vrai compte | `POST /auth/complete` |
 | **Mes structures** | liste, création, modification, représentants (ajout / retrait) | `/structures`, `/structures/{id}/members` |
 | **Devenir organisateur** | formulaire de demande (rattachement structure optionnel) | `POST /organizers/apply`, `GET /organizers/me` |
 | **Mes événements** (organisateurs) | liste, **création**, gestion complète : infos + image, programme (activités + visuel), billetterie (catégories, quotas, portée), stands, intervenants (photo), partenaires (logo), workflow (soumettre / publier / ouvrir-fermer les inscriptions) | `POST/PUT /events`, `/events/mine`, `/events/{id}/activities|tickets|stand-types|speakers|partners`, `/events/{id}/submit\|publish\|…`, `POST /uploads/image` |
@@ -70,7 +71,7 @@ lib/
 │   ├── widgets.dart         StatusChip, FutureView, EmptyState, ErrorRetry
 │   ├── token_store.dart     Session en stockage sécurisé
 │   ├── api_client.dart      Dio + intercepteur JWT (refresh auto) + download binaire
-│   ├── auth_repository.dart login / register / logout
+│   ├── auth_repository.dart login / register / logout / session invité / finalisation de compte
 │   ├── providers.dart       Providers Riverpod (repos, permissions, compteur non-lus)
 │   ├── router.dart          go_router — shell à 4 onglets + routes plein écran
 │   └── theme.dart
@@ -78,7 +79,7 @@ lib/
 │   ├── domain.dart          Modèles (Event, Ticket, Order, Stand, Payment, …)
 │   └── repositories.dart    1 repository par domaine backend
 └── features/
-    ├── auth/                connexion, inscription
+    ├── auth/                connexion, inscription, finaliser un compte invité
     ├── shell/               conteneur de navigation (bottom bar)
     ├── catalogue/           liste + recherche + filtres
     ├── event/               détail d'un événement

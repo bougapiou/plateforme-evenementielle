@@ -67,7 +67,7 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api   # émulateur A
 M0 fondations · M1 auth & RBAC · M2 structures & organisateurs · M3 événements
 (workflow, **activités/programme**, intervenants, partenaires, site public) ·
 M4 billetterie (quotas, portée événement/activité) · M5 stands (blocage 15 min,
-anti-double réservation) · M6 inscriptions (particulier/structure, documents) ·
+anti-double réservation) · M6 inscriptions (particulier/structure, documents, **parcours invité sans compte**) ·
 M7 paiements (`PaymentProvider`, sandbox, webhook HMAC) · M8 billets QR (PNG + PDF) ·
 M9 contrôle à l'entrée (scan) · M10 factures & reçus (PDF) · M11 notifications ·
 M12 statistiques & dashboards · M15 durcissement + données de démo.
