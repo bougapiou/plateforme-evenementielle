@@ -6,6 +6,7 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
+import 'guest_gate.dart';
 
 class BuyTicketsScreen extends ConsumerStatefulWidget {
   final String slug;
@@ -49,6 +50,8 @@ class _BuyTicketsScreenState extends ConsumerState<BuyTicketsScreen> {
         if (e.value > 0) e.key: e.value
     };
     if (lignes.isEmpty) return;
+    if (!await GuestGate.ensureSession(context, ref)) return;
+    if (!mounted) return;
     setState(() => _submitting = true);
     try {
       final order = await ref

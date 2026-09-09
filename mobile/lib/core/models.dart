@@ -4,6 +4,7 @@ class UserSummary {
   final String fullName;
   final String type;
   final String status;
+  final bool guest;
   final List<String> roles;
   final List<String> permissions;
 
@@ -13,6 +14,7 @@ class UserSummary {
     required this.fullName,
     required this.type,
     required this.status,
+    this.guest = false,
     required this.roles,
     required this.permissions,
   });
@@ -23,6 +25,7 @@ class UserSummary {
         fullName: json['fullName'] as String? ?? '',
         type: json['type'] as String? ?? 'PARTICULIER',
         status: json['status'] as String? ?? 'ACTIF',
+        guest: json['guest'] as bool? ?? false,
         roles: (json['roles'] as List<dynamic>? ?? []).cast<String>(),
         permissions: (json['permissions'] as List<dynamic>? ?? []).cast<String>(),
       );
@@ -33,6 +36,7 @@ class UserSummary {
         'fullName': fullName,
         'type': type,
         'status': status,
+        'guest': guest,
         'roles': roles,
         'permissions': permissions,
       };

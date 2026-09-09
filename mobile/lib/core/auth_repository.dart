@@ -29,6 +29,32 @@ class AuthRepository {
         'type': type,
       });
 
+  /// Opens a guest session for a visitor buying / registering without an account.
+  Future<AuthResponse> guestSession({
+    required String firstName,
+    required String lastName,
+    required String email,
+    String? phone,
+  }) =>
+      _post('/auth/guest', {
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      });
+
+  /// Turns the current guest session into a full account (chooses a password).
+  Future<AuthResponse> completeRegistration({
+    required String password,
+    String? firstName,
+    String? lastName,
+  }) =>
+      _post('/auth/complete', {
+        'password': password,
+        if (firstName != null && firstName.isNotEmpty) 'firstName': firstName,
+        if (lastName != null && lastName.isNotEmpty) 'lastName': lastName,
+      });
+
   Future<void> logout() async {
     final refresh = await _store.refreshToken;
     if (refresh != null) {

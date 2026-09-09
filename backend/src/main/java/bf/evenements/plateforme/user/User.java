@@ -53,6 +53,13 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    /**
+     * True while the account was auto-created for a guest checkout (no password
+     * chosen yet). Cleared when the visitor claims the account.
+     */
+    @Column(nullable = false)
+    private boolean guest = false;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",

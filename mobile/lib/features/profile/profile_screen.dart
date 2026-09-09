@@ -49,24 +49,53 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 4),
           Center(
             child: Text(
-              _typeLabel(user.type),
+              user.guest ? 'Mode invité' : _typeLabel(user.type),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          if (user.guest)
+            Card(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Créez votre compte',
+                        style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Vous naviguez en invité. Choisissez un mot de passe pour '
+                      'retrouver vos billets, inscriptions et factures sur tous '
+                      'vos appareils.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 10),
+                    FilledButton(
+                      onPressed: () => context.push('/finaliser-compte'),
+                      child: const Text('Créer mon compte'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
           _sectionLabel(context, 'Mon compte'),
-          ListTile(
-            leading: const Icon(Icons.badge_outlined),
-            title: const Text('Modifier mon profil'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profil/modifier'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('Changer mon mot de passe'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profil/mot-de-passe'),
-          ),
+          if (!user.guest)
+            ListTile(
+              leading: const Icon(Icons.badge_outlined),
+              title: const Text('Modifier mon profil'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/profil/modifier'),
+            ),
+          if (!user.guest)
+            ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: const Text('Changer mon mot de passe'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/profil/mot-de-passe'),
+            ),
           const Divider(height: 16),
           _sectionLabel(context, 'Mes activités'),
           ListTile(
@@ -88,13 +117,16 @@ class ProfileScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/factures'),
           ),
-          ListTile(
-            leading: const Icon(Icons.domain_outlined),
-            title: const Text('Mes structures'),
-            subtitle: const Text('S\'inscrire / réserver au nom d\'une structure'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/structures'),
-          ),
+          if (!user.guest)
+            ListTile(
+              leading: const Icon(Icons.domain_outlined),
+              title: const Text('Mes structures'),
+              subtitle:
+                  const Text('S\'inscrire / réserver au nom d\'une structure'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/structures'),
+            ),
+          if (!user.guest) ...[
           const Divider(height: 16),
           _sectionLabel(context, 'Organisation'),
           if (canCreateEvents)
@@ -121,8 +153,9 @@ class ProfileScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/scanner'),
             ),
+          ],
           const Divider(height: 24),
-          if (user.roles.isNotEmpty)
+          if (!user.guest && user.roles.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -139,11 +172,31 @@ class ProfileScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: OutlinedButton.icon(
               onPressed: () async {
+                if (user.guest) {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Quitter le mode invité ?'),
+                      content: const Text(
+                          'Sans compte, vous ne pourrez plus retrouver vos '
+                          'billets et inscriptions sur cet appareil.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Rester')),
+                        FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Quitter')),
+                      ],
+                    ),
+                  );
+                  if (ok != true) return;
+                }
                 await ref.read(authControllerProvider.notifier).logout();
                 if (context.mounted) context.go('/evenements');
               },
               icon: const Icon(Icons.logout),
-              label: const Text('Se déconnecter'),
+              label: Text(user.guest ? 'Quitter le mode invité' : 'Se déconnecter'),
             ),
           ),
           const SizedBox(height: 32),

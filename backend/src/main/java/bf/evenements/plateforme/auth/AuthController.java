@@ -1,6 +1,8 @@
 package bf.evenements.plateforme.auth;
 
 import bf.evenements.plateforme.auth.dto.AuthResponse;
+import bf.evenements.plateforme.auth.dto.CompleteRegistrationRequest;
+import bf.evenements.plateforme.auth.dto.GuestSessionRequest;
 import bf.evenements.plateforme.auth.dto.LoginRequest;
 import bf.evenements.plateforme.auth.dto.RefreshRequest;
 import bf.evenements.plateforme.auth.dto.RegisterRequest;
@@ -12,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +35,20 @@ public class AuthController {
     public AuthResponse register(@Valid @RequestBody RegisterRequest request,
                                  HttpServletRequest http) {
         return authService.register(request, HttpUtils.clientIp(http));
+    }
+
+    @PostMapping("/guest")
+    @Operation(summary = "Ouvrir une session invité (achat / inscription sans compte)")
+    public AuthResponse guest(@Valid @RequestBody GuestSessionRequest request,
+                              HttpServletRequest http) {
+        return authService.guestSession(request, HttpUtils.clientIp(http));
+    }
+
+    @PostMapping("/complete")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Transformer sa session invité en compte (choix d'un mot de passe)")
+    public AuthResponse complete(@Valid @RequestBody CompleteRegistrationRequest request) {
+        return authService.completeRegistration(request);
     }
 
     @PostMapping("/login")

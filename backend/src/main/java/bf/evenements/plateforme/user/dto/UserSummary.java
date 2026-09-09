@@ -13,6 +13,7 @@ public record UserSummary(
         String fullName,
         UserType type,
         UserStatus status,
+        boolean guest,
         List<String> roles,
         List<String> permissions) {
 
@@ -23,6 +24,7 @@ public record UserSummary(
                 user.getFullName(),
                 user.getType(),
                 user.getStatus(),
+                user.isGuest(),
                 List.copyOf(user.roleNames()),
                 List.copyOf(user.permissionNames()));
     }
