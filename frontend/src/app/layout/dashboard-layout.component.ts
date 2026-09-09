@@ -8,6 +8,8 @@ interface NavItem {
   path: string;
   permission?: string;
   exact?: boolean;
+  /** Hidden for guest checkout sessions (no real account yet). */
+  fullAccount?: boolean;
 }
 
 @Component({
@@ -49,8 +51,14 @@ interface NavItem {
           <div class="flex items-center gap-3 text-sm">
             <app-notification-bell />
             <span class="font-medium text-slate-700">{{ auth.user()?.fullName }}</span>
-            <span class="badge bg-slate-100 text-slate-600">{{ auth.user()?.roles?.join(', ') }}</span>
-            <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
+            @if (auth.isGuest()) {
+              <span class="badge bg-amber-100 text-amber-800">Mode invité</span>
+              <a routerLink="/finaliser-compte" class="btn-primary">Créer mon compte</a>
+              <button type="button" class="btn-ghost" (click)="auth.logout()">Quitter</button>
+            } @else {
+              <span class="badge bg-slate-100 text-slate-600">{{ auth.user()?.roles?.join(', ') }}</span>
+              <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
+            }
           </div>
         </header>
         <main class="flex-1 bg-slate-50 p-5"><router-outlet /></main>
@@ -70,8 +78,8 @@ export class DashboardLayoutComponent {
     { label: 'Mes stands', path: '/tableau-de-bord/stands' },
     { label: 'Mes paiements', path: '/tableau-de-bord/paiements' },
     { label: 'Mes factures', path: '/tableau-de-bord/factures' },
-    { label: 'Mes structures', path: '/tableau-de-bord/structures' },
-    { label: 'Espace organisateur', path: '/tableau-de-bord/organisateur' },
+    { label: 'Mes structures', path: '/tableau-de-bord/structures', fullAccount: true },
+    { label: 'Espace organisateur', path: '/tableau-de-bord/organisateur', fullAccount: true },
   ];
 
   private readonly adminNav: NavItem[] = [
@@ -82,7 +90,11 @@ export class DashboardLayoutComponent {
   ];
 
   visibleNav = computed(() =>
-    this.nav.filter((i) => !i.permission || this.auth.hasPermission(i.permission)),
+    this.nav.filter(
+      (i) =>
+        (!i.permission || this.auth.hasPermission(i.permission)) &&
+        (!i.fullAccount || !this.auth.isGuest()),
+    ),
   );
 
   visibleAdminNav = computed(() =>

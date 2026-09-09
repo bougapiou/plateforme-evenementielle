@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../core/auth.service';
 import { ApiError } from '../core/models';
@@ -49,6 +49,7 @@ export class LoginComponent {
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   loading = signal(false);
   error = signal<string | null>(null);
@@ -67,7 +68,10 @@ export class LoginComponent {
     this.error.set(null);
     const { email, password } = this.form.getRawValue();
     this.auth.login(email, password).subscribe({
-      next: () => this.router.navigateByUrl('/tableau-de-bord'),
+      next: () => {
+        const redirect = this.route.snapshot.queryParamMap.get('redirect');
+        this.router.navigateByUrl(redirect && redirect.startsWith('/') ? redirect : '/tableau-de-bord');
+      },
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
         const body = err.error as ApiError | undefined;

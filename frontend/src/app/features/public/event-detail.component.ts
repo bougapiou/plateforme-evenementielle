@@ -54,24 +54,62 @@ import { ApiError } from '../../core/models';
               <button class="btn-primary mt-3" (click)="pay(r)">Payer (paiement simulé)</button>
             } @else if (r.statut === 'CONFIRMEE') {
               <p class="mt-2 text-green-700">Inscription confirmée.</p>
-              <a routerLink="/tableau-de-bord/inscriptions" class="btn-primary mt-2 inline-flex">
-                Mes inscriptions
-              </a>
             } @else if (r.statut === 'EN_ATTENTE') {
               <p class="mt-2 text-amber-700">En attente de validation par l'organisateur.</p>
             }
+
+            @if (auth.isGuest()) {
+              <div class="mt-3 rounded-lg border border-brand-100 bg-brand-50 p-3">
+                <p class="font-medium text-brand-800">Créez votre compte</p>
+                <p class="mt-1 text-xs text-slate-600">
+                  Choisissez un mot de passe pour retrouver vos billets, inscriptions
+                  et factures sur tous vos appareils.
+                </p>
+                <a routerLink="/finaliser-compte" class="btn-primary mt-2 inline-flex">
+                  Créer un compte
+                </a>
+              </div>
+            } @else if (auth.isFullyAuthenticated() && r.statut === 'CONFIRMEE') {
+              <a routerLink="/tableau-de-bord/inscriptions" class="btn-primary mt-2 inline-flex">
+                Mes inscriptions
+              </a>
+            }
           </div>
-        } @else if (!auth.isAuthenticated()) {
-          <p class="mt-2 text-sm text-slate-500">
-            <a routerLink="/connexion" class="font-semibold text-brand-700">Connectez-vous</a>
-            pour vous inscrire.
-          </p>
         } @else {
           <div class="mt-3 space-y-3">
-            <div>
-              <label class="form-label">Nom du participant</label>
-              <input class="form-input max-w-sm" [(ngModel)]="participantNom" />
-            </div>
+            @if (!auth.isAuthenticated()) {
+              <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+                Pas besoin de compte pour vous inscrire. Renseignez vos coordonnées ;
+                vous pourrez créer un compte après le paiement pour retrouver vos billets.
+                <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
+                   class="font-semibold text-brand-700">J'ai déjà un compte</a>
+              </div>
+              <div class="grid max-w-lg gap-3 sm:grid-cols-2">
+                <div>
+                  <label class="form-label">Prénom</label>
+                  <input class="form-input" [(ngModel)]="guestFirstName" />
+                </div>
+                <div>
+                  <label class="form-label">Nom</label>
+                  <input class="form-input" [(ngModel)]="guestLastName" />
+                </div>
+              </div>
+              <div class="grid max-w-lg gap-3 sm:grid-cols-2">
+                <div>
+                  <label class="form-label">Adresse e-mail</label>
+                  <input class="form-input" type="email" [(ngModel)]="guestEmail" />
+                </div>
+                <div>
+                  <label class="form-label">Téléphone (facultatif)</label>
+                  <input class="form-input" [(ngModel)]="guestPhone" />
+                </div>
+              </div>
+            } @else {
+              <div>
+                <label class="form-label">Nom du participant</label>
+                <input class="form-input max-w-sm" [(ngModel)]="participantNom" />
+              </div>
+            }
 
             @if (tickets().length) {
               <div>
@@ -241,6 +279,12 @@ export class EventDetailComponent {
   registration = signal<Registration | null>(null);
   participantNom = '';
 
+  // Guest checkout (visitor without an account)
+  guestFirstName = '';
+  guestLastName = '';
+  guestEmail = '';
+  guestPhone = '';
+
   standTypes = signal<StandType[]>([]);
   stands = signal<Stand[]>([]);
   standReservation = signal<StandReservation | null>(null);
@@ -278,14 +322,50 @@ export class EventDetailComponent {
 
   submit(): void {
     this.error.set(null);
+
+    if (!this.auth.isAuthenticated()) {
+      const first = this.guestFirstName.trim();
+      const last = this.guestLastName.trim();
+      const email = this.guestEmail.trim();
+      if (!first || !last || !email.includes('@')) {
+        this.error.set('Renseignez votre prénom, votre nom et un e-mail valide.');
+        return;
+      }
+      this.submitting.set(true);
+      this.auth
+        .guestSession({
+          email,
+          firstName: first,
+          lastName: last,
+          phone: this.guestPhone.trim() || undefined,
+        })
+        .subscribe({
+          next: () => this.doRegister(`${first} ${last}`.trim()),
+          error: (err: HttpErrorResponse) => {
+            this.submitting.set(false);
+            const body = err.error as ApiError | undefined;
+            this.error.set(
+              body?.code === 'ACCOUNT_EXISTS'
+                ? `${body.message} Utilisez « J'ai déjà un compte » pour vous connecter.`
+                : (body?.message ?? 'Impossible de créer la session.'),
+            );
+          },
+        });
+      return;
+    }
+
     this.submitting.set(true);
+    this.doRegister(this.participantNom || this.auth.user()?.fullName || 'Participant');
+  }
+
+  private doRegister(participantNom: string): void {
     const tickets = Object.entries(this.qty())
       .filter(([, q]) => q > 0)
       .map(([eventTicketId, quantite]) => ({ eventTicketId, quantite }));
     this.registrationsService
       .register(this.event()!.id, {
         type: 'PARTICULIER',
-        participants: [{ nom: this.participantNom || 'Participant' }],
+        participants: [{ nom: participantNom || 'Participant' }],
         tickets: tickets.length ? tickets : undefined,
       })
       .subscribe({
@@ -310,6 +390,12 @@ export class EventDetailComponent {
   reserveStand(s: Stand): void {
     if (!this.auth.isAuthenticated()) {
       this.router.navigate(['/connexion'], { queryParams: { redirect: this.router.url } });
+      return;
+    }
+    if (this.auth.isGuest()) {
+      this.standError.set(
+        'La réservation de stand nécessite un compte structure. Finalisez votre compte, puis rattachez une structure.',
+      );
       return;
     }
     this.standError.set(null);

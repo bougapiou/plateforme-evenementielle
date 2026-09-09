@@ -17,7 +17,11 @@ import { AuthService } from '../core/auth.service';
           <nav class="flex items-center gap-1 text-sm font-medium">
             <a routerLink="/" routerLinkActive="text-brand-700"
                [routerLinkActiveOptions]="{ exact: true }" class="btn-ghost">Événements</a>
-            @if (auth.isAuthenticated()) {
+            @if (auth.isGuest()) {
+              <a routerLink="/tableau-de-bord" class="btn-ghost">Mes billets</a>
+              <a routerLink="/finaliser-compte" class="btn-primary">Créer mon compte</a>
+              <button type="button" class="btn-ghost" (click)="auth.logout()">Quitter</button>
+            } @else if (auth.isAuthenticated()) {
               <a routerLink="/tableau-de-bord" class="btn-ghost">Tableau de bord</a>
               <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
             } @else {

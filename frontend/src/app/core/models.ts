@@ -7,8 +7,23 @@ export interface UserSummary {
   fullName: string;
   type: UserType;
   status: UserStatus;
+  /** True while the account was auto-created for a guest checkout (no password chosen yet). */
+  guest?: boolean;
   roles: string[];
   permissions: string[];
+}
+
+export interface GuestSessionPayload {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}
+
+export interface CompleteRegistrationPayload {
+  password: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface AuthResponse {

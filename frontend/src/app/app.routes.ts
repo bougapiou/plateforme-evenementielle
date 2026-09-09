@@ -31,6 +31,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/register.component').then((m) => m.RegisterComponent),
         title: 'Créer un compte',
       },
+      {
+        path: 'finaliser-compte',
+        loadComponent: () =>
+          import('./pages/complete-account.component').then((m) => m.CompleteAccountComponent),
+        title: 'Finaliser mon compte',
+      },
     ],
   },
   {
