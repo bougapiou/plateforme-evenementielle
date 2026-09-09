@@ -11,6 +11,17 @@ import { formatFcfa } from '../shared/format';
   template: `
     <h1 class="text-xl font-bold text-slate-800">Bonjour {{ auth.user()?.fullName }}</h1>
 
+    @if (auth.isGuest()) {
+      <div class="mt-4 rounded-lg border border-brand-100 bg-brand-50 p-4 text-sm">
+        <p class="font-medium text-brand-800">Vous naviguez en mode invité</p>
+        <p class="mt-1 text-slate-600">
+          Choisissez un mot de passe pour sécuriser l'accès à vos billets, inscriptions
+          et factures depuis n'importe quel appareil.
+        </p>
+        <a routerLink="/finaliser-compte" class="btn-primary mt-3 inline-flex">Créer mon compte</a>
+      </div>
+    }
+
     @if (auth.hasPermission('STATS_OWN_READ') && orga()) {
       <section class="mt-6">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Mes événements</h2>

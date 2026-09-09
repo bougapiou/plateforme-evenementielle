@@ -2,7 +2,13 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { AuthResponse, RegisterPayload, UserSummary } from './models';
+import {
+  AuthResponse,
+  CompleteRegistrationPayload,
+  GuestSessionPayload,
+  RegisterPayload,
+  UserSummary,
+} from './models';
 
 const ACCESS_KEY = 'pne.access';
 const REFRESH_KEY = 'pne.refresh';
@@ -15,7 +21,14 @@ export class AuthService {
 
   private _user = signal<UserSummary | null>(this.readUser());
   readonly user = this._user.asReadonly();
+  /** A session exists — full account **or** guest checkout. */
   readonly isAuthenticated = computed(() => this._user() !== null);
+  /** Session is a passwordless guest checkout (no real account yet). */
+  readonly isGuest = computed(() => this._user()?.guest === true);
+  /** A real account (guests excluded). */
+  readonly isFullyAuthenticated = computed(
+    () => this._user() !== null && this._user()!.guest !== true,
+  );
 
   get accessToken(): string | null {
     return localStorage.getItem(ACCESS_KEY);
@@ -33,6 +46,20 @@ export class AuthService {
   register(payload: RegisterPayload): Observable<AuthResponse> {
     return this.http
       .post<AuthResponse>(`${this.base}/auth/register`, payload)
+      .pipe(tap((res) => this.persist(res)));
+  }
+
+  /** Opens a passwordless guest session (checkout without an account). */
+  guestSession(payload: GuestSessionPayload): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.base}/auth/guest`, payload)
+      .pipe(tap((res) => this.persist(res)));
+  }
+
+  /** Turns the current guest session into a full account by choosing a password. */
+  completeRegistration(payload: CompleteRegistrationPayload): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.base}/auth/complete`, payload)
       .pipe(tap((res) => this.persist(res)));
   }
 
