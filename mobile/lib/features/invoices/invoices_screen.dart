@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_filex/open_filex.dart';
+import '../../core/documents.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
@@ -29,15 +29,16 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   Future<void> _open(Invoice inv) async {
     setState(() => _busyId = inv.id);
     try {
-      final api = ref.read(apiClientProvider);
-      final path = await api.downloadToCache(
-        inv.pdfUrl,
-        '${inv.type.toLowerCase()}-${inv.numero}.pdf',
+      final outcome = await fetchAndPresentDocument(
+        ref.read(apiClientProvider),
+        path: inv.pdfUrl,
+        filename: '${inv.type.toLowerCase()}-${inv.numero}.pdf',
       );
-      final res = await OpenFilex.open(path);
-      if (res.type != ResultType.done && mounted) {
+      if (mounted && outcome == DocOutcome.savedNoViewer) {
         showSnack(context, 'PDF enregistré ; aucune application pour l\'ouvrir.',
             error: true);
+      } else if (mounted && outcome == DocOutcome.downloaded) {
+        showSnack(context, 'Téléchargement du PDF lancé.');
       }
     } catch (e) {
       if (mounted) showSnack(context, 'Téléchargement impossible : $e', error: true);

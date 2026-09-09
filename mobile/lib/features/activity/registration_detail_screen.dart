@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:open_filex/open_filex.dart';
+import '../../core/documents.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -76,14 +76,16 @@ class _RegistrationDetailScreenState
   Future<void> _downloadConfirmation() async {
     setState(() => _busy = true);
     try {
-      final path = await ref.read(apiClientProvider).downloadToCache(
-            '/api/registrations/${widget.registrationId}/confirmation.pdf',
-            'confirmation-${widget.registrationId}.pdf',
-          );
-      final res = await OpenFilex.open(path);
-      if (res.type != ResultType.done && mounted) {
+      final outcome = await fetchAndPresentDocument(
+        ref.read(apiClientProvider),
+        path: '/api/registrations/${widget.registrationId}/confirmation.pdf',
+        filename: 'confirmation-${widget.registrationId}.pdf',
+      );
+      if (mounted && outcome == DocOutcome.savedNoViewer) {
         showSnack(context, 'PDF enregistré ; aucune application pour l\'ouvrir.',
             error: true);
+      } else if (mounted && outcome == DocOutcome.downloaded) {
+        showSnack(context, 'Téléchargement de la confirmation lancé.');
       }
     } catch (e) {
       if (mounted) showSnack(context, 'Téléchargement impossible : $e', error: true);
@@ -151,11 +153,12 @@ class _RegistrationDetailScreenState
   Future<void> _openDocument(DocumentFile doc) async {
     setState(() => _busy = true);
     try {
-      final path = await ref
-          .read(apiClientProvider)
-          .downloadToCache(doc.url, doc.nom.isEmpty ? 'document' : doc.nom);
-      final res = await OpenFilex.open(path);
-      if (res.type != ResultType.done && mounted) {
+      final outcome = await fetchAndPresentDocument(
+        ref.read(apiClientProvider),
+        path: doc.url,
+        filename: doc.nom.isEmpty ? 'document' : doc.nom,
+      );
+      if (mounted && outcome == DocOutcome.savedNoViewer) {
         showSnack(context, 'Aucune application pour ouvrir ce fichier.', error: true);
       }
     } catch (e) {

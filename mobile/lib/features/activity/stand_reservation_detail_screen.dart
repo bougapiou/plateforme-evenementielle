@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:open_filex/open_filex.dart';
+import '../../core/documents.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -61,14 +61,16 @@ class _StandReservationDetailScreenState
   Future<void> _confirmationPdf() async {
     setState(() => _busy = true);
     try {
-      final path = await ref.read(apiClientProvider).downloadToCache(
-            '/api/stand-reservations/${widget.reservationId}/confirmation.pdf',
-            'reservation-${widget.reservationId}.pdf',
-          );
-      final res = await OpenFilex.open(path);
-      if (res.type != ResultType.done && mounted) {
+      final outcome = await fetchAndPresentDocument(
+        ref.read(apiClientProvider),
+        path: '/api/stand-reservations/${widget.reservationId}/confirmation.pdf',
+        filename: 'reservation-${widget.reservationId}.pdf',
+      );
+      if (mounted && outcome == DocOutcome.savedNoViewer) {
         showSnack(context, 'PDF enregistré ; aucune application pour l\'ouvrir.',
             error: true);
+      } else if (mounted && outcome == DocOutcome.downloaded) {
+        showSnack(context, 'Téléchargement de la confirmation lancé.');
       }
     } catch (e) {
       if (mounted) showSnack(context, 'Téléchargement impossible : $e', error: true);
