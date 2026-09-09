@@ -13,7 +13,7 @@ tableaux de bord et statistiques.
 | Backend API | Spring Boot 3 · Java 21 · JPA · PostgreSQL · Flyway |
 | Frontend    | Angular 19 · Tailwind CSS                       |
 | Mobile      | Flutter · Riverpod · go_router (catalogue, billetterie, paiement, inscriptions, stands, portefeuille QR hors-ligne, factures, notifications, scan de contrôle) |
-| Paiement    | Abstraction `PaymentProvider` + provider *sandbox* (FasoArzeka / mobile money à brancher) |
+| Paiement    | Abstraction `PaymentProvider` + provider *sandbox* (FasoArzeka ) |
 | PDF / QR    | PDFBox · ZXing                                  |
 | Devise      | FCFA (XOF) par défaut, multi-devises prévu      |
 
@@ -24,7 +24,6 @@ backend/    API REST (bf.evenements.plateforme, package-by-feature)
 frontend/   Application Angular (site public + 4 espaces)
 mobile/     Application Flutter
 infra/      docker-compose (postgres, mailpit, minio)
-docs/       architecture, base de données, workflows, api, roadmap
 ```
 
 ## Démarrage (3 terminaux)
@@ -39,7 +38,7 @@ cd ../backend && ./mvnw spring-boot:run           # DEMO_DATA=true pour des donn
 # 3. Frontend
 cd ../frontend && npm install && npm start        # http://localhost:4200
 
-# 4. (optionnel) Application mobile
+# 4.  Application mobile
 cd ../mobile && flutter pub get
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api   # émulateur Android
 ```
@@ -63,7 +62,7 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api   # émulateur A
 **À changer en production** (`SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`,
 `APP_JWT_SECRET`, `PAYMENT_WEBHOOK_SECRET`). Voir [`.env.example`](.env.example).
 
-## Modules livrés
+## Modules 
 
 M0 fondations · M1 auth & RBAC · M2 structures & organisateurs · M3 événements
 (workflow, **activités/programme**, intervenants, partenaires, site public) ·
