@@ -17,10 +17,10 @@ interface NavItem {
   template: `
     <div class="flex min-h-full">
       <aside class="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:block">
-        <div class="flex h-16 items-center gap-2 border-b border-slate-200 px-5 font-extrabold text-brand-700">
-          <span class="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white text-xs">PN</span>
-          Espace
-        </div>
+        <a routerLink="/" class="flex h-16 items-center gap-2 border-b border-slate-200 px-5">
+          <img src="assets/logo-192.png" alt="PNE" class="h-8 w-8" />
+          <span class="font-extrabold text-brand-700">Espace</span>
+        </a>
         <nav class="space-y-1 p-3 text-sm font-medium">
           @for (item of visibleNav(); track item.path) {
             <a [routerLink]="item.path" routerLinkActive="bg-brand-50 text-brand-700"

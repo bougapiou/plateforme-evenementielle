@@ -84,41 +84,51 @@ class _KassenaPainter extends CustomPainter {
   bool shouldRepaint(covariant _KassenaPainter old) => old.color != color;
 }
 
-/// En-tête d'identité : étoile sur fond vert (façon drapeau) + nom + frise.
+/// En-tête d'identité : logo officiel de la plateforme.
 class FasoHeader extends StatelessWidget {
-  final String subtitle;
-  const FasoHeader({
-    super.key,
-    this.subtitle = 'Plateforme nationale de gestion des événements',
-  });
+  final String? subtitle;
+  const FasoHeader({super.key, this.subtitle});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: Brand.b700,
-            borderRadius: BorderRadius.circular(16),
+        Image.asset(
+          'assets/logo.png',
+          height: 116,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Brand.b700,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            alignment: Alignment.center,
+            child: const FasoStar(size: 32),
           ),
-          alignment: Alignment.center,
-          child: const FasoStar(size: 32),
         ),
-        const SizedBox(height: 12),
-        Text('Burkina Événements',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(color: Brand.b700)),
-        const SizedBox(height: 2),
-        Text(subtitle,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: 12),
-        const SizedBox(width: 120, child: KassenaMotif(height: 10, color: Brand.s200)),
+        if (subtitle != null) ...[
+          const SizedBox(height: 8),
+          Text(subtitle!,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall),
+        ],
       ],
     );
   }
+}
+
+/// Logo compact « PNE » (sans baseline) pour les barres d'application.
+class FasoMark extends StatelessWidget {
+  final double height;
+  const FasoMark({super.key, this.height = 24});
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+        'assets/logo_mark.png',
+        height: height,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => FasoStar(size: height * 0.8),
+      );
 }
