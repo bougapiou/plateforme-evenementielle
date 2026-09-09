@@ -11,6 +11,8 @@ import { ApiError, UserType } from '../core/models';
   imports: [ReactiveFormsModule, RouterLink],
   template: `
     <div class="mx-auto max-w-lg">
+      <img src="assets/logo.png" alt="Plateforme Nationale des Événements"
+           class="mx-auto mb-6 h-24 w-auto" />
       <div class="card p-6">
         <h1 class="text-xl font-bold text-slate-800">Créer un compte</h1>
         <p class="mt-1 text-sm text-slate-500">

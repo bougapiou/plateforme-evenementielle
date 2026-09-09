@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/brand.dart';
-import '../../core/faso.dart' show FasoStar;
+import '../../core/faso.dart' show FasoMark;
 import '../../core/format.dart';
 import '../../core/media.dart';
 import '../../core/providers.dart';
@@ -54,11 +54,7 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(mainAxisSize: MainAxisSize.min, children: const [
-          FasoStar(size: 18),
-          SizedBox(width: 8),
-          Text('Événements'),
-        ]),
+        title: const FasoMark(height: 26),
         actions: [
           if (!signedIn)
             TextButton(

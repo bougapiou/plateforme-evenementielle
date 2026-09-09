@@ -1,11 +1,11 @@
 {
-    "name": "plateforme_mobile",
-    "short_name": "plateforme_mobile",
+    "name": "PNE — Plateforme Nationale des Événements",
+    "short_name": "PNE — Événements",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#0E7A3C",
+    "description": "Plateforme nationale de gestion des événements du Burkina Faso : inscriptions, billetterie, stands, contrôle d'accès.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
