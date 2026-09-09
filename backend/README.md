@@ -35,7 +35,7 @@ avec un PostgreSQL installé localement.
 | `common.exception` | `ApiException` + sous-classes, `GlobalExceptionHandler` |
 | `common.config` | `AppProperties`, OpenAPI, WebMvc |
 | `common.security` | JWT (`JwtService`, filtre), RBAC, `@CurrentUser`, `SecurityConfig` |
-| `auth` | register / login / refresh / logout, `RefreshToken` |
+| `auth` | register / login / refresh / logout, session invité (`/auth/guest`) + revendication de compte (`/auth/complete`), `RefreshToken` |
 | `user` | `User`, profils, administration des comptes |
 | `rbac` | `Role`, `Permission`, `Permissions` (catalogue) |
 | `audit` | `AuditLog`, `AuditService`, consultation |
