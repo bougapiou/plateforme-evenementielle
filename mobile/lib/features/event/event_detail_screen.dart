@@ -219,15 +219,13 @@ class _Body extends ConsumerWidget {
         if (canRegister) ...[
           if (payantTickets.isNotEmpty)
             FilledButton.icon(
-              onPressed: () => requireAuthOr(context, ref,
-                  () => context.push('/evenements/${e.slug}/billets')),
+              onPressed: () => context.push('/evenements/${e.slug}/billets'),
               icon: const Icon(Icons.confirmation_number_outlined),
               label: const Text('Acheter des billets'),
             ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: () => requireAuthOr(context, ref,
-                () => context.push('/evenements/${e.slug}/inscription')),
+            onPressed: () => context.push('/evenements/${e.slug}/inscription'),
             icon: const Icon(Icons.how_to_reg_outlined),
             label: const Text('S\'inscrire à l\'événement'),
           ),

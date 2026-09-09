@@ -16,6 +16,7 @@ public record UserResponse(
         String phone,
         UserType type,
         UserStatus status,
+        boolean guest,
         List<String> roles,
         List<String> permissions,
         Instant lastLoginAt,
@@ -24,7 +25,7 @@ public record UserResponse(
     public static UserResponse from(User u) {
         return new UserResponse(
                 u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getFullName(),
-                u.getPhone(), u.getType(), u.getStatus(),
+                u.getPhone(), u.getType(), u.getStatus(), u.isGuest(),
                 List.copyOf(u.roleNames()), List.copyOf(u.permissionNames()),
                 u.getLastLoginAt(), u.getCreatedAt());
     }

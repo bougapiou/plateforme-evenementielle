@@ -5,6 +5,7 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
+import 'guest_gate.dart';
 import 'structure_toggle.dart';
 
 class RegisterEventScreen extends ConsumerStatefulWidget {
@@ -68,6 +69,15 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
       showSnack(context, 'Choisissez la structure.', error: true);
       return;
     }
+    if (!_asStructure) {
+      if (!await GuestGate.ensureSession(context, ref)) return;
+      if (!mounted) return;
+      final u = ref.read(authControllerProvider).valueOrNull;
+      if (u != null) {
+        if (_contactNom.text.trim().isEmpty) _contactNom.text = u.fullName;
+        if (_contactEmail.text.trim().isEmpty) _contactEmail.text = u.email;
+      }
+    }
     setState(() => _submitting = true);
     try {
       final participants = _participants
@@ -91,21 +101,34 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
             participants: participants,
           );
       if (!mounted) return;
+      final isGuest = ref.read(isGuestProvider);
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
           icon: const Icon(Icons.how_to_reg, color: Color(0xFF16A34A), size: 44),
           title: const Text('Inscription enregistrée'),
-          content: Text(reg.statut == 'CONFIRMEE'
-              ? 'Votre inscription (réf. ${reg.reference}) est confirmée.'
-              : 'Votre inscription (réf. ${reg.reference}) est en attente de validation par l\'organisateur.'),
+          content: Text([
+            reg.statut == 'CONFIRMEE'
+                ? 'Votre inscription (réf. ${reg.reference}) est confirmée.'
+                : 'Votre inscription (réf. ${reg.reference}) est en attente de validation par l\'organisateur.',
+            if (isGuest)
+              '\nCréez un compte pour la retrouver facilement.',
+          ].join('')),
           actions: [
-            FilledButton(
+            if (isGuest)
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.push('/finaliser-compte');
+                },
+                child: const Text('Créer un compte'),
+              ),
+            TextButton(
               onPressed: () {
                 Navigator.pop(context);
                 context.go('/activite');
               },
-              child: const Text('Voir mes inscriptions'),
+              child: Text(isGuest ? 'Plus tard' : 'Voir mes inscriptions'),
             ),
           ],
         ),
@@ -132,16 +155,23 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
             children: [
               Text(event.nom, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              StructureToggle(
-                label: 'S\'inscrire au nom d\'une structure',
-                asStructure: _asStructure,
-                structureId: _structureId,
-                onModeChanged: (v) => setState(() {
-                  _asStructure = v;
-                  if (!v) _structureId = null;
-                }),
-                onStructureChanged: (id) => setState(() => _structureId = id),
-              ),
+              if (ref.watch(isSignedInProvider))
+                StructureToggle(
+                  label: 'S\'inscrire au nom d\'une structure',
+                  asStructure: _asStructure,
+                  structureId: _structureId,
+                  onModeChanged: (v) => setState(() {
+                    _asStructure = v;
+                    if (!v) _structureId = null;
+                  }),
+                  onStructureChanged: (id) => setState(() => _structureId = id),
+                )
+              else
+                Text(
+                  'Aucun compte requis. Vous pourrez en créer un après votre '
+                  'inscription pour la retrouver facilement.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _contactNom,

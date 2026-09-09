@@ -98,22 +98,54 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 
   void _showSuccess() {
+    final isGuest = ref.read(isGuestProvider);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         icon: const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 48),
         title: const Text('Paiement confirmé'),
-        content: Text(_isOrder
-            ? 'Vos billets électroniques sont disponibles dans « Mes billets ».'
-            : 'Votre réservation de stand est confirmée.'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_isOrder
+                ? 'Vos billets électroniques sont disponibles dans « Mes billets » et envoyés par e-mail.'
+                : 'Votre réservation de stand est confirmée.'),
+            if (isGuest) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Créez un compte (choix d\'un mot de passe) pour retrouver vos '
+                  'billets et vos factures sur tous vos appareils.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ],
+        ),
         actions: [
-          FilledButton(
+          if (isGuest)
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.push('/finaliser-compte');
+              },
+              icon: const Icon(Icons.person_add_alt),
+              label: const Text('Créer un compte'),
+            ),
+          TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               context.go(_isOrder ? '/billets' : '/activite');
             },
-            child: Text(_isOrder ? 'Voir mes billets' : 'Voir mes réservations'),
+            child: Text(isGuest
+                ? 'Plus tard'
+                : (_isOrder ? 'Voir mes billets' : 'Voir mes réservations')),
           ),
         ],
       ),

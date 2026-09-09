@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'providers.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
+import '../features/auth/complete_account_screen.dart';
 import '../features/catalogue/catalogue_screen.dart';
 import '../features/event/event_detail_screen.dart';
 import '../features/purchase/buy_tickets_screen.dart';
@@ -60,6 +61,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/connexion', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/inscription', builder: (_, __) => const RegisterScreen()),
+      GoRoute(
+        path: '/finaliser-compte',
+        builder: (_, __) => const CompleteAccountScreen(),
+      ),
 
       StatefulShellRoute.indexedStack(
         parentNavigatorKey: _rootKey,

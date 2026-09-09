@@ -63,6 +63,16 @@ final hasPermissionProvider = Provider.family<bool, String>((ref, permission) {
   return user?.permissions.contains(permission) ?? false;
 });
 
+/// True when a real (non-guest) account is signed in.
+final isSignedInProvider = Provider<bool>((ref) {
+  final user = ref.watch(authControllerProvider).valueOrNull;
+  return user != null && !user.guest;
+});
+
+/// True when the current session is a guest (checkout without account).
+final isGuestProvider = Provider<bool>((ref) =>
+    ref.watch(authControllerProvider).valueOrNull?.guest ?? false);
+
 /// Unread in-app notification count, refreshed on demand.
 final unreadCountProvider = FutureProvider<int>((ref) async {
   final user = ref.watch(authControllerProvider).valueOrNull;
@@ -107,6 +117,36 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
       password: password,
       phone: phone,
       type: type,
+    );
+    state = AsyncValue.data(res.user);
+  }
+
+  /// Opens a guest session (visitor checking out without an account).
+  Future<void> guestSession({
+    required String firstName,
+    required String lastName,
+    required String email,
+    String? phone,
+  }) async {
+    final res = await _repo.guestSession(
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      phone: phone,
+    );
+    state = AsyncValue.data(res.user);
+  }
+
+  /// Turns the current guest session into a full account.
+  Future<void> completeRegistration({
+    required String password,
+    String? firstName,
+    String? lastName,
+  }) async {
+    final res = await _repo.completeRegistration(
+      password: password,
+      firstName: firstName,
+      lastName: lastName,
     );
     state = AsyncValue.data(res.user);
   }
