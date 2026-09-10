@@ -30,6 +30,7 @@ import '../features/organizer/programme_editor_screen.dart';
 import '../features/organizer/tickets_editor_screen.dart';
 import '../features/organizer/stands_editor_screen.dart';
 import '../features/organizer/people_editor_screen.dart';
+import '../features/organizer/accreditations_screen.dart';
 import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/change_password_screen.dart';
 import '../features/invoices/invoices_screen.dart';
@@ -247,6 +248,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootKey,
         builder: (_, s) => PeopleEditorScreen(
             eventId: s.pathParameters['id']!, kind: 'partners'),
+      ),
+      GoRoute(
+        path: '/mes-evenements/:id/accreditations',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) =>
+            AccreditationsScreen(eventId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/profil/modifier',

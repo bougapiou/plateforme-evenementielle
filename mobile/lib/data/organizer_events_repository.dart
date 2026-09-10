@@ -154,4 +154,25 @@ class OrganizerEventsRepository {
 
   Future<void> deleteStandType(String eventId, String id) =>
       _req(() => api.dio.delete('/events/$eventId/stand-types/$id'), (_) {});
+
+  // --- accréditations / badges ---
+
+  Future<List<Accreditation>> accreditations(String eventId) => _req(
+        () => api.dio.get('/events/$eventId/accreditations'),
+        (d) => (d as List<dynamic>)
+            .map((e) => Accreditation.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
+  Future<Accreditation> issueAccreditation(
+          String eventId, Map<String, dynamic> body) =>
+      _req(
+        () => api.dio.post('/events/$eventId/accreditations', data: body),
+        (d) => Accreditation.fromJson(d as Map<String, dynamic>),
+      );
+
+  Future<Accreditation> revokeAccreditation(String id) => _req(
+        () => api.dio.post('/accreditations/$id/revoke'),
+        (d) => Accreditation.fromJson(d as Map<String, dynamic>),
+      );
 }

@@ -142,6 +142,12 @@ class _EventManageScreenState extends ConsumerState<EventManageScreen> {
                     await context.push('/mes-evenements/${e.id}/partenaires');
                     _refresh();
                   }),
+                  _tile(Icons.badge_outlined, 'Accréditations / badges',
+                      'Conférenciers, exposants, presse, staff… (QR + PDF)',
+                      onTap: () async {
+                    await context.push('/mes-evenements/${e.id}/accreditations');
+                    _refresh();
+                  }),
 
                   const SizedBox(height: 20),
                   _section('Cycle de vie'),

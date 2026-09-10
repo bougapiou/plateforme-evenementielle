@@ -17,17 +17,18 @@ import { CheckinService, CheckinView, StaffMember } from '../checkin/checkin.ser
 import { StatsService, StatMap, EventSeries } from '../stats/stats.service';
 import { BarChartComponent } from '../../shared/bar-chart.component';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
+import { AccreditationsPanelComponent } from '../accreditations/accreditations-panel.component';
 
 type Tab =
   | 'infos' | 'programme' | 'intervenants' | 'partenaires' | 'billetterie' | 'stands'
-  | 'inscriptions' | 'controle' | 'stats';
+  | 'inscriptions' | 'accreditations' | 'controle' | 'stats';
 
 @Component({
   selector: 'app-event-editor',
   standalone: true,
   imports: [
     ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent, BarChartComponent,
-    ImageUploadComponent,
+    ImageUploadComponent, AccreditationsPanelComponent,
   ],
   template: `
     <a routerLink="/tableau-de-bord/evenements" class="text-sm text-slate-500">← Mes événements</a>
@@ -440,6 +441,16 @@ type Tab =
       }
 
       <!-- CONTROLE -->
+      @if (tab() === 'accreditations') {
+        <div class="mt-4">
+          <p class="mb-3 text-sm text-slate-500">
+            Badges nominatifs (conférencier, exposant, modérateur, presse, staff…) pour une
+            activité précise ou pour tout l'événement. Chaque badge porte un QR scannable à l'entrée.
+          </p>
+          <app-accreditations-panel [eventId]="id()" />
+        </div>
+      }
+
       @if (tab() === 'controle') {
         <div class="mt-4 grid gap-4 lg:grid-cols-2">
           <div class="card p-4">
@@ -557,6 +568,7 @@ export class EventEditorComponent {
     { id: 'billetterie', label: 'Billetterie' },
     { id: 'stands', label: 'Stands' },
     { id: 'inscriptions', label: 'Inscriptions' },
+    { id: 'accreditations', label: 'Accréditations' },
     { id: 'controle', label: 'Contrôle' },
     { id: 'stats', label: 'Statistiques' },
   ];

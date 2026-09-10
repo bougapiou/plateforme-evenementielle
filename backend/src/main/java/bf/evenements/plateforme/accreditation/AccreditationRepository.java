@@ -1,0 +1,17 @@
+package bf.evenements.plateforme.accreditation;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface AccreditationRepository extends JpaRepository<Accreditation, UUID> {
+
+    Optional<Accreditation> findByQrToken(String qrToken);
+
+    List<Accreditation> findByEventIdOrderByCreatedAtAsc(UUID eventId);
+
+    boolean existsByNumero(String numero);
+
+    boolean existsByQrToken(String qrToken);
+}
