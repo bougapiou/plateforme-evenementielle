@@ -9,6 +9,13 @@ import {
   TicketOrder,
 } from '../events/event.models';
 
+export interface IssuedTicket {
+  id: string;
+  numero: string;
+  eventNom: string;
+  categorieNom?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TicketsService extends ApiBase {
   // --- organiser: ticket categories ---
@@ -41,6 +48,10 @@ export class TicketsService extends ApiBase {
     lignes: { eventTicketId: string; quantite: number }[];
   }): Observable<TicketOrder> {
     return this.http.post<TicketOrder>(`${this.base}/ticket-orders`, body);
+  }
+  /** Join a free activity: issues one free electronic ticket immediately. */
+  attendActivity(activityId: string): Observable<IssuedTicket> {
+    return this.http.post<IssuedTicket>(`${this.base}/activities/${activityId}/attend`, {});
   }
   myOrders(): Observable<Page<TicketOrder>> {
     return this.get<Page<TicketOrder>>('/ticket-orders/my', { size: 50 });

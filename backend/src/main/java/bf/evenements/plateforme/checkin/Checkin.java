@@ -29,6 +29,10 @@ public class Checkin extends BaseEntity {
     @Column(name = "event_id", nullable = false)
     private UUID eventId;
 
+    /** Activity this scan controlled, or null for a general entry. */
+    @Column(name = "activity_id")
+    private UUID activityId;
+
     @Column(name = "scanned_by")
     private UUID scannedBy;
 

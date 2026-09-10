@@ -7,15 +7,20 @@ import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.common.web.PageResponse;
 import bf.evenements.plateforme.event.Event;
+import bf.evenements.plateforme.event.EventActivity;
+import bf.evenements.plateforme.event.EventActivityRepository;
 import bf.evenements.plateforme.event.EventRepository;
 import bf.evenements.plateforme.event.EventSpecifications;
 import bf.evenements.plateforme.event.EventStatus;
+import bf.evenements.plateforme.event.dto.ActivityResponse;
 import bf.evenements.plateforme.event.dto.EventSummary;
 import bf.evenements.plateforme.qrcode.QrCode;
 import bf.evenements.plateforme.qrcode.QrCodeRepository;
 import bf.evenements.plateforme.rbac.Permissions;
+import bf.evenements.plateforme.ticket.EventTicket;
 import bf.evenements.plateforme.ticket.Ticket;
 import bf.evenements.plateforme.ticket.TicketRepository;
+import bf.evenements.plateforme.ticket.TicketScope;
 import bf.evenements.plateforme.ticket.TicketStatus;
 import java.time.Instant;
 import java.util.List;
@@ -39,6 +44,7 @@ public class CheckinService {
     private final QrCodeRepository qrCodeRepository;
     private final TicketRepository ticketRepository;
     private final EventRepository eventRepository;
+    private final EventActivityRepository activityRepository;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
 
@@ -72,6 +78,16 @@ public class CheckinService {
                 .map(EventSummary::from).toList();
     }
 
+    /** Activities a controller may pick when checking entries for an event. */
+    @Transactional(readOnly = true)
+    public List<ActivityResponse> controllableActivities(UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Événement", eventId));
+        requireControl(event, currentUser.requireId());
+        return activityRepository.findByEventIdOrderByDateDebutAscOrdreAsc(eventId).stream()
+                .map(ActivityResponse::from).toList();
+    }
+
     @Transactional
     public ScanResponse scan(ScanRequest request) {
         UUID me = currentUser.requireId();
@@ -79,42 +95,78 @@ public class CheckinService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Événement", request.eventId()));
         requireControl(event, me);
 
+        EventActivity activity = null;
+        if (request.activityId() != null) {
+            activity = activityRepository.findById(request.activityId()).orElse(null);
+            if (activity == null || !activity.getEvent().getId().equals(event.getId())) {
+                return record(event, null, me, null, null, CheckinResult.INVALIDE,
+                        "Activité inconnue pour cet événement",
+                        ScanResponse.invalide("Activité inconnue", event.getNom()));
+            }
+        }
+        String activiteNom = activity != null ? activity.getTitre() : null;
+
         QrCode qr = qrCodeRepository.findByToken(request.token().trim()).orElse(null);
         if (qr == null) {
-            return record(event, me, null, null, CheckinResult.INVALIDE,
-                    "QR code inconnu", ScanResponse.invalide("Ticket invalide", event.getNom()));
+            return record(event, activity, me, null, null, CheckinResult.INVALIDE, "QR code inconnu",
+                    new ScanResponse(CheckinResult.INVALIDE, "Ticket invalide", event.getNom(),
+                            activiteNom, null, null, null, null, null));
         }
         Ticket ticket = ticketRepository.findById(qr.getTicket().getId()).orElseThrow();
 
         if (!ticket.getEvent().getId().equals(event.getId())) {
-            return record(event, me, qr.getId(), ticket.getId(), CheckinResult.INVALIDE,
+            return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.INVALIDE,
                     "Billet d'un autre événement",
-                    ScanResponse.invalide("Ce billet concerne un autre événement", event.getNom()));
+                    new ScanResponse(CheckinResult.INVALIDE, "Ce billet concerne un autre événement",
+                            event.getNom(), activiteNom, null, null, null, null, null));
         }
         if (qr.getStatut() == QrCode.QrStatus.REVOQUE || ticket.getStatut() == TicketStatus.ANNULE) {
-            return record(event, me, qr.getId(), ticket.getId(), CheckinResult.INVALIDE,
+            return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.INVALIDE,
                     "Billet annulé / révoqué",
-                    ScanResponse.invalide("Ticket invalide (annulé)", event.getNom()));
+                    new ScanResponse(CheckinResult.INVALIDE, "Ticket invalide (annulé)",
+                            event.getNom(), activiteNom, null, null, null, null, null));
+        }
+        if (activity != null && !grantsAccess(ticket, activity)) {
+            return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.INVALIDE,
+                    "Billet non valable pour cette activité",
+                    new ScanResponse(CheckinResult.INVALIDE, "Billet non valable pour cette activité",
+                            event.getNom(), activiteNom, ticket.getParticipantNom(),
+                            ticket.getEventTicket().getNom(), ticket.getNumero(), null, null));
         }
 
-        var existing = checkinRepository
-                .findFirstByTicketIdAndResultatOrderByScannedAtAsc(ticket.getId(), CheckinResult.VALIDE);
+        var existing = activity != null
+                ? checkinRepository.findFirstByTicketIdAndActivityIdAndResultatOrderByScannedAtAsc(
+                        ticket.getId(), activity.getId(), CheckinResult.VALIDE)
+                : checkinRepository.findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtAsc(
+                        ticket.getId(), CheckinResult.VALIDE);
         if (existing.isPresent()) {
-            ScanResponse resp = new ScanResponse(CheckinResult.DEJA_UTILISE,
-                    "Ticket déjà utilisé", event.getNom(), ticket.getParticipantNom(),
+            ScanResponse resp = new ScanResponse(CheckinResult.DEJA_UTILISE, "Ticket déjà utilisé",
+                    event.getNom(), activiteNom, ticket.getParticipantNom(),
                     ticket.getEventTicket().getNom(), ticket.getNumero(), null,
                     existing.get().getScannedAt());
-            return record(event, me, qr.getId(), ticket.getId(), CheckinResult.DEJA_UTILISE,
+            return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.DEJA_UTILISE,
                     "Contrôle déjà effectué le " + existing.get().getScannedAt(), resp);
         }
 
-        // valid entry
-        ticket.setStatut(TicketStatus.UTILISE);
+        // valid entry — a general (event-wide) scan consumes the ticket; a
+        // per-activity scan leaves it EMISE so the holder can enter other sessions.
         Instant now = Instant.now();
+        if (activity == null) {
+            ticket.setStatut(TicketStatus.UTILISE);
+        }
         ScanResponse resp = new ScanResponse(CheckinResult.VALIDE, "Bienvenue", event.getNom(),
-                ticket.getParticipantNom(), ticket.getEventTicket().getNom(), ticket.getNumero(),
-                now, null);
-        return record(event, me, qr.getId(), ticket.getId(), CheckinResult.VALIDE, null, resp);
+                activiteNom, ticket.getParticipantNom(), ticket.getEventTicket().getNom(),
+                ticket.getNumero(), now, null);
+        return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.VALIDE, null, resp);
+    }
+
+    private boolean grantsAccess(Ticket ticket, EventActivity activity) {
+        EventTicket category = ticket.getEventTicket();
+        if (category.getPortee() == TicketScope.EVENEMENT) {
+            return true;
+        }
+        return category.getActivities().stream()
+                .anyMatch(a -> a.getId().equals(activity.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -137,10 +189,12 @@ public class CheckinService {
 
     // --- helpers ---
 
-    private ScanResponse record(Event event, UUID scannedBy, UUID qrId, UUID ticketId,
-                                CheckinResult resultat, String detail, ScanResponse response) {
+    private ScanResponse record(Event event, EventActivity activity, UUID scannedBy, UUID qrId,
+                                UUID ticketId, CheckinResult resultat, String detail,
+                                ScanResponse response) {
         Checkin checkin = new Checkin();
         checkin.setEventId(event.getId());
+        checkin.setActivityId(activity != null ? activity.getId() : null);
         checkin.setScannedBy(scannedBy);
         checkin.setQrCodeId(qrId);
         checkin.setTicketId(ticketId);
@@ -150,7 +204,9 @@ public class CheckinService {
         checkinRepository.save(checkin);
         auditService.record(scannedBy, currentUser.current().map(u -> u.email()).orElse(null),
                 "CHECKIN_SCAN", "Checkin", checkin.getId().toString(), null,
-                "event=" + event.getNom() + " resultat=" + resultat);
+                "event=" + event.getNom()
+                        + (activity != null ? " activite=" + activity.getTitre() : "")
+                        + " resultat=" + resultat);
         return response;
     }
 
@@ -172,11 +228,11 @@ public class CheckinService {
         }
     }
 
-    public record CheckinView(UUID id, UUID ticketId, CheckinResult resultat, Instant scannedAt,
-                              UUID scannedBy, String detail) {
+    public record CheckinView(UUID id, UUID ticketId, UUID activityId, CheckinResult resultat,
+                              Instant scannedAt, UUID scannedBy, String detail) {
         static CheckinView from(Checkin c) {
-            return new CheckinView(c.getId(), c.getTicketId(), c.getResultat(), c.getScannedAt(),
-                    c.getScannedBy(), c.getDetail());
+            return new CheckinView(c.getId(), c.getTicketId(), c.getActivityId(), c.getResultat(),
+                    c.getScannedAt(), c.getScannedBy(), c.getDetail());
         }
     }
 }

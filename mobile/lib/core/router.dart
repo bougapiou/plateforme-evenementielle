@@ -269,6 +269,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => ScannerScreen(
           eventId: s.pathParameters['eventId']!,
           eventNom: s.uri.queryParameters['nom'] ?? 'Événement',
+          activityId: s.uri.queryParameters['activityId'],
+          activiteNom: s.uri.queryParameters['activiteNom'],
         ),
       ),
     ],

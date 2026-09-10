@@ -26,6 +26,64 @@ class _ScannerHomeScreenState extends ConsumerState<ScannerHomeScreen> {
   void _refresh() => setState(() =>
       _future = ref.read(checkinRepositoryProvider).myControllableEvents());
 
+  Future<void> _openEvent(EventSummary e) async {
+    List<Activity> activities = const [];
+    try {
+      activities = await ref.read(checkinRepositoryProvider).eventActivities(e.id);
+    } catch (_) {
+      // fall back to a plain event-wide scan
+    }
+    if (!mounted) return;
+
+    final nom = Uri.encodeComponent(e.nom);
+    if (activities.isEmpty) {
+      context.push('/scanner/${e.id}?nom=$nom');
+      return;
+    }
+
+    const generalEntry = '__general__';
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text('Que contrôlez-vous ?',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.door_front_door_outlined),
+              title: const Text('Entrée générale'),
+              subtitle: const Text('Tout billet valable pour l\'événement'),
+              onTap: () => Navigator.pop(ctx, generalEntry),
+            ),
+            const Divider(height: 1),
+            ...activities.map((a) => ListTile(
+                  leading: const Icon(Icons.event_note_outlined),
+                  title: Text(a.titre),
+                  subtitle: Text(a.gratuit
+                      ? 'Accès gratuit'
+                      : a.payant
+                          ? 'Accès payant'
+                          : 'Sur billet de l\'événement'),
+                  onTap: () => Navigator.pop(ctx, a.id),
+                )),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return; // sheet dismissed
+
+    var url = '/scanner/${e.id}?nom=$nom';
+    if (choice != generalEntry) {
+      final a = activities.firstWhere((x) => x.id == choice);
+      url += '&activityId=${a.id}&activiteNom=${Uri.encodeComponent(a.titre)}';
+    }
+    context.push(url);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -61,9 +119,7 @@ class _ScannerHomeScreenState extends ConsumerState<ScannerHomeScreen> {
                         if (e.ville != null) e.ville!,
                       ].join(' · ')),
                       trailing: const Icon(Icons.qr_code_scanner),
-                      onTap: () => context.push(
-                        '/scanner/${e.id}?nom=${Uri.encodeComponent(e.nom)}',
-                      ),
+                      onTap: () => _openEvent(e),
                     ),
                   )),
             ],

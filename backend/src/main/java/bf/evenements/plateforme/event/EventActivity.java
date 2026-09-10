@@ -39,6 +39,19 @@ public class EventActivity extends BaseEntity {
     @Column(name = "type_activite", length = 30)
     private ActivityType typeActivite;
 
+    /** How the public accesses this activity (schedule-only, free ticket, paid ticket). */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ActivityAccess acces = ActivityAccess.SANS_BILLET;
+
+    /**
+     * Auto-managed free ticket category backing this activity while {@code acces}
+     * is {@code GRATUIT}. Soft reference (no FK), kept when GRATUIT is toggled off
+     * so its history and quota survive.
+     */
+    @Column(name = "free_ticket_id")
+    private java.util.UUID freeTicketId;
+
     @Column(name = "date_debut", nullable = false)
     private Instant dateDebut;
 

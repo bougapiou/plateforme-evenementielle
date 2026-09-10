@@ -88,6 +88,7 @@ class _ProgrammeEditorScreenState extends ConsumerState<ProgrammeEditorScreen> {
                         Fmt.dateTime(a.dateDebut),
                         if (a.salle != null) a.salle!,
                         if (a.typeActivite != null) a.typeActivite!,
+                        if (a.gratuit) 'Gratuit' else if (a.payant) 'Payant',
                       ].join(' · ')),
                       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                         IconButton(
@@ -126,6 +127,7 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
   final _moderateur = TextEditingController();
   final _capacite = TextEditingController();
   String? _type;
+  String _acces = 'SANS_BILLET';
   DateTime? _debut;
   DateTime? _fin;
   String? _imageUrl;
@@ -143,6 +145,7 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
       _moderateur.text = a.moderateur ?? '';
       _capacite.text = a.capacite?.toString() ?? '';
       _type = a.typeActivite;
+      _acces = a.acces;
       _debut = a.dateDebut?.toLocal();
       _fin = a.dateFin?.toLocal();
       _imageUrl = a.imageUrl;
@@ -182,6 +185,7 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
       'titre': _titre.text.trim(),
       if (_description.text.trim().isNotEmpty) 'description': _description.text.trim(),
       if (_type != null) 'typeActivite': _type,
+      'acces': _acces,
       'dateDebut': _debut!.toUtc().toIso8601String(),
       if (_fin != null) 'dateFin': _fin!.toUtc().toIso8601String(),
       if (_salle.text.trim().isNotEmpty) 'salle': _salle.text.trim(),
@@ -230,6 +234,21 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
                   .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                   .toList(),
               onChanged: (v) => setState(() => _type = v),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              value: _acces,
+              decoration: const InputDecoration(labelText: 'Accès'),
+              items: const [
+                DropdownMenuItem(
+                    value: 'SANS_BILLET',
+                    child: Text('Sans billet (billet de l\'événement)')),
+                DropdownMenuItem(
+                    value: 'GRATUIT', child: Text('Gratuit sur billet')),
+                DropdownMenuItem(
+                    value: 'PAYANT', child: Text('Payant (billets dédiés)')),
+              ],
+              onChanged: (v) => setState(() => _acces = v ?? 'SANS_BILLET'),
             ),
             const SizedBox(height: 10),
             _dateRow('Début *', _debut, (d) => setState(() => _debut = d)),

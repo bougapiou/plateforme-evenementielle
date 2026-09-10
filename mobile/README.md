@@ -54,7 +54,8 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 | **Mes structures** | liste, création, modification, représentants (ajout / retrait) | `/structures`, `/structures/{id}/members` |
 | **Devenir organisateur** | formulaire de demande (rattachement structure optionnel) | `POST /organizers/apply`, `GET /organizers/me` |
 | **Mes événements** (organisateurs) | liste, **création**, gestion complète : infos + image, programme (activités + visuel), billetterie (catégories, quotas, portée), stands, intervenants (photo), partenaires (logo), workflow (soumettre / publier / ouvrir-fermer les inscriptions) | `POST/PUT /events`, `/events/mine`, `/events/{id}/activities|tickets|stand-types|speakers|partners`, `/events/{id}/submit\|publish\|…`, `POST /uploads/image` |
-| Contrôle à l'entrée | scan caméra du QR → VALIDE / DÉJÀ UTILISÉ / INVALIDE | `POST /checkins/scan`, `GET /checkins/events` |
+| Contrôle à l'entrée | choix de l'événement **puis de l'activité** (ou entrée générale), scan caméra du QR → VALIDE / DÉJÀ UTILISÉ / INVALIDE (un billet d'activité n'est valable que pour la sienne) | `GET /checkins/events` (+ `/{id}/activities`), `POST /checkins/scan` (avec `activityId`) |
+| Participer à une activité gratuite | bouton « Participer » sur une activité en accès gratuit → billet + QR immédiats | `POST /activities/{id}/attend` |
 | Profil | compte, rôles, déconnexion | — |
 
 Un **organisateur** peut désormais créer et gérer ses événements de bout en bout

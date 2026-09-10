@@ -1,7 +1,7 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CheckinService, ScanResponse } from './checkin.service';
-import { EventSummary } from '../events/event.models';
+import { Activity, EventSummary } from '../events/event.models';
 import { formatDateTime } from '../../shared/format';
 
 declare const window: Window & { BarcodeDetector?: any };
@@ -25,6 +25,18 @@ declare const window: Window & { BarcodeDetector?: any };
           y être ajouté comme personnel de contrôle, ou être administrateur ;
           l'événement doit être publié.
         </p>
+      }
+
+      @if (eventId && activities().length) {
+        <label class="form-label mt-3">Contrôle</label>
+        <select class="form-input max-w-md" [(ngModel)]="activityId" (ngModelChange)="onActivityChange()">
+          <option value="">Entrée générale (tout l'événement)</option>
+          @for (a of activities(); track a.id) {
+            <option [value]="a.id">
+              {{ a.titre }}{{ a.acces === 'GRATUIT' ? ' · gratuit' : a.acces === 'PAYANT' ? ' · payant' : '' }}
+            </option>
+          }
+        </select>
       }
     </div>
 
@@ -65,6 +77,9 @@ declare const window: Window & { BarcodeDetector?: any };
               <p class="text-2xl font-extrabold">
                 {{ r.resultat === 'VALIDE' ? 'VALIDE' : r.resultat === 'DEJA_UTILISE' ? 'DÉJÀ UTILISÉ' : 'INVALIDE' }}
               </p>
+              @if (r.activiteNom) {
+                <p class="text-sm font-semibold opacity-90">Activité : {{ r.activiteNom }}</p>
+              }
               @if (r.participantNom) {
                 <p class="mt-1">{{ r.participantNom }} · {{ r.categorieNom }}</p>
                 <p class="text-sm opacity-90">Billet {{ r.numeroBillet }}</p>
@@ -101,8 +116,10 @@ export class ScannerComponent implements OnDestroy {
   private checkin = inject(CheckinService);
 
   events = signal<EventSummary[]>([]);
+  activities = signal<Activity[]>([]);
   loaded = signal(false);
   eventId = '';
+  activityId = '';
   manualToken = '';
   last = signal<ScanResponse | null>(null);
   stats = signal<Record<string, number>>({});
@@ -131,7 +148,18 @@ export class ScannerComponent implements OnDestroy {
 
   onEventChange(): void {
     this.last.set(null);
-    if (this.eventId) this.refreshStats();
+    this.activityId = '';
+    this.activities.set([]);
+    if (!this.eventId) return;
+    this.refreshStats();
+    this.checkin.eventActivities(this.eventId).subscribe({
+      next: (list) => this.activities.set(list),
+      error: () => this.activities.set([]),
+    });
+  }
+
+  onActivityChange(): void {
+    this.last.set(null);
   }
 
   refreshStats(): void {
@@ -141,7 +169,7 @@ export class ScannerComponent implements OnDestroy {
   submit(token: string): void {
     const t = (token || '').trim();
     if (!t || !this.eventId) return;
-    this.checkin.scan(t, this.eventId).subscribe({
+    this.checkin.scan(t, this.eventId, this.activityId || undefined).subscribe({
       next: (r) => {
         this.last.set(r);
         this.manualToken = '';
