@@ -95,6 +95,10 @@ public class Event extends BaseEntity {
     @Column(name = "stands_actifs", nullable = false)
     private boolean standsActifs = false;
 
+    /** When true, an individual (no structure) may also reserve a stand. */
+    @Column(name = "stands_particuliers", nullable = false)
+    private boolean standsParticuliers = false;
+
     /** When true, registrations stay pending until the organiser confirms them. */
     @Column(name = "validation_inscription", nullable = false)
     private boolean validationInscription = false;

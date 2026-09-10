@@ -38,6 +38,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   String? _logoUrl;
   bool _hasActivities = false;
   bool _standsActifs = false;
+  bool _standsParticuliers = false;
   bool _validationInscription = false;
   bool _controleSortie = false;
 
@@ -76,6 +77,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     _logoUrl = e.logoUrl;
     _hasActivities = e.hasActivities;
     _standsActifs = e.standsActifs;
+    _standsParticuliers = e.standsParticuliers;
     _validationInscription = e.validationInscription;
     _controleSortie = e.controleSortie;
   }
@@ -142,6 +144,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       if (_logoUrl != null) 'logoUrl': _logoUrl,
       'hasActivities': _hasActivities,
       'standsActifs': _standsActifs,
+      'standsParticuliers': _standsParticuliers,
       'validationInscription': _validationInscription,
       'controleSortie': _controleSortie,
       if (_inscriptionDebut != null)
@@ -261,6 +264,15 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                   value: _controleSortie,
                   onChanged: (v) => setState(() => _controleSortie = v),
                 ),
+                if (_standsActifs)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Stands : autoriser les particuliers'),
+                    subtitle: const Text(
+                        'Réservation possible sans structure vérifiée'),
+                    value: _standsParticuliers,
+                    onChanged: (v) => setState(() => _standsParticuliers = v),
+                  ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _saving ? null : _save,

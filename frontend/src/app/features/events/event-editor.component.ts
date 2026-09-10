@@ -134,6 +134,12 @@ type Tab =
             <label class="flex items-center gap-2 text-sm">
               <input type="checkbox" formControlName="standsActifs" /> Réservation de stands
             </label>
+            @if (form.controls.standsActifs.value) {
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" formControlName="standsParticuliers" />
+                Autoriser les particuliers à réserver un stand (sans structure)
+              </label>
+            }
             <label class="flex items-center gap-2 text-sm">
               <input type="checkbox" formControlName="validationInscription" />
               Valider chaque inscription manuellement
@@ -608,6 +614,7 @@ export class EventEditorComponent {
     coverUrl: [null as string | null],
     hasActivities: [false],
     standsActifs: [false],
+    standsParticuliers: [false],
     validationInscription: [false],
     controleSortie: [false],
   });
@@ -698,6 +705,7 @@ export class EventEditorComponent {
         conditionsParticipation: e.conditionsParticipation ?? '',
         logoUrl: e.logoUrl ?? null, coverUrl: e.coverUrl ?? null,
         hasActivities: e.hasActivities, standsActifs: e.standsActifs,
+        standsParticuliers: e.standsParticuliers ?? false,
         validationInscription: e.validationInscription ?? false,
         controleSortie: e.controleSortie ?? false,
       });

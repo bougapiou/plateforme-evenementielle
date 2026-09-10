@@ -161,49 +161,67 @@ import { ApiError } from '../../core/models';
                 <p class="mt-2 text-green-700">Stand confirmé.</p>
               }
             </div>
-          } @else if (!auth.isAuthenticated() || !auth.hasPermission('STAND_RESERVE')) {
+          } @else if (!auth.isAuthenticated()) {
             <p class="mt-2 text-sm text-slate-500">
-              La réservation de stands est réservée aux comptes <b>structure</b>
-              (entreprise / institution).
-              @if (!auth.isAuthenticated()) {
-                <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
-                   class="font-semibold text-brand-700">Se connecter</a>
+              @if (e.standsParticuliers) { Connectez-vous pour réserver un stand. }
+              @else {
+                La réservation de stands est réservée aux comptes <b>structure</b>
+                (entreprise / institution).
               }
+              <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
+                 class="font-semibold text-brand-700">Se connecter</a>
             </p>
-          } @else if (verifiedStructures().length === 0) {
-            <div class="mt-3 rounded-lg bg-amber-50 p-4 text-sm">
-              @if (structures().length) {
-                <p class="font-medium text-amber-800">Structure en attente de vérification</p>
-                <p class="mt-1 text-slate-600">
-                  Un administrateur doit vérifier votre structure avant que vous
-                  puissiez réserver un stand.
-                </p>
-              } @else {
-                <p class="font-medium text-amber-800">Créez d'abord une structure</p>
-                <p class="mt-1 text-slate-600">
-                  Créez votre structure ; elle sera vérifiée par un administrateur,
-                  puis vous pourrez réserver un stand en son nom.
-                </p>
-              }
-              <a routerLink="/tableau-de-bord/structures" class="btn-primary mt-3 inline-flex">
-                Mes structures
-              </a>
-            </div>
+          } @else if (!e.standsParticuliers && !auth.hasPermission('STAND_RESERVE')) {
+            <p class="mt-2 text-sm text-slate-500">
+              La réservation de stands est réservée aux comptes <b>structure</b>.
+            </p>
           } @else {
-            <div class="mt-3 max-w-sm">
-              <label class="form-label">Réserver au nom de</label>
-              <select class="form-input" [ngModel]="standStructureId()"
-                      (ngModelChange)="standStructureId.set($event)">
-                <option [ngValue]="null" disabled>Choisir une structure…</option>
-                @for (st of verifiedStructures(); track st.id) {
-                  <option [ngValue]="st.id">{{ st.raisonSociale }}</option>
-                }
-              </select>
-            </div>
+            @if (e.standsParticuliers) {
+              <div class="mt-3 inline-flex rounded-lg border border-slate-200 p-1 text-sm">
+                <button type="button" class="rounded-md px-3 py-1"
+                        [class.bg-brand-600]="standMode() === 'particulier'"
+                        [class.text-white]="standMode() === 'particulier'"
+                        (click)="standMode.set('particulier')">En mon nom</button>
+                <button type="button" class="rounded-md px-3 py-1"
+                        [class.bg-brand-600]="standMode() === 'structure'"
+                        [class.text-white]="standMode() === 'structure'"
+                        (click)="standMode.set('structure')">Au nom d'une structure</button>
+              </div>
+            }
+
+            @if (standMode() === 'structure') {
+              @if (verifiedStructures().length === 0) {
+                <div class="mt-3 rounded-lg bg-amber-50 p-4 text-sm">
+                  <p class="font-medium text-amber-800">
+                    {{ structures().length ? 'Structure en attente de vérification'
+                                            : 'Aucune structure vérifiée' }}
+                  </p>
+                  <a routerLink="/tableau-de-bord/structures" class="btn-primary mt-3 inline-flex">
+                    Mes structures
+                  </a>
+                </div>
+              } @else {
+                <div class="mt-3 max-w-sm">
+                  <label class="form-label">Réserver au nom de</label>
+                  <select class="form-input" [ngModel]="standStructureId()"
+                          (ngModelChange)="standStructureId.set($event)">
+                    <option [ngValue]="null" disabled>Choisir une structure…</option>
+                    @for (st of verifiedStructures(); track st.id) {
+                      <option [ngValue]="st.id">{{ st.raisonSociale }}</option>
+                    }
+                  </select>
+                </div>
+              }
+            }
+
             @for (t of standTypes(); track t.id) {
               <div class="mt-3 rounded-lg border border-slate-100 p-3 text-sm">
                 <div class="flex items-center justify-between">
-                  <p class="font-medium text-slate-800">{{ t.nom }} — {{ fcfa(t.prixMontant) }}</p>
+                  <p class="font-medium text-slate-800">
+                    {{ t.nom }}
+                    @if (t.prixMontant > 0) { — {{ fcfa(t.prixMontant) }} }
+                    @else { <span class="text-slate-400">— Gratuit</span> }
+                  </p>
                   <span class="text-slate-400">{{ t.quantiteRestante }} disponibles</span>
                 </div>
                 <div class="mt-2 flex flex-wrap gap-1">
@@ -211,7 +229,7 @@ import { ApiError } from '../../core/models';
                     <button type="button" class="rounded border px-2 py-1 text-xs"
                             [class.border-brand-500]="s.disponible" [class.text-brand-700]="s.disponible"
                             [class.border-slate-200]="!s.disponible" [class.text-slate-300]="!s.disponible"
-                            [disabled]="!s.disponible || !standStructureId()"
+                            [disabled]="!s.disponible || (standMode() === 'structure' && !standStructureId())"
                             (click)="reserveStand(s)">{{ s.numero }}</button>
                   }
                 </div>
@@ -361,6 +379,7 @@ export class EventDetailComponent {
   attendErrorFor = signal<string | null>(null);
   structures = signal<StructureSummary[]>([]);
   standStructureId = signal<string | null>(null);
+  standMode = signal<'particulier' | 'structure'>('particulier');
   verifiedStructures = computed(() => this.structures().filter((s) => s.statut === 'VERIFIEE'));
 
   constructor() {
@@ -368,7 +387,10 @@ export class EventDetailComponent {
       const slug = this.slug();
       if (!slug) return;
       this.events.publicBySlug(slug).subscribe({
-        next: (e) => this.event.set(e),
+        next: (e) => {
+          this.event.set(e);
+          this.standMode.set(e.standsParticuliers ? 'particulier' : 'structure');
+        },
         error: () => this.loadError.set("Cet événement n'est pas disponible."),
       });
       this.ticketsService.publicTickets(slug).subscribe({
@@ -493,14 +515,15 @@ export class EventDetailComponent {
   }
 
   reserveStand(s: Stand): void {
-    const structureId = this.standStructureId();
-    if (!structureId) {
+    const asStructure = this.standMode() === 'structure';
+    const structureId = asStructure ? this.standStructureId() : undefined;
+    if (asStructure && !structureId) {
       this.standError.set('Choisissez d\'abord une structure.');
       return;
     }
     this.standError.set(null);
     this.standsService
-      .reserve({ eventId: this.event()!.id, standId: s.id, structureId })
+      .reserve({ eventId: this.event()!.id, standId: s.id, structureId: structureId ?? undefined })
       .subscribe({
         next: (r) => this.standReservation.set(r),
         error: (err: HttpErrorResponse) =>

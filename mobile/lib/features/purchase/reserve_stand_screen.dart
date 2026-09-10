@@ -25,6 +25,7 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
   late Future<_Data> _future;
   String? _busyStandId;
   String? _structureId;
+  bool? _asStructure; // null until the event is known
 
   @override
   void initState() {
@@ -41,7 +42,8 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
   }
 
   Future<void> _reserve(EventDetail event, Stand stand) async {
-    if (_structureId == null) {
+    final asStructure = _asStructure ?? true;
+    if (asStructure && _structureId == null) {
       showSnack(context, 'Choisissez d\'abord une structure.', error: true);
       return;
     }
@@ -50,7 +52,7 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
       final r = await ref.read(standsRepositoryProvider).reserve(
             eventId: event.id,
             standId: stand.id,
-            structureId: _structureId,
+            structureId: asStructure ? _structureId : null,
           );
       if (!mounted) return;
       showSnack(context,
@@ -78,10 +80,15 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
               error: e, onRetry: () => ref.invalidate(myStructuresProvider)),
           data: (all) {
             final verified = all.where((s) => s.verifiee).toList();
-            if (verified.isEmpty) {
+            // Default: individual only when the event opens stands to particuliers.
+            _asStructure ??= !d.event.standsParticuliers;
+            final asStructure = _asStructure!;
+            if (asStructure && verified.isEmpty && !d.event.standsParticuliers) {
               return _NoVerifiedStructure(pending: all.isNotEmpty);
             }
-            _structureId ??= verified.length == 1 ? verified.first.id : null;
+            if (asStructure) {
+              _structureId ??= verified.length == 1 ? verified.first.id : null;
+            }
             return _body(context, d, verified);
           },
         ),
@@ -96,36 +103,47 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
       byType.putIfAbsent(s.standTypeNom, () => []).add(s);
     }
 
+    final asStructure = _asStructure ?? true;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Text(d.event.nom, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
         Text(
-          'Un stand se réserve au nom d\'une structure vérifiée. Il est bloqué '
-          '15 minutes, le temps du paiement.',
+          'Le stand est bloqué 15 minutes, le temps du paiement.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          value: _structureId,
-          decoration: const InputDecoration(labelText: 'Réserver au nom de'),
-          items: verified
-              .map((s) => DropdownMenuItem(
-                    value: s.id,
-                    child: Text(s.raisonSociale),
-                  ))
-              .toList(),
-          onChanged: (v) => setState(() => _structureId = v),
-        ),
-        if (verified.length < 2)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              'Gérez vos structures depuis Profil → Mes structures.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+        const SizedBox(height: 12),
+        if (d.event.standsParticuliers)
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('En mon nom')),
+              ButtonSegment(value: true, label: Text('Structure')),
+            ],
+            selected: {asStructure},
+            onSelectionChanged: (s) => setState(() => _asStructure = s.first),
           ),
+        if (asStructure) ...[
+          const SizedBox(height: 12),
+          if (verified.isEmpty)
+            Text(
+              'Aucune structure vérifiée. Choisissez « En mon nom » ou gérez vos '
+              'structures depuis Profil → Mes structures.',
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else
+            DropdownButtonFormField<String>(
+              value: _structureId,
+              decoration: const InputDecoration(labelText: 'Réserver au nom de'),
+              items: verified
+                  .map((s) => DropdownMenuItem(
+                        value: s.id,
+                        child: Text(s.raisonSociale),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() => _structureId = v),
+            ),
+        ],
         const SizedBox(height: 16),
         if (available.isEmpty)
           const EmptyState(
@@ -156,7 +174,7 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
                     Text(type.nom,
                         style: const TextStyle(
                             fontWeight: FontWeight.w600, fontSize: 16)),
-                    Text(type.prixFormatte),
+                    Text(type.prixMontant > 0 ? type.prixFormatte : 'Gratuit'),
                     if (type.dimensions != null)
                       Text(type.dimensions!,
                           style: Theme.of(context).textTheme.bodySmall),
@@ -169,8 +187,9 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
                       runSpacing: 8,
                       children: entry.value.map((s) {
                         final busy = _busyStandId == s.id;
+                        final blocked = asStructure && _structureId == null;
                         return OutlinedButton(
-                          onPressed: _busyStandId != null
+                          onPressed: (_busyStandId != null || blocked)
                               ? null
                               : () => _reserve(d.event, s),
                           child: busy
