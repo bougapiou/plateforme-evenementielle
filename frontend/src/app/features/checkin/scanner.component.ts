@@ -40,7 +40,7 @@ declare const window: Window & { BarcodeDetector?: any };
         </select>
       }
 
-      @if (eventId && exitControl() && !activityId) {
+      @if (eventId && exitControl()) {
         <div class="mt-3 inline-flex rounded-lg border border-slate-200 p-1 text-sm">
           <button type="button" class="flex items-center gap-1 rounded-md px-3 py-1"
                   [class.bg-brand-600]="sens === 'ENTREE'" [class.text-white]="sens === 'ENTREE'"
@@ -208,6 +208,8 @@ export class ScannerComponent implements OnDestroy {
 
   onActivityChange(): void {
     this.last.set(null);
+    this.sens = 'ENTREE';
+    if (this.eventId) this.refreshStats();
   }
 
   setSens(s: CheckinDirection): void {
@@ -216,7 +218,9 @@ export class ScannerComponent implements OnDestroy {
   }
 
   refreshStats(): void {
-    this.checkin.stats(this.eventId).subscribe((s) => this.stats.set(s));
+    this.checkin
+      .stats(this.eventId, this.activityId || undefined)
+      .subscribe((s) => this.stats.set(s));
   }
 
   submit(token: string): void {

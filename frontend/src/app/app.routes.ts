@@ -173,6 +173,16 @@ export const routes: Routes = [
           import('./features/admin/admin-events.component').then((m) => m.AdminEventsComponent),
         title: 'Événements',
       },
+      {
+        path: 'admin/flux',
+        canActivate: [authGuard],
+        data: { permission: 'EVENT_VALIDATE' },
+        loadComponent: () =>
+          import('./features/admin/admin-attendance.component').then(
+            (m) => m.AdminAttendanceComponent,
+          ),
+        title: 'Présence / Flux',
+      },
     ],
   },
   {

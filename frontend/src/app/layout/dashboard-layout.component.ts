@@ -88,6 +88,7 @@ export class DashboardLayoutComponent {
 
   private readonly adminNav: NavItem[] = [
     { label: 'Événements', path: '/tableau-de-bord/admin/evenements', icon: 'calendar', permission: 'EVENT_VALIDATE' },
+    { label: 'Présence / Flux', path: '/tableau-de-bord/admin/flux', icon: 'present', permission: 'EVENT_VALIDATE' },
     { label: 'Utilisateurs', path: '/tableau-de-bord/admin/utilisateurs', icon: 'users', permission: 'USER_READ' },
     { label: 'Structures', path: '/tableau-de-bord/admin/structures', icon: 'building', permission: 'STRUCTURE_READ' },
     { label: 'Organisateurs', path: '/tableau-de-bord/admin/organisateurs', icon: 'badge', permission: 'ORGANIZER_MANAGE' },
