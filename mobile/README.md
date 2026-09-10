@@ -41,7 +41,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 | Paiement | choix du moyen (Orange/Moov/Telecel Money, FasoArzeka, carte), sandbox | `POST /payments` + `/payments/{ref}/simulate` |
 | Inscription | formulaire **particulier ou structure** + participants. **Sans compte** pour un particulier : session invité à la volée | `POST /events/{id}/registrations`, `POST /auth/guest` |
 | Détail inscription | participants, **pièces jointes** (photo/galerie → upload/suppression), annulation, confirmation PDF | `GET/POST/DELETE /registrations/{id}/documents`, `/registrations/{id}/confirmation.pdf` |
-| Réservation de stand | plan par type, blocage 15 min, paiement (option **structure**) | `POST /stand-reservations` |
+| Réservation de stand | plan par type, blocage 15 min, paiement — au nom d'une **structure vérifiée** ou, si l'événement l'autorise, **en son nom propre** | `POST /stand-reservations` |
 | Détail réservation | annulation, confirmation PDF | `/stand-reservations/{id}/confirmation.pdf` |
 | Détail commande | lignes, total, payer / annuler | `GET /ticket-orders/{id}` |
 | Portefeuille | liste des billets, QR **mis en cache pour l'affichage hors-ligne**, PDF | `GET /tickets/my`, `/tickets/{id}/qr.png`, `/tickets/{id}/pdf` |
