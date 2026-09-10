@@ -279,6 +279,7 @@ public class EventService {
         e.setHasActivities(r.hasActivities());
         e.setStandsActifs(r.standsActifs());
         e.setValidationInscription(r.validationInscription());
+        e.setControleSortie(r.controleSortie());
         e.setInscriptionDebut(r.inscriptionDebut());
         e.setInscriptionFin(r.inscriptionFin());
         e.setReservationDebut(r.reservationDebut());

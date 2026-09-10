@@ -2,10 +2,12 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { NotificationBellComponent } from '../features/notifications/notification-bell.component';
+import { IconComponent, IconName } from '../shared/icon.component';
 
 interface NavItem {
   label: string;
   path: string;
+  icon: IconName;
   permission?: string;
   exact?: boolean;
   /** Hidden for guest checkout sessions (no real account yet). */
@@ -15,7 +17,7 @@ interface NavItem {
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationBellComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationBellComponent, IconComponent],
   template: `
     <div class="flex min-h-full">
       <aside class="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:block">
@@ -27,7 +29,8 @@ interface NavItem {
           @for (item of visibleNav(); track item.path) {
             <a [routerLink]="item.path" routerLinkActive="bg-brand-50 text-brand-700"
                [routerLinkActiveOptions]="{ exact: !!item.exact }"
-               class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">
+               class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">
+              <app-icon [name]="item.icon" class="h-4 w-4 shrink-0 text-slate-400" />
               {{ item.label }}
             </a>
           }
@@ -37,7 +40,8 @@ interface NavItem {
             </p>
             @for (item of visibleAdminNav(); track item.path) {
               <a [routerLink]="item.path" routerLinkActive="bg-brand-50 text-brand-700"
-                 class="block rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">
+                 class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">
+                <app-icon [name]="item.icon" class="h-4 w-4 shrink-0 text-slate-400" />
                 {{ item.label }}
               </a>
             }
@@ -70,23 +74,23 @@ export class DashboardLayoutComponent {
   auth = inject(AuthService);
 
   private readonly nav: NavItem[] = [
-    { label: 'Vue d’ensemble', path: '/tableau-de-bord', exact: true },
-    { label: 'Mes événements', path: '/tableau-de-bord/evenements', permission: 'EVENT_CREATE' },
-    { label: 'Contrôle à l’entrée', path: '/tableau-de-bord/controle', permission: 'CHECKIN_SCAN' },
-    { label: 'Mes inscriptions', path: '/tableau-de-bord/inscriptions' },
-    { label: 'Mes billets', path: '/tableau-de-bord/billets' },
-    { label: 'Mes stands', path: '/tableau-de-bord/stands' },
-    { label: 'Mes paiements', path: '/tableau-de-bord/paiements' },
-    { label: 'Mes factures', path: '/tableau-de-bord/factures' },
-    { label: 'Mes structures', path: '/tableau-de-bord/structures', fullAccount: true },
-    { label: 'Espace organisateur', path: '/tableau-de-bord/organisateur', fullAccount: true },
+    { label: 'Vue d’ensemble', path: '/tableau-de-bord', icon: 'home', exact: true },
+    { label: 'Mes événements', path: '/tableau-de-bord/evenements', icon: 'calendar', permission: 'EVENT_CREATE' },
+    { label: 'Contrôle à l’entrée', path: '/tableau-de-bord/controle', icon: 'scan', permission: 'CHECKIN_SCAN' },
+    { label: 'Mes inscriptions', path: '/tableau-de-bord/inscriptions', icon: 'check' },
+    { label: 'Mes billets', path: '/tableau-de-bord/billets', icon: 'ticket' },
+    { label: 'Mes stands', path: '/tableau-de-bord/stands', icon: 'building' },
+    { label: 'Mes paiements', path: '/tableau-de-bord/paiements', icon: 'card' },
+    { label: 'Mes factures', path: '/tableau-de-bord/factures', icon: 'chart' },
+    { label: 'Mes structures', path: '/tableau-de-bord/structures', icon: 'building', fullAccount: true },
+    { label: 'Espace organisateur', path: '/tableau-de-bord/organisateur', icon: 'users', fullAccount: true },
   ];
 
   private readonly adminNav: NavItem[] = [
-    { label: 'Événements', path: '/tableau-de-bord/admin/evenements', permission: 'EVENT_VALIDATE' },
-    { label: 'Utilisateurs', path: '/tableau-de-bord/admin/utilisateurs', permission: 'USER_READ' },
-    { label: 'Structures', path: '/tableau-de-bord/admin/structures', permission: 'STRUCTURE_READ' },
-    { label: 'Organisateurs', path: '/tableau-de-bord/admin/organisateurs', permission: 'ORGANIZER_MANAGE' },
+    { label: 'Événements', path: '/tableau-de-bord/admin/evenements', icon: 'calendar', permission: 'EVENT_VALIDATE' },
+    { label: 'Utilisateurs', path: '/tableau-de-bord/admin/utilisateurs', icon: 'users', permission: 'USER_READ' },
+    { label: 'Structures', path: '/tableau-de-bord/admin/structures', icon: 'building', permission: 'STRUCTURE_READ' },
+    { label: 'Organisateurs', path: '/tableau-de-bord/admin/organisateurs', icon: 'badge', permission: 'ORGANIZER_MANAGE' },
   ];
 
   visibleNav = computed(() =>

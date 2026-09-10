@@ -36,8 +36,9 @@ class _ScannerHomeScreenState extends ConsumerState<ScannerHomeScreen> {
     if (!mounted) return;
 
     final nom = Uri.encodeComponent(e.nom);
+    final cs = e.controleSortie ? '&controleSortie=1' : '';
     if (activities.isEmpty) {
-      context.push('/scanner/${e.id}?nom=$nom');
+      context.push('/scanner/${e.id}?nom=$nom$cs');
       return;
     }
 
@@ -76,7 +77,7 @@ class _ScannerHomeScreenState extends ConsumerState<ScannerHomeScreen> {
     );
     if (!mounted || choice == null) return; // sheet dismissed
 
-    var url = '/scanner/${e.id}?nom=$nom';
+    var url = '/scanner/${e.id}?nom=$nom$cs';
     if (choice != generalEntry) {
       final a = activities.firstWhere((x) => x.id == choice);
       url += '&activityId=${a.id}&activiteNom=${Uri.encodeComponent(a.titre)}';

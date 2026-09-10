@@ -501,6 +501,7 @@ class CheckinRepository extends _Base {
     required String token,
     required String eventId,
     String? activityId,
+    String sens = 'ENTREE',
   }) =>
       _post(
         '/checkins/scan',
@@ -508,8 +509,16 @@ class CheckinRepository extends _Base {
         body: {
           'token': token,
           'eventId': eventId,
+          'sens': sens,
           if (activityId != null) 'activityId': activityId,
         },
+      );
+
+  /// Flow counters for an event (valides/entrees/sorties/presents/reentrees…).
+  Future<Map<String, int>> stats(String eventId) => _get(
+        '/events/$eventId/checkin-stats',
+        (d) => (d as Map<String, dynamic>)
+            .map((k, v) => MapEntry(k, (v as num).toInt())),
       );
 
   /// Events for which the current user may run entry control (organiser, control

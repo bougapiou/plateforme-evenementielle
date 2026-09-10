@@ -44,6 +44,11 @@ public class Checkin extends BaseEntity {
     @Column(nullable = false, length = 20)
     private CheckinResult resultat;
 
+    /** ENTREE (default) or SORTIE — only meaningful when the event tracks exits. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private CheckinDirection sens = CheckinDirection.ENTREE;
+
     @Column(name = "scanned_at", nullable = false)
     private Instant scannedAt = Instant.now();
 

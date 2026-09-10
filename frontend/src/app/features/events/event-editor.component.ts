@@ -138,6 +138,10 @@ type Tab =
               <input type="checkbox" formControlName="validationInscription" />
               Valider chaque inscription manuellement
             </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" formControlName="controleSortie" />
+              Contrôle des sorties (comptage du flux entrées / sorties / présents)
+            </label>
           </div>
           @if (error()) { <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ error() }}</p> }
           <button type="submit" class="btn-primary" [disabled]="saving() || form.disabled">
@@ -605,6 +609,7 @@ export class EventEditorComponent {
     hasActivities: [false],
     standsActifs: [false],
     validationInscription: [false],
+    controleSortie: [false],
   });
 
   activityForm = this.fb.nonNullable.group({
@@ -694,6 +699,7 @@ export class EventEditorComponent {
         logoUrl: e.logoUrl ?? null, coverUrl: e.coverUrl ?? null,
         hasActivities: e.hasActivities, standsActifs: e.standsActifs,
         validationInscription: e.validationInscription ?? false,
+        controleSortie: e.controleSortie ?? false,
       });
       const editable = ['BROUILLON', 'REFUSE', 'VALIDE'].includes(e.statut) || this.isAdmin();
       editable ? this.form.enable() : this.form.disable();
