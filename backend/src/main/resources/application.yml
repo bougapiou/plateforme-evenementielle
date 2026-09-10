@@ -56,6 +56,9 @@ springdoc:
     path: /v3/api-docs
 
 app:
+  # Public base URL of the web front-end — used to build links in e-mails
+  # (password reset, …). Pin FRONTEND_BASE_URL to the real domain in production.
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:4200}
   cors:
     # Origin patterns (comma-separated). Dev default covers any localhost port
     # (Angular `ng serve`, `flutter run -d chrome`). Pin CORS_ORIGINS to the real

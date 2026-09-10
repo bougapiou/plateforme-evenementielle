@@ -5,6 +5,8 @@ import 'providers.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/auth/complete_account_screen.dart';
+import '../features/auth/forgot_password_screen.dart';
+import '../features/auth/reset_password_screen.dart';
 import '../features/catalogue/catalogue_screen.dart';
 import '../features/event/event_detail_screen.dart';
 import '../features/purchase/buy_tickets_screen.dart';
@@ -40,7 +42,12 @@ import '../features/shell/app_shell.dart';
 final _rootKey = GlobalKey<NavigatorState>();
 final _shellKey = GlobalKey<NavigatorState>();
 
-const _publicPrefixes = ['/evenements', '/connexion', '/inscription'];
+const _publicPrefixes = [
+  '/evenements',
+  '/connexion',
+  '/inscription',
+  '/mot-de-passe',
+];
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -64,6 +71,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/finaliser-compte',
         builder: (_, __) => const CompleteAccountScreen(),
+      ),
+      GoRoute(
+        path: '/mot-de-passe-oublie',
+        builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/mot-de-passe/reinitialiser',
+        builder: (_, s) => ResetPasswordScreen(
+          initialToken: s.uri.queryParameters['token'],
+        ),
       ),
 
       StatefulShellRoute.indexedStack(

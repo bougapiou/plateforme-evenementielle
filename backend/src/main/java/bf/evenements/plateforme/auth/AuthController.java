@@ -2,10 +2,12 @@ package bf.evenements.plateforme.auth;
 
 import bf.evenements.plateforme.auth.dto.AuthResponse;
 import bf.evenements.plateforme.auth.dto.CompleteRegistrationRequest;
+import bf.evenements.plateforme.auth.dto.ForgotPasswordRequest;
 import bf.evenements.plateforme.auth.dto.GuestSessionRequest;
 import bf.evenements.plateforme.auth.dto.LoginRequest;
 import bf.evenements.plateforme.auth.dto.RefreshRequest;
 import bf.evenements.plateforme.auth.dto.RegisterRequest;
+import bf.evenements.plateforme.auth.dto.ResetPasswordRequest;
 import bf.evenements.plateforme.common.web.HttpUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,6 +51,21 @@ public class AuthController {
     @Operation(summary = "Transformer sa session invité en compte (choix d'un mot de passe)")
     public AuthResponse complete(@Valid @RequestBody CompleteRegistrationRequest request) {
         return authService.completeRegistration(request);
+    }
+
+    @PostMapping("/password/forgot")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Demander un lien de réinitialisation du mot de passe")
+    public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
+                               HttpServletRequest http) {
+        authService.requestPasswordReset(request, HttpUtils.clientIp(http));
+    }
+
+    @PostMapping("/password/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Définir un nouveau mot de passe à partir d'un jeton reçu par e-mail")
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
     }
 
     @PostMapping("/login")

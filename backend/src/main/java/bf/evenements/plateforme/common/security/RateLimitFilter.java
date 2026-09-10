@@ -19,8 +19,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Lightweight fixed-window rate limiter for the sensitive authentication
- * endpoints (login / register): guards against credential stuffing without an
- * external dependency. Per client IP. Disabled when the limit is {@code <= 0}.
+ * endpoints (login / register / password reset): guards against credential
+ * stuffing and reset-link spam without an external dependency. Per client IP.
+ * Disabled when the limit is {@code <= 0}.
  */
 @Component
 @RequiredArgsConstructor
@@ -44,7 +45,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         String uri = request.getRequestURI();
         return !("POST".equals(request.getMethod())
-                && (uri.equals("/api/auth/login") || uri.equals("/api/auth/register")));
+                && (uri.equals("/api/auth/login")
+                        || uri.equals("/api/auth/register")
+                        || uri.equals("/api/auth/password/forgot")
+                        || uri.equals("/api/auth/password/reset")));
     }
 
     @Override

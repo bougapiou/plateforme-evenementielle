@@ -64,7 +64,7 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api   # émulateur A
 
 ## Modules 
 
-M0 fondations · M1 auth & RBAC · M2 structures & organisateurs · M3 événements
+M0 fondations · M1 auth & RBAC (JWT, invité, **mot de passe oublié**) · M2 structures & organisateurs · M3 événements
 (workflow, **activités/programme**, intervenants, partenaires, site public) ·
 M4 billetterie (quotas, portée événement/activité) · M5 stands (blocage 15 min,
 anti-double réservation) · M6 inscriptions (particulier/structure, documents, **parcours invité sans compte**) ·

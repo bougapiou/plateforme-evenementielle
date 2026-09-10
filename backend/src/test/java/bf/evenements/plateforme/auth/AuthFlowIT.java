@@ -1,16 +1,39 @@
 package bf.evenements.plateforme.auth;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
+import bf.evenements.plateforme.notification.EmailSender;
 import bf.evenements.plateforme.support.AbstractIntegrationTest;
 import io.restassured.http.ContentType;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 class AuthFlowIT extends AbstractIntegrationTest {
+
+    @MockBean
+    EmailSender emailSender;
+
+    /** Runs {@code POST /auth/password/forgot} and returns the raw token from the e-mailed link. */
+    private String requestResetToken(String email) {
+        given().contentType(ContentType.JSON).body(Map.of("email", email))
+                .when().post("/api/auth/password/forgot").then().statusCode(202);
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(emailSender).send(eq(email), anyString(), body.capture());
+        Matcher m = Pattern.compile("token=([A-Za-z0-9_-]+)").matcher(body.getValue());
+        assertThat(m.find()).as("reset link contains a token").isTrue();
+        return m.group(1);
+    }
 
     @Test
     void register_login_refresh_logout_and_protected_access() {
@@ -159,6 +182,56 @@ class AuthFlowIT extends AbstractIntegrationTest {
                 .when().post("/api/auth/register")
                 .then().statusCode(201)
                 .body("user.guest", equalTo(false));
+    }
+
+    @Test
+    void forgot_then_reset_password_ends_old_sessions() {
+        String email = "oubli" + System.nanoTime() + "@example.bf";
+        String oldRefresh = given().contentType(ContentType.JSON)
+                .body(Map.of("email", email, "password", "Ancien!2026",
+                        "firstName", "Fatou", "lastName", "Sawadogo"))
+                .when().post("/api/auth/register").then().statusCode(201)
+                .extract().path("refreshToken");
+
+        String token = requestResetToken(email);
+
+        given().contentType(ContentType.JSON)
+                .body(Map.of("token", token, "password", "Nouveau!2026"))
+                .when().post("/api/auth/password/reset").then().statusCode(204);
+
+        // new password works, old one does not
+        given().contentType(ContentType.JSON)
+                .body(Map.of("email", email, "password", "Nouveau!2026"))
+                .when().post("/api/auth/login").then().statusCode(200);
+        given().contentType(ContentType.JSON)
+                .body(Map.of("email", email, "password", "Ancien!2026"))
+                .when().post("/api/auth/login").then().statusCode(401);
+
+        // sessions opened before the reset are revoked
+        given().contentType(ContentType.JSON).body(Map.of("refreshToken", oldRefresh))
+                .when().post("/api/auth/refresh").then().statusCode(401);
+
+        // the token cannot be reused
+        given().contentType(ContentType.JSON)
+                .body(Map.of("token", token, "password", "Encore!2026"))
+                .when().post("/api/auth/password/reset")
+                .then().statusCode(422).body("code", equalTo("RESET_TOKEN_INVALID"));
+    }
+
+    @Test
+    void forgot_for_an_unknown_email_is_silently_accepted() {
+        given().contentType(ContentType.JSON)
+                .body(Map.of("email", "personne" + System.nanoTime() + "@example.bf"))
+                .when().post("/api/auth/password/forgot")
+                .then().statusCode(202);
+    }
+
+    @Test
+    void reset_with_a_bogus_token_is_rejected() {
+        given().contentType(ContentType.JSON)
+                .body(Map.of("token", "not-a-real-token", "password", "Quelconque!2026"))
+                .when().post("/api/auth/password/reset")
+                .then().statusCode(422).body("code", equalTo("RESET_TOKEN_INVALID"));
     }
 
     @Test
