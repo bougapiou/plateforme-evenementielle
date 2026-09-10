@@ -32,6 +32,24 @@ export interface CheckinView {
   detail?: string;
 }
 
+export type FlowCounters = Record<string, number>;
+
+export interface ActivityFlow {
+  id: string;
+  titre: string;
+  dateDebut?: string;
+  acces?: string;
+  flux: FlowCounters;
+}
+
+export interface AttendanceView {
+  eventId: string;
+  eventNom: string;
+  controleSortie: boolean;
+  event: FlowCounters;
+  activites: ActivityFlow[];
+}
+
 export interface StaffMember {
   id: string;
   userId: string;
@@ -65,8 +83,12 @@ export class CheckinService extends ApiBase {
   checkins(eventId: string): Observable<Page<CheckinView>> {
     return this.get<Page<CheckinView>>(`/events/${eventId}/checkins`, { size: 50 });
   }
-  stats(eventId: string): Observable<Record<string, number>> {
-    return this.get<Record<string, number>>(`/events/${eventId}/checkin-stats`);
+  stats(eventId: string, activityId?: string): Observable<Record<string, number>> {
+    return this.get<Record<string, number>>(`/events/${eventId}/checkin-stats`, { activityId });
+  }
+  /** Real-time attendance: event-level flow + one line per activity. */
+  attendance(eventId: string): Observable<AttendanceView> {
+    return this.get<AttendanceView>(`/events/${eventId}/attendance`);
   }
   staff(eventId: string): Observable<StaffMember[]> {
     return this.get<StaffMember[]>(`/events/${eventId}/staff`);

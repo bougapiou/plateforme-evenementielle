@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -70,9 +71,20 @@ public class CheckinController {
     }
 
     @GetMapping("/events/{eventId}/checkin-stats")
-    @Operation(summary = "Statistiques de contrôle d'un événement")
-    public Map<String, Long> stats(@PathVariable UUID eventId) {
-        return checkinService.stats(eventId);
+    @Operation(summary = "Statistiques de contrôle d'un événement (ou d'une activité)")
+    public Map<String, Long> stats(@PathVariable UUID eventId,
+                                   @RequestParam(required = false) UUID activityId) {
+        return activityId == null
+                ? checkinService.stats(eventId)
+                : checkinService.statsForActivity(eventId, activityId);
+    }
+
+    @GetMapping("/events/{eventId}/attendance")
+    @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "') or hasAuthority('"
+            + Permissions.EVENT_VALIDATE + "')")
+    @Operation(summary = "Présence temps réel : flux par événement et par activité")
+    public CheckinService.AttendanceView attendance(@PathVariable UUID eventId) {
+        return checkinService.attendance(eventId);
     }
 
     // --- personnel de contrôle ---

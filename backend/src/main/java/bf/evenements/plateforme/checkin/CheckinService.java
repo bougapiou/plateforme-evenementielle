@@ -27,6 +27,7 @@ import bf.evenements.plateforme.ticket.TicketStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -142,7 +143,8 @@ public class CheckinService {
                             pNom, catNom, num, null, null));
         }
 
-        boolean exitTracked = activity == null && event.isControleSortie();
+        boolean exitTracked = event.isControleSortie();
+        UUID activityId = activity != null ? activity.getId() : null;
 
         // --- single-use path: per-activity scan, or event without exit control ---
         if (!exitTracked) {
@@ -169,42 +171,54 @@ public class CheckinService {
                             nom, activiteNom, pNom, catNom, num, Instant.now(), null));
         }
 
-        // --- exit-controlled event: alternate ENTREE / SORTIE, ticket stays EMISE ---
-        var last = checkinRepository
-                .findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtDesc(
-                        ticket.getId(), CheckinResult.VALIDE);
+        // --- exit-controlled: alternate ENTREE / SORTIE per (ticket, activity), ticket stays EMISE ---
+        var last = lastValid(ticket.getId(), activityId);
         boolean inside = last.map(c -> c.getSens() == CheckinDirection.ENTREE).orElse(false);
-        long priorEntries = checkinRepository
-                .countByTicketIdAndActivityIdIsNullAndSensAndResultat(
-                        ticket.getId(), CheckinDirection.ENTREE, CheckinResult.VALIDE);
+        long priorEntries = entryCount(ticket.getId(), activityId);
 
         if (sens == CheckinDirection.ENTREE) {
             if (inside) {
-                return record(event, null, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
+                return record(event, activity, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
                         CheckinResult.DEJA_UTILISE, "Entrée refusée : déjà à l'intérieur",
                         ScanResponse.of(CheckinResult.DEJA_UTILISE, CheckinDirection.ENTREE,
-                                "Déjà à l'intérieur", nom, null, pNom, catNom, num, null,
+                                "Déjà à l'intérieur", nom, activiteNom, pNom, catNom, num, null,
                                 last.get().getScannedAt()));
             }
             boolean reentree = priorEntries > 0;
-            return record(event, null, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
+            return record(event, activity, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
                     CheckinResult.VALIDE, reentree ? "Ré-entrée" : null,
                     new ScanResponse(CheckinResult.VALIDE, CheckinDirection.ENTREE, reentree,
-                            reentree ? "Ré-entrée" : "Bienvenue", nom, null, pNom, catNom, num,
+                            reentree ? "Ré-entrée" : "Bienvenue", nom, activiteNom, pNom, catNom, num,
                             Instant.now(), null));
         }
         // SORTIE
         if (!inside) {
-            return record(event, null, CheckinDirection.SORTIE, me, qr.getId(), ticket.getId(),
+            return record(event, activity, CheckinDirection.SORTIE, me, qr.getId(), ticket.getId(),
                     CheckinResult.DEJA_UTILISE, "Sortie refusée : pas à l'intérieur",
                     ScanResponse.of(CheckinResult.DEJA_UTILISE, CheckinDirection.SORTIE,
-                            "Pas à l'intérieur (déjà sorti ou jamais entré)", nom, null, pNom,
+                            "Pas à l'intérieur (déjà sorti ou jamais entré)", nom, activiteNom, pNom,
                             catNom, num, null, null));
         }
-        return record(event, null, CheckinDirection.SORTIE, me, qr.getId(), ticket.getId(),
+        return record(event, activity, CheckinDirection.SORTIE, me, qr.getId(), ticket.getId(),
                 CheckinResult.VALIDE, null,
                 ScanResponse.of(CheckinResult.VALIDE, CheckinDirection.SORTIE, "Sortie enregistrée",
-                        nom, null, pNom, catNom, num, null, null));
+                        nom, activiteNom, pNom, catNom, num, null, null));
+    }
+
+    private Optional<Checkin> lastValid(UUID ticketId, UUID activityId) {
+        return activityId == null
+                ? checkinRepository.findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtDesc(
+                        ticketId, CheckinResult.VALIDE)
+                : checkinRepository.findFirstByTicketIdAndActivityIdAndResultatOrderByScannedAtDesc(
+                        ticketId, activityId, CheckinResult.VALIDE);
+    }
+
+    private long entryCount(UUID ticketId, UUID activityId) {
+        return activityId == null
+                ? checkinRepository.countByTicketIdAndActivityIdIsNullAndSensAndResultat(
+                        ticketId, CheckinDirection.ENTREE, CheckinResult.VALIDE)
+                : checkinRepository.countByTicketIdAndActivityIdAndSensAndResultat(
+                        ticketId, activityId, CheckinDirection.ENTREE, CheckinResult.VALIDE);
     }
 
     private boolean grantsAccess(Ticket ticket, EventActivity activity) {
@@ -266,6 +280,33 @@ public class CheckinService {
     @Transactional(readOnly = true)
     public Map<String, Long> stats(UUID eventId) {
         requireOrganiser(eventId);
+        return eventFlow(eventId);
+    }
+
+    /** Same counters, scoped to a single activity of the event. */
+    @Transactional(readOnly = true)
+    public Map<String, Long> statsForActivity(UUID eventId, UUID activityId) {
+        requireOrganiser(eventId);
+        return activityFlow(eventId, activityId);
+    }
+
+    /** Real-time attendance: event-level flow + one line per activity. */
+    @Transactional(readOnly = true)
+    public AttendanceView attendance(UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Événement", eventId));
+        requireControl(event, currentUser.requireId());
+        List<ActivityFlow> activites = activityRepository
+                .findByEventIdOrderByDateDebutAscOrdreAsc(eventId).stream()
+                .map(a -> new ActivityFlow(a.getId(), a.getTitre(), a.getDateDebut(),
+                        a.getAcces() != null ? a.getAcces().name() : null,
+                        activityFlow(eventId, a.getId())))
+                .toList();
+        return new AttendanceView(event.getId(), event.getNom(), event.isControleSortie(),
+                eventFlow(eventId), activites);
+    }
+
+    private Map<String, Long> eventFlow(UUID eventId) {
         long entrees = checkinRepository.countByEventIdAndActivityIdIsNullAndSensAndResultat(
                 eventId, CheckinDirection.ENTREE, CheckinResult.VALIDE);
         long sorties = checkinRepository.countByEventIdAndActivityIdIsNullAndSensAndResultat(
@@ -281,6 +322,34 @@ public class CheckinService {
                 "sorties", sorties,
                 "presents", Math.max(0, entrees - sorties),
                 "reentrees", Math.max(0, entrees - distinctEntered));
+    }
+
+    private Map<String, Long> activityFlow(UUID eventId, UUID activityId) {
+        long entrees = checkinRepository.countByEventIdAndActivityIdAndSensAndResultat(
+                eventId, activityId, CheckinDirection.ENTREE, CheckinResult.VALIDE);
+        long sorties = checkinRepository.countByEventIdAndActivityIdAndSensAndResultat(
+                eventId, activityId, CheckinDirection.SORTIE, CheckinResult.VALIDE);
+        long distinctEntered =
+                checkinRepository.countDistinctEnteredTicketsForActivity(eventId, activityId);
+        return Map.of(
+                "valides", checkinRepository.countByEventIdAndActivityIdAndResultat(
+                        eventId, activityId, CheckinResult.VALIDE),
+                "dejaUtilises", checkinRepository.countByEventIdAndActivityIdAndResultat(
+                        eventId, activityId, CheckinResult.DEJA_UTILISE),
+                "invalides", checkinRepository.countByEventIdAndActivityIdAndResultat(
+                        eventId, activityId, CheckinResult.INVALIDE),
+                "entrees", entrees,
+                "sorties", sorties,
+                "presents", Math.max(0, entrees - sorties),
+                "reentrees", Math.max(0, entrees - distinctEntered));
+    }
+
+    public record AttendanceView(UUID eventId, String eventNom, boolean controleSortie,
+                                 Map<String, Long> event, List<ActivityFlow> activites) {
+    }
+
+    public record ActivityFlow(UUID id, String titre, Instant dateDebut, String acces,
+                               Map<String, Long> flux) {
     }
 
     // --- helpers ---

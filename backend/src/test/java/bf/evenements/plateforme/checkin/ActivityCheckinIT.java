@@ -111,6 +111,76 @@ class ActivityCheckinIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void exit_control_counts_entries_and_exits_per_activity() throws Exception {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("ace-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+
+        String eventId = as(orga).body(Map.of("nom", "FESPACO " + n,
+                        "dateDebut", "2027-02-25T09:00:00Z", "dateFin", "2027-03-04T18:00:00Z",
+                        "ville", "Ouagadougou", "hasActivities", true, "controleSortie", true))
+                .when().post("/api/events").then().statusCode(201)
+                .body("controleSortie", equalTo(true))
+                .extract().path("id");
+        as(orga).when().post("/api/events/" + eventId + "/submit").then().statusCode(200);
+        as(admin).when().post("/api/events/" + eventId + "/validate").then().statusCode(200);
+        as(orga).when().post("/api/events/" + eventId + "/publish").then().statusCode(200);
+        as(orga).when().post("/api/events/" + eventId + "/open-registrations").then().statusCode(200);
+
+        String projection = as(orga).body(Map.of("titre", "Projection en plein air", "acces", "PAYANT",
+                        "dateDebut", "2027-02-26T20:00:00Z"))
+                .when().post("/api/events/" + eventId + "/activities").then().statusCode(201)
+                .extract().path("id");
+
+        String cat = as(orga).body(Map.of("nom", "Pass festival", "prixMontant", 3000,
+                        "portee", "EVENEMENT", "quantiteTotale", 50))
+                .when().post("/api/events/" + eventId + "/tickets").then().statusCode(201)
+                .extract().path("id");
+        String buyer = TestAuth.registerAndToken("ace-buyer-" + n + "@example.bf", "PARTICULIER");
+        String orderId = as(buyer).body(Map.of("eventId", eventId,
+                        "lignes", List.of(Map.of("eventTicketId", cat, "quantite", 1))))
+                .when().post("/api/ticket-orders").then().statusCode(201).extract().path("id");
+        as(buyer).when().post("/api/ticket-orders/" + orderId + "/pay-sandbox").then().statusCode(200);
+        String ticketId = as(buyer).when().get("/api/tickets/my").then().statusCode(200)
+                .extract().path("[0].id");
+        String token = qrToken(buyer, ticketId);
+
+        // ENTREE into the activity
+        as(orga).body(Map.of("token", token, "eventId", eventId, "activityId", projection, "sens", "ENTREE"))
+                .when().post("/api/checkins/scan").then().statusCode(200)
+                .body("resultat", equalTo("VALIDE")).body("sens", equalTo("ENTREE"))
+                .body("reentree", equalTo(false));
+        // ENTREE again -> already inside the activity
+        as(orga).body(Map.of("token", token, "eventId", eventId, "activityId", projection, "sens", "ENTREE"))
+                .when().post("/api/checkins/scan").then().statusCode(200)
+                .body("resultat", equalTo("DEJA_UTILISE"));
+        // SORTIE
+        as(orga).body(Map.of("token", token, "eventId", eventId, "activityId", projection, "sens", "SORTIE"))
+                .when().post("/api/checkins/scan").then().statusCode(200)
+                .body("resultat", equalTo("VALIDE")).body("sens", equalTo("SORTIE"));
+        // ENTREE -> re-entry
+        as(orga).body(Map.of("token", token, "eventId", eventId, "activityId", projection, "sens", "ENTREE"))
+                .when().post("/api/checkins/scan").then().statusCode(200)
+                .body("resultat", equalTo("VALIDE")).body("reentree", equalTo(true));
+
+        // per-activity flow
+        as(orga).when().get("/api/events/" + eventId + "/checkin-stats?activityId=" + projection)
+                .then().statusCode(200)
+                .body("entrees", equalTo(2))
+                .body("sorties", equalTo(1))
+                .body("presents", equalTo(1))
+                .body("reentrees", equalTo(1));
+
+        // attendance view lists the activity with its flow
+        as(orga).when().get("/api/events/" + eventId + "/attendance")
+                .then().statusCode(200)
+                .body("controleSortie", equalTo(true))
+                .body("activites[0].titre", equalTo("Projection en plein air"))
+                .body("activites[0].flux.entrees", equalTo(2))
+                .body("activites[0].flux.presents", equalTo(1));
+    }
+
+    @Test
     void attend_is_refused_for_a_non_free_activity() {
         long n = System.nanoTime();
         String orga = TestAuth.organizerToken("acn-orga-" + n + "@example.bf");

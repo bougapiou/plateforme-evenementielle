@@ -514,11 +514,12 @@ class CheckinRepository extends _Base {
         },
       );
 
-  /// Flow counters for an event (valides/entrees/sorties/presents/reentrees…).
-  Future<Map<String, int>> stats(String eventId) => _get(
+  /// Flow counters for an event, or for one of its activities.
+  Future<Map<String, int>> stats(String eventId, {String? activityId}) => _get(
         '/events/$eventId/checkin-stats',
         (d) => (d as Map<String, dynamic>)
             .map((k, v) => MapEntry(k, (v as num).toInt())),
+        query: activityId != null ? {'activityId': activityId} : null,
       );
 
   /// Events for which the current user may run entry control (organiser, control

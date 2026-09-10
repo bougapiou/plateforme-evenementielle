@@ -35,8 +35,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   String _sens = 'ENTREE';
   Map<String, int> _stats = const {};
 
-  bool get _exitControl =>
-      widget.controleSortie && widget.activityId == null;
+  bool get _exitControl => widget.controleSortie;
 
   @override
   void initState() {
@@ -46,7 +45,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
 
   Future<void> _refreshStats() async {
     try {
-      final s = await ref.read(checkinRepositoryProvider).stats(widget.eventId);
+      final s = await ref
+          .read(checkinRepositoryProvider)
+          .stats(widget.eventId, activityId: widget.activityId);
       if (mounted) setState(() => _stats = s);
     } catch (_) {
       // stats are best-effort
