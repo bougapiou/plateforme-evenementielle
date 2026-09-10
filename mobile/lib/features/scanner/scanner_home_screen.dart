@@ -36,14 +36,47 @@ class _ScannerHomeScreenState extends ConsumerState<ScannerHomeScreen> {
     if (!mounted) return;
 
     final nom = Uri.encodeComponent(e.nom);
-    final cs = e.controleSortie ? '&controleSortie=1' : '';
-    if (activities.isEmpty) {
-      context.push('/scanner/${e.id}?nom=$nom$cs');
-      return;
+
+    // 1) what is being controlled — general entry or a specific activity
+    String? choice = '__general__';
+    if (activities.isNotEmpty) {
+      choice = await showModalBottomSheet<String>(
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Text('Que contrôlez-vous ?',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.door_front_door_outlined),
+                title: const Text('Entrée générale'),
+                subtitle: const Text('Tout billet valable pour l\'événement'),
+                onTap: () => Navigator.pop(ctx, '__general__'),
+              ),
+              const Divider(height: 1),
+              ...activities.map((a) => ListTile(
+                    leading: const Icon(Icons.event_note_outlined),
+                    title: Text(a.titre),
+                    subtitle: Text(a.gratuit
+                        ? 'Accès gratuit'
+                        : a.payant
+                            ? 'Accès payant'
+                            : 'Sur billet de l\'événement'),
+                    onTap: () => Navigator.pop(ctx, a.id),
+                  )),
+            ],
+          ),
+        ),
+      );
+      if (!mounted || choice == null) return; // sheet dismissed
     }
 
-    const generalEntry = '__general__';
-    final choice = await showModalBottomSheet<String>(
+    // 2) direction — the controller picks entrée or sortie before scanning
+    final sens = await showModalBottomSheet<String>(
       context: context,
       builder: (ctx) => SafeArea(
         child: ListView(
@@ -51,34 +84,27 @@ class _ScannerHomeScreenState extends ConsumerState<ScannerHomeScreen> {
           children: [
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text('Que contrôlez-vous ?',
+              child: Text('Sens du contrôle',
                   style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             ListTile(
-              leading: const Icon(Icons.door_front_door_outlined),
-              title: const Text('Entrée générale'),
-              subtitle: const Text('Tout billet valable pour l\'événement'),
-              onTap: () => Navigator.pop(ctx, generalEntry),
+              leading: const Icon(Icons.login, color: Color(0xFF15803D)),
+              title: const Text('Contrôle à l\'entrée'),
+              onTap: () => Navigator.pop(ctx, 'ENTREE'),
             ),
-            const Divider(height: 1),
-            ...activities.map((a) => ListTile(
-                  leading: const Icon(Icons.event_note_outlined),
-                  title: Text(a.titre),
-                  subtitle: Text(a.gratuit
-                      ? 'Accès gratuit'
-                      : a.payant
-                          ? 'Accès payant'
-                          : 'Sur billet de l\'événement'),
-                  onTap: () => Navigator.pop(ctx, a.id),
-                )),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Color(0xFF334155)),
+              title: const Text('Contrôle à la sortie'),
+              onTap: () => Navigator.pop(ctx, 'SORTIE'),
+            ),
           ],
         ),
       ),
     );
-    if (!mounted || choice == null) return; // sheet dismissed
+    if (!mounted || sens == null) return; // sheet dismissed
 
-    var url = '/scanner/${e.id}?nom=$nom$cs';
-    if (choice != generalEntry) {
+    var url = '/scanner/${e.id}?nom=$nom&sens=$sens';
+    if (choice != '__general__') {
       final a = activities.firstWhere((x) => x.id == choice);
       url += '&activityId=${a.id}&activiteNom=${Uri.encodeComponent(a.titre)}';
     }

@@ -34,7 +34,6 @@ public record EventRequest(
         boolean standsActifs,
         boolean standsParticuliers,
         boolean validationInscription,
-        boolean controleSortie,
         Instant inscriptionDebut,
         Instant inscriptionFin,
         Instant reservationDebut,

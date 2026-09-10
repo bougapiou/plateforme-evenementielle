@@ -63,7 +63,6 @@ class EventSummary {
   final String? lieu;
   final String? organizerNom;
   final bool standsActifs;
-  final bool controleSortie;
   final String statut;
 
   EventSummary({
@@ -81,7 +80,6 @@ class EventSummary {
     this.lieu,
     this.organizerNom,
     this.standsActifs = false,
-    this.controleSortie = false,
     this.statut = '',
   });
 
@@ -100,7 +98,6 @@ class EventSummary {
         lieu: j['lieu'] as String?,
         organizerNom: j['organizerNom'] as String?,
         standsActifs: j['standsActifs'] as bool? ?? false,
-        controleSortie: j['controleSortie'] as bool? ?? false,
         statut: j['statut'] as String? ?? '',
       );
 }
@@ -182,7 +179,6 @@ class EventFull {
   final bool standsActifs;
   final bool standsParticuliers;
   final bool validationInscription;
-  final bool controleSortie;
   final DateTime? inscriptionDebut;
   final DateTime? inscriptionFin;
   final String statut;
@@ -212,7 +208,6 @@ class EventFull {
     this.standsActifs = false,
     this.standsParticuliers = false,
     this.validationInscription = false,
-    this.controleSortie = false,
     this.inscriptionDebut,
     this.inscriptionFin,
     this.statut = 'BROUILLON',
@@ -247,7 +242,6 @@ class EventFull {
         standsActifs: j['standsActifs'] as bool? ?? false,
         standsParticuliers: j['standsParticuliers'] as bool? ?? false,
         validationInscription: j['validationInscription'] as bool? ?? false,
-        controleSortie: j['controleSortie'] as bool? ?? false,
         inscriptionDebut: parseDate(j['inscriptionDebut']),
         inscriptionFin: parseDate(j['inscriptionFin']),
         statut: j['statut'] as String? ?? 'BROUILLON',

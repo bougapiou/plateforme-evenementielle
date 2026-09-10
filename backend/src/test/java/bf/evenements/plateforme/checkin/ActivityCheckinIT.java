@@ -111,16 +111,15 @@ class ActivityCheckinIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void exit_control_counts_entries_and_exits_per_activity() throws Exception {
+    void entries_and_exits_are_counted_per_activity() throws Exception {
         long n = System.nanoTime();
         String orga = TestAuth.organizerToken("ace-orga-" + n + "@example.bf");
         String admin = TestAuth.adminToken();
 
         String eventId = as(orga).body(Map.of("nom", "FESPACO " + n,
                         "dateDebut", "2027-02-25T09:00:00Z", "dateFin", "2027-03-04T18:00:00Z",
-                        "ville", "Ouagadougou", "hasActivities", true, "controleSortie", true))
+                        "ville", "Ouagadougou", "hasActivities", true))
                 .when().post("/api/events").then().statusCode(201)
-                .body("controleSortie", equalTo(true))
                 .extract().path("id");
         as(orga).when().post("/api/events/" + eventId + "/submit").then().statusCode(200);
         as(admin).when().post("/api/events/" + eventId + "/validate").then().statusCode(200);
@@ -174,7 +173,6 @@ class ActivityCheckinIT extends AbstractIntegrationTest {
         // attendance view lists the activity with its flow
         as(orga).when().get("/api/events/" + eventId + "/attendance")
                 .then().statusCode(200)
-                .body("controleSortie", equalTo(true))
                 .body("activites[0].titre", equalTo("Projection en plein air"))
                 .body("activites[0].flux.entrees", equalTo(2))
                 .body("activites[0].flux.presents", equalTo(1));

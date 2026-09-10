@@ -11,18 +11,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface CheckinRepository extends JpaRepository<Checkin, UUID> {
 
-    Optional<Checkin> findFirstByTicketIdAndResultatOrderByScannedAtAsc(UUID ticketId,
-                                                                       CheckinResult resultat);
-
-    Optional<Checkin> findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtAsc(
-            UUID ticketId, CheckinResult resultat);
-
     /** Latest event-level check-in for a ticket — tells whether the holder is inside. */
     Optional<Checkin> findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtDesc(
             UUID ticketId, CheckinResult resultat);
-
-    Optional<Checkin> findFirstByTicketIdAndActivityIdAndResultatOrderByScannedAtAsc(
-            UUID ticketId, UUID activityId, CheckinResult resultat);
 
     /** Latest check-in for a (ticket, activity) — tells whether the holder is inside the activity. */
     Optional<Checkin> findFirstByTicketIdAndActivityIdAndResultatOrderByScannedAtDesc(

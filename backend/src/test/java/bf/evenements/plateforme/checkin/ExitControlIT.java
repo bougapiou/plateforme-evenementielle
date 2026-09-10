@@ -46,9 +46,8 @@ class ExitControlIT extends AbstractIntegrationTest {
 
         String eventId = as(orga).body(Map.of("nom", "SIAO " + n,
                         "dateDebut", "2027-10-25T09:00:00Z", "dateFin", "2027-11-03T20:00:00Z",
-                        "ville", "Ouagadougou", "controleSortie", true))
+                        "ville", "Ouagadougou"))
                 .when().post("/api/events").then().statusCode(201)
-                .body("controleSortie", equalTo(true))
                 .extract().path("id");
         as(orga).when().post("/api/events/" + eventId + "/submit").then().statusCode(200);
         as(admin).when().post("/api/events/" + eventId + "/validate").then().statusCode(200);
@@ -93,7 +92,7 @@ class ExitControlIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void without_exit_control_a_ticket_is_single_use() throws Exception {
+    void a_ticket_cannot_enter_twice_without_exiting() throws Exception {
         long n = System.nanoTime();
         String orga = TestAuth.organizerToken("ex2-orga-" + n + "@example.bf");
         String admin = TestAuth.adminToken();
@@ -101,7 +100,6 @@ class ExitControlIT extends AbstractIntegrationTest {
                         "dateDebut", "2027-09-01T09:00:00Z", "dateFin", "2027-09-05T18:00:00Z",
                         "ville", "Bobo"))
                 .when().post("/api/events").then().statusCode(201)
-                .body("controleSortie", equalTo(false))
                 .extract().path("id");
         as(orga).when().post("/api/events/" + eventId + "/submit").then().statusCode(200);
         as(admin).when().post("/api/events/" + eventId + "/validate").then().statusCode(200);
@@ -109,11 +107,20 @@ class ExitControlIT extends AbstractIntegrationTest {
         as(orga).when().post("/api/events/" + eventId + "/open-registrations").then().statusCode(200);
 
         String token = buyTicketToken(orga, admin, eventId);
+        // default sens = ENTREE
         as(orga).body(Map.of("token", token, "eventId", eventId))
                 .when().post("/api/checkins/scan").then().statusCode(200)
-                .body("resultat", equalTo("VALIDE"));
+                .body("resultat", equalTo("VALIDE")).body("sens", equalTo("ENTREE"));
+        // a second ENTREE without an exit in between is refused
         as(orga).body(Map.of("token", token, "eventId", eventId))
                 .when().post("/api/checkins/scan").then().statusCode(200)
                 .body("resultat", equalTo("DEJA_UTILISE"));
+        // but after an exit, the holder can come back in
+        as(orga).body(Map.of("token", token, "eventId", eventId, "sens", "SORTIE"))
+                .when().post("/api/checkins/scan").then().statusCode(200)
+                .body("resultat", equalTo("VALIDE")).body("sens", equalTo("SORTIE"));
+        as(orga).body(Map.of("token", token, "eventId", eventId, "sens", "ENTREE"))
+                .when().post("/api/checkins/scan").then().statusCode(200)
+                .body("resultat", equalTo("VALIDE")).body("reentree", equalTo(true));
     }
 }

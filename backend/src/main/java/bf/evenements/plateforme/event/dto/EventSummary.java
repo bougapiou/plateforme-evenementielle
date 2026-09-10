@@ -21,7 +21,6 @@ public record EventSummary(
         String lieu,
         String organizerNom,
         boolean standsActifs,
-        boolean controleSortie,
         EventStatus statut) {
 
     public static EventSummary from(Event e) {
@@ -30,6 +29,6 @@ public record EventSummary(
                 e.getCategory() != null ? e.getCategory().getNom() : null,
                 e.getLogoUrl(), e.getCoverUrl(), e.getDateDebut(), e.getDateFin(),
                 e.getVille(), e.getLieu(), e.getOrganizer().getNomAffichage(),
-                e.isStandsActifs(), e.isControleSortie(), e.getStatut());
+                e.isStandsActifs(), e.getStatut());
     }
 }

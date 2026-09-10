@@ -11,14 +11,16 @@ class ScannerScreen extends ConsumerStatefulWidget {
   final String eventNom;
   final String? activityId;
   final String? activiteNom;
-  final bool controleSortie;
+
+  /// Direction chosen by the controller before scanning: 'ENTREE' or 'SORTIE'.
+  final String sens;
   const ScannerScreen({
     super.key,
     required this.eventId,
     required this.eventNom,
     this.activityId,
     this.activiteNom,
-    this.controleSortie = false,
+    this.sens = 'ENTREE',
   });
 
   @override
@@ -32,10 +34,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   bool _processing = false;
   ScanOutcome? _outcome;
   String? _error;
-  String _sens = 'ENTREE';
+  late String _sens = widget.sens;
   Map<String, int> _stats = const {};
-
-  bool get _exitControl => widget.controleSortie;
 
   @override
   void initState() {
@@ -77,7 +77,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             token: raw,
             eventId: widget.eventId,
             activityId: widget.activityId,
-            sens: _exitControl ? _sens : 'ENTREE',
+            sens: _sens,
           );
       setState(() => _outcome = res);
       _refreshStats();
@@ -107,7 +107,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 16)),
             Text(
-              widget.activiteNom ?? 'Entrée générale',
+              '${widget.activiteNom ?? 'Entrée générale'} · '
+              '${_sens == 'SORTIE' ? 'contrôle sortie' : 'contrôle entrée'}',
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
             ),
@@ -127,8 +128,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       body: Stack(
         children: [
           MobileScanner(controller: _controller, onDetect: _onDetect),
-          if (_exitControl)
-            Positioned(
+          Positioned(
               top: 12,
               left: 12,
               right: 12,
@@ -161,7 +161,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
               top: (_outcome != null || _error != null) ? 64 : null,
               left: 12,
               right: 12,
-              child: _CounterBar(stats: _stats, exit: _exitControl),
+              child: _CounterBar(stats: _stats),
             ),
           Center(
             child: Container(
@@ -296,23 +296,16 @@ class _ResultPanel extends StatelessWidget {
 
 class _CounterBar extends StatelessWidget {
   final Map<String, int> stats;
-  final bool exit;
-  const _CounterBar({required this.stats, required this.exit});
+  const _CounterBar({required this.stats});
 
   @override
   Widget build(BuildContext context) {
-    final cells = exit
-        ? [
-            ('Entrées', stats['entrees'] ?? 0, Icons.login, const Color(0xFF15803D)),
-            ('Sorties', stats['sorties'] ?? 0, Icons.logout, const Color(0xFF334155)),
-            ('Présents', stats['presents'] ?? 0, Icons.groups, const Color(0xFF1D4ED8)),
-            ('Ré-entrées', stats['reentrees'] ?? 0, Icons.replay, const Color(0xFFB45309)),
-          ]
-        : [
-            ('Valides', stats['valides'] ?? 0, Icons.check_circle, const Color(0xFF15803D)),
-            ('Déjà scannés', stats['dejaUtilises'] ?? 0, Icons.history, const Color(0xFFB45309)),
-            ('Invalides', stats['invalides'] ?? 0, Icons.block, const Color(0xFF991B1B)),
-          ];
+    final cells = [
+      ('Entrées', stats['entrees'] ?? 0, Icons.login, const Color(0xFF15803D)),
+      ('Sorties', stats['sorties'] ?? 0, Icons.logout, const Color(0xFF334155)),
+      ('Présents', stats['presents'] ?? 0, Icons.groups, const Color(0xFF1D4ED8)),
+      ('Ré-entrées', stats['reentrees'] ?? 0, Icons.replay, const Color(0xFFB45309)),
+    ];
     return Material(
       color: Colors.white.withValues(alpha: 0.94),
       borderRadius: BorderRadius.circular(12),

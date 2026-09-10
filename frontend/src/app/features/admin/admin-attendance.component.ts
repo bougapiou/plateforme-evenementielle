@@ -33,8 +33,7 @@ const REFRESH_MS = 8000;
 
     @if (data(); as d) {
       <p class="mt-4 text-sm text-slate-500">
-        {{ d.controleSortie ? 'Contrôle des sorties actif' : 'Entrées uniquement' }}
-        · mise à jour automatique toutes les {{ refreshSeconds }} s
+        Mise à jour automatique toutes les {{ refreshSeconds }} s
       </p>
 
       <h2 class="mt-3 font-semibold text-slate-800">{{ d.eventNom }}</h2>
