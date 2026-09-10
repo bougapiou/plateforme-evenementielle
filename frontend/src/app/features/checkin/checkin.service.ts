@@ -5,9 +5,12 @@ import { Page } from '../../core/models';
 import { Activity, EventSummary } from '../events/event.models';
 
 export type CheckinResult = 'VALIDE' | 'DEJA_UTILISE' | 'INVALIDE';
+export type CheckinDirection = 'ENTREE' | 'SORTIE';
 
 export interface ScanResponse {
   resultat: CheckinResult;
+  sens: CheckinDirection;
+  reentree: boolean;
   message: string;
   eventNom: string;
   activiteNom?: string;
@@ -23,6 +26,7 @@ export interface CheckinView {
   ticketId?: string;
   activityId?: string;
   resultat: CheckinResult;
+  sens: CheckinDirection;
   scannedAt: string;
   scannedBy?: string;
   detail?: string;
@@ -45,11 +49,17 @@ export class CheckinService extends ApiBase {
   eventActivities(eventId: string): Observable<Activity[]> {
     return this.get<Activity[]>(`/checkins/events/${eventId}/activities`);
   }
-  scan(token: string, eventId: string, activityId?: string): Observable<ScanResponse> {
+  scan(
+    token: string,
+    eventId: string,
+    activityId?: string,
+    sens: CheckinDirection = 'ENTREE',
+  ): Observable<ScanResponse> {
     return this.http.post<ScanResponse>(`${this.base}/checkins/scan`, {
       token,
       eventId,
       activityId: activityId ?? null,
+      sens,
     });
   }
   checkins(eventId: string): Observable<Page<CheckinView>> {

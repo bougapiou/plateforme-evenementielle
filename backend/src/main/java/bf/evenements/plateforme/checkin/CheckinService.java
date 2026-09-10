@@ -97,12 +97,13 @@ public class CheckinService {
         Event event = eventRepository.findById(request.eventId())
                 .orElseThrow(() -> ResourceNotFoundException.of("Événement", request.eventId()));
         requireControl(event, me);
+        CheckinDirection sens = request.resolvedSens();
 
         EventActivity activity = null;
         if (request.activityId() != null) {
             activity = activityRepository.findById(request.activityId()).orElse(null);
             if (activity == null || !activity.getEvent().getId().equals(event.getId())) {
-                return record(event, null, me, null, null, CheckinResult.INVALIDE,
+                return record(event, null, sens, me, null, null, CheckinResult.INVALIDE,
                         "Activité inconnue pour cet événement",
                         ScanResponse.invalide("Activité inconnue", event.getNom()));
             }
@@ -112,54 +113,98 @@ public class CheckinService {
         String token = request.token().trim();
         QrCode qr = qrCodeRepository.findByToken(token).orElse(null);
         if (qr == null) {
-            return scanAccreditation(event, activity, activiteNom, me, token);
+            return scanAccreditation(event, activity, activiteNom, sens, me, token);
         }
         Ticket ticket = ticketRepository.findById(qr.getTicket().getId()).orElseThrow();
+        String nom = event.getNom();
+        String pNom = ticket.getParticipantNom();
+        String catNom = ticket.getEventTicket().getNom();
+        String num = ticket.getNumero();
 
         if (!ticket.getEvent().getId().equals(event.getId())) {
-            return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.INVALIDE,
-                    "Billet d'un autre événement",
-                    new ScanResponse(CheckinResult.INVALIDE, "Ce billet concerne un autre événement",
-                            event.getNom(), activiteNom, null, null, null, null, null));
+            return record(event, activity, sens, me, qr.getId(), ticket.getId(),
+                    CheckinResult.INVALIDE, "Billet d'un autre événement",
+                    ScanResponse.of(CheckinResult.INVALIDE, sens,
+                            "Ce billet concerne un autre événement", nom, activiteNom,
+                            null, null, null, null, null));
         }
         if (qr.getStatut() == QrCode.QrStatus.REVOQUE || ticket.getStatut() == TicketStatus.ANNULE) {
-            return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.INVALIDE,
-                    "Billet annulé / révoqué",
-                    new ScanResponse(CheckinResult.INVALIDE, "Ticket invalide (annulé)",
-                            event.getNom(), activiteNom, null, null, null, null, null));
+            return record(event, activity, sens, me, qr.getId(), ticket.getId(),
+                    CheckinResult.INVALIDE, "Billet annulé / révoqué",
+                    ScanResponse.of(CheckinResult.INVALIDE, sens, "Ticket invalide (annulé)",
+                            nom, activiteNom, null, null, null, null, null));
         }
         if (activity != null && !grantsAccess(ticket, activity)) {
-            return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.INVALIDE,
-                    "Billet non valable pour cette activité",
-                    new ScanResponse(CheckinResult.INVALIDE, "Billet non valable pour cette activité",
-                            event.getNom(), activiteNom, ticket.getParticipantNom(),
-                            ticket.getEventTicket().getNom(), ticket.getNumero(), null, null));
+            return record(event, activity, sens, me, qr.getId(), ticket.getId(),
+                    CheckinResult.INVALIDE, "Billet non valable pour cette activité",
+                    ScanResponse.of(CheckinResult.INVALIDE, sens,
+                            "Billet non valable pour cette activité", nom, activiteNom,
+                            pNom, catNom, num, null, null));
         }
 
-        var existing = activity != null
-                ? checkinRepository.findFirstByTicketIdAndActivityIdAndResultatOrderByScannedAtAsc(
-                        ticket.getId(), activity.getId(), CheckinResult.VALIDE)
-                : checkinRepository.findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtAsc(
+        boolean exitTracked = activity == null && event.isControleSortie();
+
+        // --- single-use path: per-activity scan, or event without exit control ---
+        if (!exitTracked) {
+            var existing = activity != null
+                    ? checkinRepository.findFirstByTicketIdAndActivityIdAndResultatOrderByScannedAtAsc(
+                            ticket.getId(), activity.getId(), CheckinResult.VALIDE)
+                    : checkinRepository
+                            .findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtAsc(
+                                    ticket.getId(), CheckinResult.VALIDE);
+            if (existing.isPresent()) {
+                return record(event, activity, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
+                        CheckinResult.DEJA_UTILISE,
+                        "Contrôle déjà effectué le " + existing.get().getScannedAt(),
+                        ScanResponse.of(CheckinResult.DEJA_UTILISE, CheckinDirection.ENTREE,
+                                "Ticket déjà utilisé", nom, activiteNom, pNom, catNom, num, null,
+                                existing.get().getScannedAt()));
+            }
+            if (activity == null) {
+                ticket.setStatut(TicketStatus.UTILISE);
+            }
+            return record(event, activity, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
+                    CheckinResult.VALIDE, null,
+                    ScanResponse.of(CheckinResult.VALIDE, CheckinDirection.ENTREE, "Bienvenue",
+                            nom, activiteNom, pNom, catNom, num, Instant.now(), null));
+        }
+
+        // --- exit-controlled event: alternate ENTREE / SORTIE, ticket stays EMISE ---
+        var last = checkinRepository
+                .findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtDesc(
                         ticket.getId(), CheckinResult.VALIDE);
-        if (existing.isPresent()) {
-            ScanResponse resp = new ScanResponse(CheckinResult.DEJA_UTILISE, "Ticket déjà utilisé",
-                    event.getNom(), activiteNom, ticket.getParticipantNom(),
-                    ticket.getEventTicket().getNom(), ticket.getNumero(), null,
-                    existing.get().getScannedAt());
-            return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.DEJA_UTILISE,
-                    "Contrôle déjà effectué le " + existing.get().getScannedAt(), resp);
-        }
+        boolean inside = last.map(c -> c.getSens() == CheckinDirection.ENTREE).orElse(false);
+        long priorEntries = checkinRepository
+                .countByTicketIdAndActivityIdIsNullAndSensAndResultat(
+                        ticket.getId(), CheckinDirection.ENTREE, CheckinResult.VALIDE);
 
-        // valid entry — a general (event-wide) scan consumes the ticket; a
-        // per-activity scan leaves it EMISE so the holder can enter other sessions.
-        Instant now = Instant.now();
-        if (activity == null) {
-            ticket.setStatut(TicketStatus.UTILISE);
+        if (sens == CheckinDirection.ENTREE) {
+            if (inside) {
+                return record(event, null, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
+                        CheckinResult.DEJA_UTILISE, "Entrée refusée : déjà à l'intérieur",
+                        ScanResponse.of(CheckinResult.DEJA_UTILISE, CheckinDirection.ENTREE,
+                                "Déjà à l'intérieur", nom, null, pNom, catNom, num, null,
+                                last.get().getScannedAt()));
+            }
+            boolean reentree = priorEntries > 0;
+            return record(event, null, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
+                    CheckinResult.VALIDE, reentree ? "Ré-entrée" : null,
+                    new ScanResponse(CheckinResult.VALIDE, CheckinDirection.ENTREE, reentree,
+                            reentree ? "Ré-entrée" : "Bienvenue", nom, null, pNom, catNom, num,
+                            Instant.now(), null));
         }
-        ScanResponse resp = new ScanResponse(CheckinResult.VALIDE, "Bienvenue", event.getNom(),
-                activiteNom, ticket.getParticipantNom(), ticket.getEventTicket().getNom(),
-                ticket.getNumero(), now, null);
-        return record(event, activity, me, qr.getId(), ticket.getId(), CheckinResult.VALIDE, null, resp);
+        // SORTIE
+        if (!inside) {
+            return record(event, null, CheckinDirection.SORTIE, me, qr.getId(), ticket.getId(),
+                    CheckinResult.DEJA_UTILISE, "Sortie refusée : pas à l'intérieur",
+                    ScanResponse.of(CheckinResult.DEJA_UTILISE, CheckinDirection.SORTIE,
+                            "Pas à l'intérieur (déjà sorti ou jamais entré)", nom, null, pNom,
+                            catNom, num, null, null));
+        }
+        return record(event, null, CheckinDirection.SORTIE, me, qr.getId(), ticket.getId(),
+                CheckinResult.VALIDE, null,
+                ScanResponse.of(CheckinResult.VALIDE, CheckinDirection.SORTIE, "Sortie enregistrée",
+                        nom, null, pNom, catNom, num, null, null));
     }
 
     private boolean grantsAccess(Ticket ticket, EventActivity activity) {
@@ -173,40 +218,42 @@ public class CheckinService {
 
     /** The QR is not a ticket — try to match an accreditation badge. */
     private ScanResponse scanAccreditation(Event event, EventActivity activity, String activiteNom,
-                                           UUID me, String token) {
+                                           CheckinDirection sens, UUID me, String token) {
         Accreditation accr = accreditationRepository.findByQrToken(token).orElse(null);
+        String nom = event.getNom();
         if (accr == null) {
-            return record(event, activity, me, null, null, null, CheckinResult.INVALIDE,
+            return record(event, activity, sens, me, null, null, null, CheckinResult.INVALIDE,
                     "QR code inconnu",
-                    new ScanResponse(CheckinResult.INVALIDE, "QR code inconnu", event.getNom(),
+                    ScanResponse.of(CheckinResult.INVALIDE, sens, "QR code inconnu", nom,
                             activiteNom, null, null, null, null, null));
         }
         String label = "Badge · " + accr.fonctionLabel();
+        String pNom = accr.getPersonneNom();
+        String num = accr.getNumero();
         if (!accr.getEvent().getId().equals(event.getId())) {
-            return recordAccr(event, activity, me, accr, CheckinResult.INVALIDE,
+            return recordAccr(event, activity, sens, me, accr, CheckinResult.INVALIDE,
                     "Badge d'un autre événement",
-                    new ScanResponse(CheckinResult.INVALIDE, "Ce badge concerne un autre événement",
-                            event.getNom(), activiteNom, accr.getPersonneNom(), label,
-                            accr.getNumero(), null, null));
+                    ScanResponse.of(CheckinResult.INVALIDE, sens, "Ce badge concerne un autre événement",
+                            nom, activiteNom, pNom, label, num, null, null));
         }
         if (accr.getStatut() != Accreditation.AccreditationStatus.ACTIVE) {
-            return recordAccr(event, activity, me, accr, CheckinResult.INVALIDE, "Badge révoqué",
-                    new ScanResponse(CheckinResult.INVALIDE, "Badge révoqué", event.getNom(),
-                            activiteNom, accr.getPersonneNom(), label, accr.getNumero(), null, null));
+            return recordAccr(event, activity, sens, me, accr, CheckinResult.INVALIDE, "Badge révoqué",
+                    ScanResponse.of(CheckinResult.INVALIDE, sens, "Badge révoqué", nom, activiteNom,
+                            pNom, label, num, null, null));
         }
         if (accr.getActivity() != null
                 && (activity == null || !accr.getActivity().getId().equals(activity.getId()))) {
-            return recordAccr(event, activity, me, accr, CheckinResult.INVALIDE,
+            return recordAccr(event, activity, sens, me, accr, CheckinResult.INVALIDE,
                     "Badge lié à l'activité « " + accr.getActivity().getTitre() + " »",
-                    new ScanResponse(CheckinResult.INVALIDE,
-                            "Badge non valable pour cette activité", event.getNom(), activiteNom,
-                            accr.getPersonneNom(), label, accr.getNumero(), null, null));
+                    ScanResponse.of(CheckinResult.INVALIDE, sens, "Badge non valable pour cette activité",
+                            nom, activiteNom, pNom, label, num, null, null));
         }
         // Badges allow re-entry — every scan is valid and simply logged.
-        ScanResponse resp = new ScanResponse(CheckinResult.VALIDE,
-                "Accès " + accr.fonctionLabel(), event.getNom(), activiteNom,
-                accr.getPersonneNom(), label, accr.getNumero(), Instant.now(), null);
-        return recordAccr(event, activity, me, accr, CheckinResult.VALIDE, null, resp);
+        String message = sens == CheckinDirection.SORTIE ? "Sortie " + accr.fonctionLabel()
+                : "Accès " + accr.fonctionLabel();
+        return recordAccr(event, activity, sens, me, accr, CheckinResult.VALIDE, null,
+                ScanResponse.of(CheckinResult.VALIDE, sens, message, nom, activiteNom, pNom, label,
+                        num, Instant.now(), null));
     }
 
     @Transactional(readOnly = true)
@@ -219,22 +266,32 @@ public class CheckinService {
     @Transactional(readOnly = true)
     public Map<String, Long> stats(UUID eventId) {
         requireOrganiser(eventId);
+        long entrees = checkinRepository.countByEventIdAndActivityIdIsNullAndSensAndResultat(
+                eventId, CheckinDirection.ENTREE, CheckinResult.VALIDE);
+        long sorties = checkinRepository.countByEventIdAndActivityIdIsNullAndSensAndResultat(
+                eventId, CheckinDirection.SORTIE, CheckinResult.VALIDE);
+        long distinctEntered = checkinRepository.countDistinctEnteredTickets(eventId);
         return Map.of(
                 "valides", checkinRepository.countByEventIdAndResultat(eventId, CheckinResult.VALIDE),
                 "dejaUtilises",
                 checkinRepository.countByEventIdAndResultat(eventId, CheckinResult.DEJA_UTILISE),
                 "invalides",
-                checkinRepository.countByEventIdAndResultat(eventId, CheckinResult.INVALIDE));
+                checkinRepository.countByEventIdAndResultat(eventId, CheckinResult.INVALIDE),
+                "entrees", entrees,
+                "sorties", sorties,
+                "presents", Math.max(0, entrees - sorties),
+                "reentrees", Math.max(0, entrees - distinctEntered));
     }
 
     // --- helpers ---
 
-    private ScanResponse record(Event event, EventActivity activity, UUID scannedBy, UUID qrId,
-                                UUID ticketId, UUID accreditationId, CheckinResult resultat,
-                                String detail, ScanResponse response) {
+    private ScanResponse record(Event event, EventActivity activity, CheckinDirection sens,
+                                UUID scannedBy, UUID qrId, UUID ticketId, UUID accreditationId,
+                                CheckinResult resultat, String detail, ScanResponse response) {
         Checkin checkin = new Checkin();
         checkin.setEventId(event.getId());
         checkin.setActivityId(activity != null ? activity.getId() : null);
+        checkin.setSens(sens);
         checkin.setScannedBy(scannedBy);
         checkin.setQrCodeId(qrId);
         checkin.setTicketId(ticketId);
@@ -247,20 +304,22 @@ public class CheckinService {
                 "CHECKIN_SCAN", "Checkin", checkin.getId().toString(), null,
                 "event=" + event.getNom()
                         + (activity != null ? " activite=" + activity.getTitre() : "")
-                        + " resultat=" + resultat);
+                        + " sens=" + sens + " resultat=" + resultat);
         return response;
     }
 
-    private ScanResponse record(Event event, EventActivity activity, UUID scannedBy, UUID qrId,
-                                UUID ticketId, CheckinResult resultat, String detail,
-                                ScanResponse response) {
-        return record(event, activity, scannedBy, qrId, ticketId, null, resultat, detail, response);
+    private ScanResponse record(Event event, EventActivity activity, CheckinDirection sens,
+                                UUID scannedBy, UUID qrId, UUID ticketId, CheckinResult resultat,
+                                String detail, ScanResponse response) {
+        return record(event, activity, sens, scannedBy, qrId, ticketId, null, resultat, detail,
+                response);
     }
 
-    private ScanResponse recordAccr(Event event, EventActivity activity, UUID scannedBy,
-                                    Accreditation accr, CheckinResult resultat, String detail,
-                                    ScanResponse response) {
-        return record(event, activity, scannedBy, null, null, accr.getId(), resultat, detail, response);
+    private ScanResponse recordAccr(Event event, EventActivity activity, CheckinDirection sens,
+                                    UUID scannedBy, Accreditation accr, CheckinResult resultat,
+                                    String detail, ScanResponse response) {
+        return record(event, activity, sens, scannedBy, null, null, accr.getId(), resultat, detail,
+                response);
     }
 
     private void requireControl(Event event, UUID userId) {
@@ -282,10 +341,11 @@ public class CheckinService {
     }
 
     public record CheckinView(UUID id, UUID ticketId, UUID activityId, CheckinResult resultat,
-                              Instant scannedAt, UUID scannedBy, String detail) {
+                              CheckinDirection sens, Instant scannedAt, UUID scannedBy,
+                              String detail) {
         static CheckinView from(Checkin c) {
             return new CheckinView(c.getId(), c.getTicketId(), c.getActivityId(), c.getResultat(),
-                    c.getScannedAt(), c.getScannedBy(), c.getDetail());
+                    c.getSens(), c.getScannedAt(), c.getScannedBy(), c.getDetail());
         }
     }
 }

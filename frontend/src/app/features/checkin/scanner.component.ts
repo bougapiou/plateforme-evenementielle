@@ -1,7 +1,8 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CheckinService, ScanResponse } from './checkin.service';
+import { CheckinDirection, CheckinService, ScanResponse } from './checkin.service';
 import { Activity, EventSummary } from '../events/event.models';
+import { IconComponent } from '../../shared/icon.component';
 import { formatDateTime } from '../../shared/format';
 
 declare const window: Window & { BarcodeDetector?: any };
@@ -9,7 +10,7 @@ declare const window: Window & { BarcodeDetector?: any };
 @Component({
   selector: 'app-scanner',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, IconComponent],
   template: `
     <h1 class="text-xl font-bold text-slate-800">Contrôle à l'entrée</h1>
 
@@ -37,6 +38,21 @@ declare const window: Window & { BarcodeDetector?: any };
             </option>
           }
         </select>
+      }
+
+      @if (eventId && exitControl() && !activityId) {
+        <div class="mt-3 inline-flex rounded-lg border border-slate-200 p-1 text-sm">
+          <button type="button" class="flex items-center gap-1 rounded-md px-3 py-1"
+                  [class.bg-brand-600]="sens === 'ENTREE'" [class.text-white]="sens === 'ENTREE'"
+                  (click)="setSens('ENTREE')">
+            <app-icon name="login" class="h-4 w-4" /> Entrée
+          </button>
+          <button type="button" class="flex items-center gap-1 rounded-md px-3 py-1"
+                  [class.bg-slate-700]="sens === 'SORTIE'" [class.text-white]="sens === 'SORTIE'"
+                  (click)="setSens('SORTIE')">
+            <app-icon name="logout" class="h-4 w-4" /> Sortie
+          </button>
+        </div>
       }
     </div>
 
@@ -74,9 +90,12 @@ declare const window: Window & { BarcodeDetector?: any };
                  [class.bg-green-600]="r.resultat === 'VALIDE'"
                  [class.bg-orange-500]="r.resultat === 'DEJA_UTILISE'"
                  [class.bg-red-600]="r.resultat === 'INVALIDE'">
-              <p class="text-2xl font-extrabold">
-                {{ r.resultat === 'VALIDE' ? 'VALIDE' : r.resultat === 'DEJA_UTILISE' ? 'DÉJÀ UTILISÉ' : 'INVALIDE' }}
+              <p class="flex items-center gap-2 text-2xl font-extrabold">
+                @if (r.sens === 'SORTIE') { <app-icon name="logout" class="h-6 w-6" /> }
+                @else { <app-icon name="login" class="h-6 w-6" /> }
+                {{ r.resultat === 'VALIDE' ? (r.sens === 'SORTIE' ? 'SORTIE OK' : (r.reentree ? 'RÉ-ENTRÉE' : 'VALIDE')) : r.resultat === 'DEJA_UTILISE' ? 'REFUSÉ' : 'INVALIDE' }}
               </p>
+              <p class="text-sm opacity-90">{{ r.message }}</p>
               @if (r.activiteNom) {
                 <p class="text-sm font-semibold opacity-90">Activité : {{ r.activiteNom }}</p>
               }
@@ -93,20 +112,45 @@ declare const window: Window & { BarcodeDetector?: any };
             <p class="text-sm text-slate-400">En attente d'un scan…</p>
           }
 
-          <div class="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-            <div class="rounded-lg bg-green-50 p-2">
-              <p class="text-lg font-bold text-green-700">{{ stats()['valides'] || 0 }}</p>
-              <p class="text-green-600">valides</p>
+          @if (exitControl()) {
+            <div class="mt-4 grid grid-cols-4 gap-2 text-center text-sm">
+              <div class="rounded-lg bg-green-50 p-2">
+                <app-icon name="login" class="mx-auto h-4 w-4 text-green-600" />
+                <p class="text-lg font-bold text-green-700">{{ stats()['entrees'] || 0 }}</p>
+                <p class="text-green-600">entrées</p>
+              </div>
+              <div class="rounded-lg bg-slate-100 p-2">
+                <app-icon name="logout" class="mx-auto h-4 w-4 text-slate-600" />
+                <p class="text-lg font-bold text-slate-700">{{ stats()['sorties'] || 0 }}</p>
+                <p class="text-slate-600">sorties</p>
+              </div>
+              <div class="rounded-lg bg-brand-50 p-2">
+                <app-icon name="present" class="mx-auto h-4 w-4 text-brand-600" />
+                <p class="text-lg font-bold text-brand-700">{{ stats()['presents'] || 0 }}</p>
+                <p class="text-brand-600">présents</p>
+              </div>
+              <div class="rounded-lg bg-amber-50 p-2">
+                <app-icon name="repeat" class="mx-auto h-4 w-4 text-amber-600" />
+                <p class="text-lg font-bold text-amber-700">{{ stats()['reentrees'] || 0 }}</p>
+                <p class="text-amber-600">ré-entrées</p>
+              </div>
             </div>
-            <div class="rounded-lg bg-orange-50 p-2">
-              <p class="text-lg font-bold text-orange-700">{{ stats()['dejaUtilises'] || 0 }}</p>
-              <p class="text-orange-600">déjà scannés</p>
+          } @else {
+            <div class="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+              <div class="rounded-lg bg-green-50 p-2">
+                <p class="text-lg font-bold text-green-700">{{ stats()['valides'] || 0 }}</p>
+                <p class="text-green-600">valides</p>
+              </div>
+              <div class="rounded-lg bg-orange-50 p-2">
+                <p class="text-lg font-bold text-orange-700">{{ stats()['dejaUtilises'] || 0 }}</p>
+                <p class="text-orange-600">déjà scannés</p>
+              </div>
+              <div class="rounded-lg bg-red-50 p-2">
+                <p class="text-lg font-bold text-red-700">{{ stats()['invalides'] || 0 }}</p>
+                <p class="text-red-600">invalides</p>
+              </div>
             </div>
-            <div class="rounded-lg bg-red-50 p-2">
-              <p class="text-lg font-bold text-red-700">{{ stats()['invalides'] || 0 }}</p>
-              <p class="text-red-600">invalides</p>
-            </div>
-          </div>
+          }
         </div>
       </div>
     }
@@ -120,10 +164,14 @@ export class ScannerComponent implements OnDestroy {
   loaded = signal(false);
   eventId = '';
   activityId = '';
+  sens: CheckinDirection = 'ENTREE';
   manualToken = '';
   last = signal<ScanResponse | null>(null);
   stats = signal<Record<string, number>>({});
   scanning = signal(false);
+
+  exitControl = (): boolean =>
+    this.events().find((e) => e.id === this.eventId)?.controleSortie === true;
 
   cameraSupported = 'BarcodeDetector' in window && !!navigator.mediaDevices;
   private stream?: MediaStream;
@@ -162,6 +210,11 @@ export class ScannerComponent implements OnDestroy {
     this.last.set(null);
   }
 
+  setSens(s: CheckinDirection): void {
+    this.sens = s;
+    this.last.set(null);
+  }
+
   refreshStats(): void {
     this.checkin.stats(this.eventId).subscribe((s) => this.stats.set(s));
   }
@@ -169,13 +222,16 @@ export class ScannerComponent implements OnDestroy {
   submit(token: string): void {
     const t = (token || '').trim();
     if (!t || !this.eventId) return;
-    this.checkin.scan(t, this.eventId, this.activityId || undefined).subscribe({
+    this.checkin.scan(t, this.eventId, this.activityId || undefined, this.sens).subscribe({
       next: (r) => {
         this.last.set(r);
         this.manualToken = '';
         this.refreshStats();
       },
-      error: () => this.last.set({ resultat: 'INVALIDE', message: 'Erreur', eventNom: '' } as ScanResponse),
+      error: () => this.last.set({
+        resultat: 'INVALIDE', sens: this.sens, reentree: false,
+        message: 'Erreur réseau', eventNom: '',
+      }),
     });
   }
 

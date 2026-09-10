@@ -99,6 +99,10 @@ public class Event extends BaseEntity {
     @Column(name = "validation_inscription", nullable = false)
     private boolean validationInscription = false;
 
+    /** When true, the entrance staff also scans exits (attendance flow count). */
+    @Column(name = "controle_sortie", nullable = false)
+    private boolean controleSortie = false;
+
     @Column(name = "inscription_debut")
     private Instant inscriptionDebut;
 

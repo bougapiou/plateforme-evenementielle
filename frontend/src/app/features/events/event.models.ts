@@ -44,6 +44,7 @@ export interface EventSummary {
   lieu?: string;
   organizerNom: string;
   standsActifs: boolean;
+  controleSortie?: boolean;
   statut: EventStatus;
 }
 
@@ -61,6 +62,7 @@ export interface EventDetail extends EventSummary {
   conditionsParticipation?: string;
   hasActivities: boolean;
   validationInscription?: boolean;
+  controleSortie?: boolean;
   inscriptionDebut?: string;
   inscriptionFin?: string;
   reservationDebut?: string;
@@ -94,6 +96,8 @@ export interface EventPayload {
   conditionsParticipation?: string;
   hasActivities: boolean;
   standsActifs: boolean;
+  validationInscription?: boolean;
+  controleSortie?: boolean;
   inscriptionDebut?: string;
   inscriptionFin?: string;
   reservationDebut?: string;

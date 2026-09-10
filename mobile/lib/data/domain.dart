@@ -63,6 +63,7 @@ class EventSummary {
   final String? lieu;
   final String? organizerNom;
   final bool standsActifs;
+  final bool controleSortie;
   final String statut;
 
   EventSummary({
@@ -80,6 +81,7 @@ class EventSummary {
     this.lieu,
     this.organizerNom,
     this.standsActifs = false,
+    this.controleSortie = false,
     this.statut = '',
   });
 
@@ -98,6 +100,7 @@ class EventSummary {
         lieu: j['lieu'] as String?,
         organizerNom: j['organizerNom'] as String?,
         standsActifs: j['standsActifs'] as bool? ?? false,
+        controleSortie: j['controleSortie'] as bool? ?? false,
         statut: j['statut'] as String? ?? '',
       );
 }
@@ -178,6 +181,7 @@ class EventFull {
   final bool hasActivities;
   final bool standsActifs;
   final bool validationInscription;
+  final bool controleSortie;
   final DateTime? inscriptionDebut;
   final DateTime? inscriptionFin;
   final String statut;
@@ -206,6 +210,7 @@ class EventFull {
     this.hasActivities = false,
     this.standsActifs = false,
     this.validationInscription = false,
+    this.controleSortie = false,
     this.inscriptionDebut,
     this.inscriptionFin,
     this.statut = 'BROUILLON',
@@ -239,6 +244,7 @@ class EventFull {
         hasActivities: j['hasActivities'] as bool? ?? false,
         standsActifs: j['standsActifs'] as bool? ?? false,
         validationInscription: j['validationInscription'] as bool? ?? false,
+        controleSortie: j['controleSortie'] as bool? ?? false,
         inscriptionDebut: parseDate(j['inscriptionDebut']),
         inscriptionFin: parseDate(j['inscriptionFin']),
         statut: j['statut'] as String? ?? 'BROUILLON',
@@ -1164,6 +1170,8 @@ class Accreditation {
 
 class ScanOutcome {
   final String resultat; // VALIDE / DEJA_UTILISE / INVALIDE
+  final String sens; // ENTREE / SORTIE
+  final bool reentree;
   final String message;
   final String? eventNom;
   final String? activiteNom;
@@ -1174,6 +1182,8 @@ class ScanOutcome {
 
   ScanOutcome({
     required this.resultat,
+    this.sens = 'ENTREE',
+    this.reentree = false,
     required this.message,
     this.eventNom,
     this.activiteNom,
@@ -1183,8 +1193,12 @@ class ScanOutcome {
     this.premierControleLe,
   });
 
+  bool get sortie => sens == 'SORTIE';
+
   factory ScanOutcome.fromJson(Map<String, dynamic> j) => ScanOutcome(
         resultat: j['resultat'] as String? ?? 'INVALIDE',
+        sens: j['sens'] as String? ?? 'ENTREE',
+        reentree: j['reentree'] as bool? ?? false,
         message: j['message'] as String? ?? '',
         eventNom: j['eventNom'] as String?,
         activiteNom: j['activiteNom'] as String?,
