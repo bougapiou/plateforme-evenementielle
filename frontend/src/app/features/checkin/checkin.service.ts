@@ -45,7 +45,6 @@ export interface ActivityFlow {
 export interface AttendanceView {
   eventId: string;
   eventNom: string;
-  controleSortie: boolean;
   event: FlowCounters;
   activites: ActivityFlow[];
 }

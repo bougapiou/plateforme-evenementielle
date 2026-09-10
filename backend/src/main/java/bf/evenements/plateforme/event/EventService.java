@@ -280,7 +280,6 @@ public class EventService {
         e.setStandsActifs(r.standsActifs());
         e.setStandsParticuliers(r.standsParticuliers());
         e.setValidationInscription(r.validationInscription());
-        e.setControleSortie(r.controleSortie());
         e.setInscriptionDebut(r.inscriptionDebut());
         e.setInscriptionFin(r.inscriptionFin());
         e.setReservationDebut(r.reservationDebut());

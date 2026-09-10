@@ -143,35 +143,11 @@ public class CheckinService {
                             pNom, catNom, num, null, null));
         }
 
-        boolean exitTracked = event.isControleSortie();
         UUID activityId = activity != null ? activity.getId() : null;
 
-        // --- single-use path: per-activity scan, or event without exit control ---
-        if (!exitTracked) {
-            var existing = activity != null
-                    ? checkinRepository.findFirstByTicketIdAndActivityIdAndResultatOrderByScannedAtAsc(
-                            ticket.getId(), activity.getId(), CheckinResult.VALIDE)
-                    : checkinRepository
-                            .findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtAsc(
-                                    ticket.getId(), CheckinResult.VALIDE);
-            if (existing.isPresent()) {
-                return record(event, activity, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
-                        CheckinResult.DEJA_UTILISE,
-                        "Contrôle déjà effectué le " + existing.get().getScannedAt(),
-                        ScanResponse.of(CheckinResult.DEJA_UTILISE, CheckinDirection.ENTREE,
-                                "Ticket déjà utilisé", nom, activiteNom, pNom, catNom, num, null,
-                                existing.get().getScannedAt()));
-            }
-            if (activity == null) {
-                ticket.setStatut(TicketStatus.UTILISE);
-            }
-            return record(event, activity, CheckinDirection.ENTREE, me, qr.getId(), ticket.getId(),
-                    CheckinResult.VALIDE, null,
-                    ScanResponse.of(CheckinResult.VALIDE, CheckinDirection.ENTREE, "Bienvenue",
-                            nom, activiteNom, pNom, catNom, num, Instant.now(), null));
-        }
-
-        // --- exit-controlled: alternate ENTREE / SORTIE per (ticket, activity), ticket stays EMISE ---
+        // The controller picks the direction (entrée / sortie) for every event.
+        // A scan alternates ENTREE / SORTIE per (billet, activité); the ticket
+        // stays EMISE so a legitimate re-entry after an exit is possible.
         var last = lastValid(ticket.getId(), activityId);
         boolean inside = last.map(c -> c.getSens() == CheckinDirection.ENTREE).orElse(false);
         long priorEntries = entryCount(ticket.getId(), activityId);
@@ -302,8 +278,7 @@ public class CheckinService {
                         a.getAcces() != null ? a.getAcces().name() : null,
                         activityFlow(eventId, a.getId())))
                 .toList();
-        return new AttendanceView(event.getId(), event.getNom(), event.isControleSortie(),
-                eventFlow(eventId), activites);
+        return new AttendanceView(event.getId(), event.getNom(), eventFlow(eventId), activites);
     }
 
     private Map<String, Long> eventFlow(UUID eventId) {
@@ -344,7 +319,7 @@ public class CheckinService {
                 "reentrees", Math.max(0, entrees - distinctEntered));
     }
 
-    public record AttendanceView(UUID eventId, String eventNom, boolean controleSortie,
+    public record AttendanceView(UUID eventId, String eventNom,
                                  Map<String, Long> event, List<ActivityFlow> activites) {
     }
 

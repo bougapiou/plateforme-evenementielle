@@ -205,10 +205,9 @@ class _EventManageScreenState extends ConsumerState<EventManageScreen> {
                       padding: const EdgeInsets.only(top: 12),
                       child: OutlinedButton.icon(
                         onPressed: () => context.push(
-                            '/scanner/${e.id}?nom=${Uri.encodeComponent(e.nom)}'
-                            '${e.controleSortie ? '&controleSortie=1' : ''}'),
+                            '/scanner/${e.id}?nom=${Uri.encodeComponent(e.nom)}'),
                         icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text('Contrôle à l\'entrée'),
+                        label: const Text('Contrôle des accès'),
                       ),
                     ),
                   if (e.statut == 'BROUILLON' || e.statut == 'REFUSE') ...[

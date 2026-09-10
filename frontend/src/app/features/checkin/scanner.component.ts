@@ -40,17 +40,22 @@ declare const window: Window & { BarcodeDetector?: any };
         </select>
       }
 
-      @if (eventId && exitControl()) {
-        <div class="mt-3 inline-flex rounded-lg border border-slate-200 p-1 text-sm">
-          <button type="button" class="flex items-center gap-1 rounded-md px-3 py-1"
-                  [class.bg-brand-600]="sens === 'ENTREE'" [class.text-white]="sens === 'ENTREE'"
+      @if (eventId) {
+        <label class="form-label mt-3">Sens du contrôle</label>
+        <div class="grid max-w-md grid-cols-2 gap-2">
+          <button type="button"
+                  class="flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-3 font-semibold"
+                  [class.border-brand-600]="sens === 'ENTREE'" [class.bg-brand-600]="sens === 'ENTREE'"
+                  [class.text-white]="sens === 'ENTREE'" [class.border-slate-200]="sens !== 'ENTREE'"
                   (click)="setSens('ENTREE')">
-            <app-icon name="login" class="h-4 w-4" /> Entrée
+            <app-icon name="login" class="h-5 w-5" /> Contrôle à l'entrée
           </button>
-          <button type="button" class="flex items-center gap-1 rounded-md px-3 py-1"
-                  [class.bg-slate-700]="sens === 'SORTIE'" [class.text-white]="sens === 'SORTIE'"
+          <button type="button"
+                  class="flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-3 font-semibold"
+                  [class.border-slate-700]="sens === 'SORTIE'" [class.bg-slate-700]="sens === 'SORTIE'"
+                  [class.text-white]="sens === 'SORTIE'" [class.border-slate-200]="sens !== 'SORTIE'"
                   (click)="setSens('SORTIE')">
-            <app-icon name="logout" class="h-4 w-4" /> Sortie
+            <app-icon name="logout" class="h-5 w-5" /> Contrôle à la sortie
           </button>
         </div>
       }
@@ -112,45 +117,28 @@ declare const window: Window & { BarcodeDetector?: any };
             <p class="text-sm text-slate-400">En attente d'un scan…</p>
           }
 
-          @if (exitControl()) {
-            <div class="mt-4 grid grid-cols-4 gap-2 text-center text-sm">
-              <div class="rounded-lg bg-green-50 p-2">
-                <app-icon name="login" class="mx-auto h-4 w-4 text-green-600" />
-                <p class="text-lg font-bold text-green-700">{{ stats()['entrees'] || 0 }}</p>
-                <p class="text-green-600">entrées</p>
-              </div>
-              <div class="rounded-lg bg-slate-100 p-2">
-                <app-icon name="logout" class="mx-auto h-4 w-4 text-slate-600" />
-                <p class="text-lg font-bold text-slate-700">{{ stats()['sorties'] || 0 }}</p>
-                <p class="text-slate-600">sorties</p>
-              </div>
-              <div class="rounded-lg bg-brand-50 p-2">
-                <app-icon name="present" class="mx-auto h-4 w-4 text-brand-600" />
-                <p class="text-lg font-bold text-brand-700">{{ stats()['presents'] || 0 }}</p>
-                <p class="text-brand-600">présents</p>
-              </div>
-              <div class="rounded-lg bg-amber-50 p-2">
-                <app-icon name="repeat" class="mx-auto h-4 w-4 text-amber-600" />
-                <p class="text-lg font-bold text-amber-700">{{ stats()['reentrees'] || 0 }}</p>
-                <p class="text-amber-600">ré-entrées</p>
-              </div>
+          <div class="mt-4 grid grid-cols-4 gap-2 text-center text-sm">
+            <div class="rounded-lg bg-green-50 p-2">
+              <app-icon name="login" class="mx-auto h-4 w-4 text-green-600" />
+              <p class="text-lg font-bold text-green-700">{{ stats()['entrees'] || 0 }}</p>
+              <p class="text-green-600">entrées</p>
             </div>
-          } @else {
-            <div class="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-              <div class="rounded-lg bg-green-50 p-2">
-                <p class="text-lg font-bold text-green-700">{{ stats()['valides'] || 0 }}</p>
-                <p class="text-green-600">valides</p>
-              </div>
-              <div class="rounded-lg bg-orange-50 p-2">
-                <p class="text-lg font-bold text-orange-700">{{ stats()['dejaUtilises'] || 0 }}</p>
-                <p class="text-orange-600">déjà scannés</p>
-              </div>
-              <div class="rounded-lg bg-red-50 p-2">
-                <p class="text-lg font-bold text-red-700">{{ stats()['invalides'] || 0 }}</p>
-                <p class="text-red-600">invalides</p>
-              </div>
+            <div class="rounded-lg bg-slate-100 p-2">
+              <app-icon name="logout" class="mx-auto h-4 w-4 text-slate-600" />
+              <p class="text-lg font-bold text-slate-700">{{ stats()['sorties'] || 0 }}</p>
+              <p class="text-slate-600">sorties</p>
             </div>
-          }
+            <div class="rounded-lg bg-brand-50 p-2">
+              <app-icon name="present" class="mx-auto h-4 w-4 text-brand-600" />
+              <p class="text-lg font-bold text-brand-700">{{ stats()['presents'] || 0 }}</p>
+              <p class="text-brand-600">présents</p>
+            </div>
+            <div class="rounded-lg bg-amber-50 p-2">
+              <app-icon name="repeat" class="mx-auto h-4 w-4 text-amber-600" />
+              <p class="text-lg font-bold text-amber-700">{{ stats()['reentrees'] || 0 }}</p>
+              <p class="text-amber-600">ré-entrées</p>
+            </div>
+          </div>
         </div>
       </div>
     }
@@ -169,9 +157,6 @@ export class ScannerComponent implements OnDestroy {
   last = signal<ScanResponse | null>(null);
   stats = signal<Record<string, number>>({});
   scanning = signal(false);
-
-  exitControl = (): boolean =>
-    this.events().find((e) => e.id === this.eventId)?.controleSortie === true;
 
   cameraSupported = 'BarcodeDetector' in window && !!navigator.mediaDevices;
   private stream?: MediaStream;

@@ -40,7 +40,6 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   bool _standsActifs = false;
   bool _standsParticuliers = false;
   bool _validationInscription = false;
-  bool _controleSortie = false;
 
   bool _saving = false;
   late final Future<void> _load;
@@ -79,7 +78,6 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     _standsActifs = e.standsActifs;
     _standsParticuliers = e.standsParticuliers;
     _validationInscription = e.validationInscription;
-    _controleSortie = e.controleSortie;
   }
 
   @override
@@ -146,7 +144,6 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       'standsActifs': _standsActifs,
       'standsParticuliers': _standsParticuliers,
       'validationInscription': _validationInscription,
-      'controleSortie': _controleSortie,
       if (_inscriptionDebut != null)
         'inscriptionDebut': _inscriptionDebut!.toUtc().toIso8601String(),
       if (_inscriptionFin != null)
@@ -255,14 +252,6 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                   title: const Text('Valider chaque inscription manuellement'),
                   value: _validationInscription,
                   onChanged: (v) => setState(() => _validationInscription = v),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Contrôle des sorties'),
-                  subtitle: const Text(
-                      'Compte les entrées, sorties, présents et ré-entrées'),
-                  value: _controleSortie,
-                  onChanged: (v) => setState(() => _controleSortie = v),
                 ),
                 if (_standsActifs)
                   SwitchListTile(
