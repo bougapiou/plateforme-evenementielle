@@ -54,10 +54,10 @@ interface NavItem {
             @if (auth.isGuest()) {
               <span class="badge bg-amber-100 text-amber-800">Mode invité</span>
               <a routerLink="/finaliser-compte" class="btn-primary">Créer mon compte</a>
-              <button type="button" class="btn-ghost" (click)="auth.logout()">Quitter</button>
+              <button type="button" routerLink="/" class="btn-ghost" (click)="auth.logout()">Quitter</button>
             } @else {
               <span class="badge bg-slate-100 text-slate-600">{{ auth.user()?.roles?.join(', ') }}</span>
-              <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
+              <button routerLink="/" type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
             }
           </div>
         </header>
