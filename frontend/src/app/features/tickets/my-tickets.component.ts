@@ -49,7 +49,9 @@ import { formatDate, formatDateTime } from '../../shared/format';
       @for (o of orders(); track o.id) {
         <div class="card flex items-center justify-between p-4 text-sm">
           <div>
-            <p class="font-medium text-slate-700">{{ o.eventNom }} — {{ o.montantFormatte }}</p>
+            <p class="font-medium text-slate-700">
+              {{ o.eventNom }} — {{ o.montantTotal > 0 ? o.montantFormatte : 'Gratuit' }}
+            </p>
             <p class="text-slate-400">
               {{ o.reference }} · {{ dt(o.createdAt) }}
               @if (o.statut === 'EN_ATTENTE') { · expire {{ dt(o.expireLe) }} }

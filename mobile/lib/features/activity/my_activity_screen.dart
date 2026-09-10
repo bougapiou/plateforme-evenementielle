@@ -98,7 +98,7 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
                           '${l.quantite} × ${l.ticketNom}',
                           style: Theme.of(context).textTheme.bodySmall)),
                       const SizedBox(height: 6),
-                      Text(o.montantFormatte,
+                      Text(Fmt.price(o.montantTotal, o.devise),
                           style: const TextStyle(fontWeight: FontWeight.w600)),
                       if (o.enAttente) ...[
                         const SizedBox(height: 8),

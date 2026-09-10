@@ -115,7 +115,7 @@ class _BuyTicketsScreenState extends ConsumerState<BuyTicketsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('$_count billet(s)'),
-                          Text(Fmt.money(_total(tickets)),
+                          Text(Fmt.price(_total(tickets)),
                               style: Theme.of(context).textTheme.titleLarge),
                         ],
                       ),

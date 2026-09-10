@@ -206,7 +206,7 @@ class _Body extends ConsumerWidget {
                 child: ListTile(
                   title: Text(s.nom),
                   subtitle: Text([
-                    s.prixFormatte,
+                    Fmt.price(s.prixMontant, s.devise),
                     if (s.dimensions != null) s.dimensions!,
                     '${s.quantiteRestante} disponible(s)',
                   ].join(' · ')),

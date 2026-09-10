@@ -69,12 +69,12 @@ class _TicketOrderDetailScreenState
                   ...o.lignes.map((l) => ListTile(
                         dense: true,
                         title: Text(l.ticketNom),
-                        trailing: Text('${l.quantite} × ${Fmt.money(l.prixUnitaire)}'),
+                        trailing: Text('${l.quantite} × ${Fmt.price(l.prixUnitaire)}'),
                       )),
                   const Divider(height: 1),
                   ListTile(
                     title: const Text('Total'),
-                    trailing: Text(o.montantFormatte,
+                    trailing: Text(Fmt.price(o.montantTotal, o.devise),
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],

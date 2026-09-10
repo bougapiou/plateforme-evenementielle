@@ -74,7 +74,7 @@ class _StandsEditorScreenState extends ConsumerState<StandsEditorScreen> {
                 child: ListTile(
                   title: Text(t.nom),
                   subtitle: Text([
-                    Fmt.money(t.prixMontant, t.devise),
+                    Fmt.price(t.prixMontant, t.devise),
                     if (t.dimensions != null) t.dimensions!,
                     '${t.quantiteTotale} stands',
                   ].join(' · ')),

@@ -33,3 +33,8 @@ const FCFA = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
 export function formatFcfa(amount?: number | null): string {
   return amount == null ? '—' : `${FCFA.format(amount)} FCFA`;
 }
+
+/** Price for public display: hidden as "Gratuit" when the amount is zero or unset. */
+export function priceLabel(amount?: number | null): string {
+  return amount && amount > 0 ? formatFcfa(amount) : 'Gratuit';
+}
