@@ -36,7 +36,7 @@ import { ApiError, UserType } from '../core/models';
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
-              <label class="form-label" for="phone">Téléphone (optionnel)</label>
+              <label class="form-label" for="phone">Téléphone</label>
               <input id="phone" class="form-input" formControlName="phone" placeholder="+226 70 00 00 00" />
             </div>
             <div>
@@ -83,7 +83,7 @@ export class RegisterComponent {
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: [''],
+    phone: ['', [Validators.required, Validators.pattern(/^\+?[0-9 ]{6,20}$/)]],
     type: ['PARTICULIER' as UserType],
     password: ['', [Validators.required, Validators.minLength(8)]],
   });

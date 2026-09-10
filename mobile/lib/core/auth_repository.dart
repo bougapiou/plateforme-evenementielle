@@ -30,27 +30,31 @@ class AuthRepository {
       });
 
   /// Opens a guest session for a visitor buying / registering without an account.
+  /// A phone number is required; the e-mail is optional.
   Future<AuthResponse> guestSession({
     required String firstName,
     required String lastName,
-    required String email,
-    String? phone,
+    required String phone,
+    String? email,
   }) =>
       _post('/auth/guest', {
         'firstName': firstName,
         'lastName': lastName,
-        'email': email,
-        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        'phone': phone,
+        if (email != null && email.isNotEmpty) 'email': email,
       });
 
   /// Turns the current guest session into a full account (chooses a password).
+  /// [email] is required only for a phone-only guest.
   Future<AuthResponse> completeRegistration({
     required String password,
+    String? email,
     String? firstName,
     String? lastName,
   }) =>
       _post('/auth/complete', {
         'password': password,
+        if (email != null && email.isNotEmpty) 'email': email,
         if (firstName != null && firstName.isNotEmpty) 'firstName': firstName,
         if (lastName != null && lastName.isNotEmpty) 'lastName': lastName,
       });

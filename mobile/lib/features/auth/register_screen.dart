@@ -45,7 +45,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             lastName: _lastName.text.trim(),
             email: _email.text.trim(),
             password: _password.text,
-            phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+            phone: _phone.text.trim(),
             type: _type,
           );
       if (mounted) context.go('/evenements');
@@ -93,9 +93,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _phone,
-                decoration:
-                    const InputDecoration(labelText: 'Téléphone (optionnel)'),
+                decoration: const InputDecoration(labelText: 'Téléphone'),
                 keyboardType: TextInputType.phone,
+                validator: (v) => (v == null ||
+                        !RegExp(r'^\+?[0-9 ]{6,20}$').hasMatch(v.trim()))
+                    ? 'Numéro de téléphone invalide'
+                    : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(

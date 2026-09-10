@@ -76,9 +76,18 @@ public class RegistrationService {
         registration.setType(request.type());
         registration.setStructure(request.type() == RegistrationType.STRUCTURE
                 ? resolveStructure(request.structureId(), me.getId()) : null);
+        String contactEmail = orDefault(request.contactEmail(), me.getEmail());
+        if (contactEmail != null && contactEmail.endsWith("@guest.plateforme.local")) {
+            contactEmail = null; // phone-only guest — no real e-mail
+        }
+        String contactTelephone = orDefault(request.contactTelephone(), me.getPhone());
+        if (request.type() == RegistrationType.PARTICULIER && !StringUtils.hasText(contactTelephone)) {
+            throw new BusinessException("PHONE_REQUIRED",
+                    "Le numéro de téléphone est obligatoire pour s'inscrire.");
+        }
         registration.setContactNom(orDefault(request.contactNom(), me.getFullName()));
-        registration.setContactEmail(orDefault(request.contactEmail(), me.getEmail()));
-        registration.setContactTelephone(orDefault(request.contactTelephone(), me.getPhone()));
+        registration.setContactEmail(contactEmail);
+        registration.setContactTelephone(contactTelephone);
         registration.setInformations(request.informations());
 
         List<RegisterParticipationRequest.ParticipantInput> inputs =

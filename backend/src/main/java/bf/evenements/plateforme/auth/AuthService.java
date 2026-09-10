@@ -98,14 +98,19 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    /** Non-routable domain for guests who checked out with a phone but no e-mail. */
+    private static final String PLACEHOLDER_EMAIL_DOMAIN = "@guest.plateforme.local";
+
     /**
      * Opens a session for a visitor who checks out without creating an account.
-     * Reuses an existing guest account for the same e-mail; refuses if a real
-     * account already exists (the visitor should log in instead).
+     * A phone number is required; the e-mail is optional. Reuses an existing guest
+     * (matched by e-mail, else by phone); refuses if a real account already exists.
      */
     @Transactional
     public AuthResponse guestSession(GuestSessionRequest request, String ip) {
-        var existing = userRepository.findByEmailIgnoreCase(request.email());
+        var existing = StringUtils.hasText(request.email())
+                ? userRepository.findByEmailIgnoreCase(request.email())
+                : userRepository.findFirstByPhoneAndGuestTrueOrderByCreatedAtDesc(request.phone());
         if (existing.isPresent()) {
             User u = existing.get();
             if (!u.isGuest()) {
@@ -119,19 +124,19 @@ public class AuthService {
             if (!StringUtils.hasText(u.getLastName())) {
                 u.setLastName(request.lastName());
             }
-            if (!StringUtils.hasText(u.getPhone()) && StringUtils.hasText(request.phone())) {
-                u.setPhone(request.phone());
-            }
+            u.setPhone(request.phone());
             return issueTokens(u);
         }
 
         User user = new User();
-        user.setEmail(request.email().toLowerCase());
+        user.setEmail(StringUtils.hasText(request.email())
+                ? request.email().toLowerCase()
+                : "tel-" + digitsOnly(request.phone()) + PLACEHOLDER_EMAIL_DOMAIN);
         // Unusable placeholder — a real password is set when the account is claimed.
         user.setPasswordHash(passwordEncoder.encode("guest-" + UUID.randomUUID()));
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
-        user.setPhone(StringUtils.hasText(request.phone()) ? request.phone() : null);
+        user.setPhone(request.phone());
         user.setType(UserType.PARTICULIER);
         user.setStatus(UserStatus.ACTIF);
         user.setGuest(true);
@@ -152,6 +157,20 @@ public class AuthService {
             throw new BusinessException("NOT_A_GUEST",
                     "Votre compte est déjà actif. Utilisez « changer mon mot de passe ».");
         }
+
+        // A phone-only guest must supply a real e-mail to become a login-able account.
+        if (user.getEmail().endsWith(PLACEHOLDER_EMAIL_DOMAIN)) {
+            if (!StringUtils.hasText(request.email())) {
+                throw new BusinessException("EMAIL_REQUIRED",
+                        "Ajoutez une adresse e-mail pour créer votre compte.");
+            }
+            if (userRepository.existsByEmailIgnoreCase(request.email())) {
+                throw new ConflictException("EMAIL_ALREADY_USED",
+                        "Cet e-mail est déjà utilisé par un autre compte.");
+            }
+            user.setEmail(request.email().toLowerCase());
+        }
+
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         if (StringUtils.hasText(request.firstName())) {
             user.setFirstName(request.firstName());
@@ -165,6 +184,10 @@ public class AuthService {
         auditService.record(user.getId(), user.getEmail(), "AUTH_ACCOUNT_CLAIMED", "User",
                 user.getId().toString(), null, null);
         return issueTokens(user);
+    }
+
+    private static String digitsOnly(String phone) {
+        return phone == null ? "" : phone.replaceAll("\\D", "");
     }
 
     /**
