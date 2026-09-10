@@ -262,6 +262,12 @@ class TicketsRepository extends _Base {
         (d) => TicketOrder.fromJson(d as Map<String, dynamic>),
       );
 
+  /// Participate in a free activity: issues one free electronic ticket now.
+  Future<Ticket> attendActivity(String activityId) => _post(
+        '/activities/$activityId/attend',
+        (d) => Ticket.fromJson(d as Map<String, dynamic>),
+      );
+
   Future<Paged<TicketOrder>> myOrders({int page = 0}) => _get(
         '/ticket-orders/my',
         (d) => Paged.fromJson(d as Map<String, dynamic>, TicketOrder.fromJson),
@@ -491,11 +497,19 @@ class NotificationsRepository extends _Base {
 class CheckinRepository extends _Base {
   CheckinRepository(super.api);
 
-  Future<ScanOutcome> scan({required String token, required String eventId}) =>
+  Future<ScanOutcome> scan({
+    required String token,
+    required String eventId,
+    String? activityId,
+  }) =>
       _post(
         '/checkins/scan',
         (d) => ScanOutcome.fromJson(d as Map<String, dynamic>),
-        body: {'token': token, 'eventId': eventId},
+        body: {
+          'token': token,
+          'eventId': eventId,
+          if (activityId != null) 'activityId': activityId,
+        },
       );
 
   /// Events for which the current user may run entry control (organiser, control
@@ -504,6 +518,14 @@ class CheckinRepository extends _Base {
         '/checkins/events',
         (d) => (d as List<dynamic>)
             .map((e) => EventSummary.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
+  /// Activities of an event, to pick which one to control.
+  Future<List<Activity>> eventActivities(String eventId) => _get(
+        '/checkins/events/$eventId/activities',
+        (d) => (d as List<dynamic>)
+            .map((e) => Activity.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }

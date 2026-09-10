@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiBase } from '../../core/api';
 import { Page } from '../../core/models';
-import { EventSummary } from '../events/event.models';
+import { Activity, EventSummary } from '../events/event.models';
 
 export type CheckinResult = 'VALIDE' | 'DEJA_UTILISE' | 'INVALIDE';
 
@@ -10,6 +10,7 @@ export interface ScanResponse {
   resultat: CheckinResult;
   message: string;
   eventNom: string;
+  activiteNom?: string;
   participantNom?: string;
   categorieNom?: string;
   numeroBillet?: string;
@@ -20,6 +21,7 @@ export interface ScanResponse {
 export interface CheckinView {
   id: string;
   ticketId?: string;
+  activityId?: string;
   resultat: CheckinResult;
   scannedAt: string;
   scannedBy?: string;
@@ -39,8 +41,16 @@ export class CheckinService extends ApiBase {
   controllableEvents(): Observable<EventSummary[]> {
     return this.get<EventSummary[]>('/checkins/events');
   }
-  scan(token: string, eventId: string): Observable<ScanResponse> {
-    return this.http.post<ScanResponse>(`${this.base}/checkins/scan`, { token, eventId });
+  /** Activities of an event, for picking which one to control. */
+  eventActivities(eventId: string): Observable<Activity[]> {
+    return this.get<Activity[]>(`/checkins/events/${eventId}/activities`);
+  }
+  scan(token: string, eventId: string, activityId?: string): Observable<ScanResponse> {
+    return this.http.post<ScanResponse>(`${this.base}/checkins/scan`, {
+      token,
+      eventId,
+      activityId: activityId ?? null,
+    });
   }
   checkins(eventId: string): Observable<Page<CheckinView>> {
     return this.get<Page<CheckinView>>(`/events/${eventId}/checkins`, { size: 50 });

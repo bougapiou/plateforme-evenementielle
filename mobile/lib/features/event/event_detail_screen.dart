@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
 import '../../core/media.dart';
+import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -124,7 +125,7 @@ class _Body extends ConsumerWidget {
         if (e.hasActivities && e.programme.isNotEmpty) ...[
           const SizedBox(height: 20),
           _Section('Programme (${e.programme.length} activités)'),
-          ...e.programme.map((a) => _ActivityTile(a)),
+          ...e.programme.map((a) => _ActivityTile(a, slug: e.slug)),
         ],
 
         // --- Intervenants ---
@@ -294,11 +295,42 @@ class _InfoRow extends StatelessWidget {
       );
 }
 
-class _ActivityTile extends StatelessWidget {
+class _ActivityTile extends ConsumerStatefulWidget {
   final Activity a;
-  const _ActivityTile(this.a);
+  final String slug;
+  const _ActivityTile(this.a, {required this.slug});
+  @override
+  ConsumerState<_ActivityTile> createState() => _ActivityTileState();
+}
+
+class _ActivityTileState extends ConsumerState<_ActivityTile> {
+  bool _busy = false;
+  bool _joined = false;
+  String? _error;
+
+  Future<void> _participate() async {
+    final signedIn = ref.read(authControllerProvider).valueOrNull != null;
+    if (!signedIn) {
+      context.push('/connexion');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(ticketsRepositoryProvider).attendActivity(widget.a.id);
+      if (mounted) setState(() => _joined = true);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final a = widget.a;
     return Card(
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 8),
@@ -312,8 +344,18 @@ class _ActivityTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(a.titre,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(a.titre,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                    if (a.gratuit)
+                      const _AccessChip('Gratuit', Color(0xFF16A34A))
+                    else if (a.payant)
+                      const _AccessChip('Payant', Color(0xFFB45309)),
+                  ],
+                ),
                 const SizedBox(height: 4),
                 Text([
                   if (a.dateDebut != null)
@@ -326,6 +368,30 @@ class _ActivityTile extends StatelessWidget {
                   Text(a.description!,
                       style: Theme.of(context).textTheme.bodySmall),
                 ],
+                if (a.gratuit) ...[
+                  const SizedBox(height: 8),
+                  if (_joined)
+                    Text('Vous participez — billet dans « Mes billets ».',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: const Color(0xFF16A34A)))
+                  else
+                    OutlinedButton(
+                      onPressed: _busy ? null : _participate,
+                      child: Text(_busy ? 'Un instant…' : 'Participer (billet gratuit)'),
+                    ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_error!,
+                          style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                ] else if (a.payant) ...[
+                  const SizedBox(height: 6),
+                  Text('Billet requis — voir la billetterie ci-dessous.',
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
               ],
             ),
           ),
@@ -333,4 +399,21 @@ class _ActivityTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AccessChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _AccessChip(this.label, this.color);
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      );
 }

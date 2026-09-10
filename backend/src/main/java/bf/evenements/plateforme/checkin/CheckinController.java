@@ -45,6 +45,14 @@ public class CheckinController {
         return checkinService.controllableEvents();
     }
 
+    @GetMapping("/checkins/events/{eventId}/activities")
+    @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "')")
+    @Operation(summary = "Activités d'un événement pour le contrôle par activité")
+    public List<bf.evenements.plateforme.event.dto.ActivityResponse> controllableActivities(
+            @PathVariable UUID eventId) {
+        return checkinService.controllableActivities(eventId);
+    }
+
     @PostMapping("/checkins/scan")
     @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "')")
     @Operation(summary = "Scanner un QR code (VALIDE / DÉJÀ UTILISÉ / INVALIDE)")

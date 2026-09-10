@@ -100,12 +100,16 @@ export interface EventPayload {
   reservationFin?: string;
 }
 
+export type ActivityAccess = 'SANS_BILLET' | 'GRATUIT' | 'PAYANT';
+
 export interface Activity {
   id: string;
   eventId: string;
   titre: string;
   description?: string;
   typeActivite?: ActivityType;
+  acces?: ActivityAccess;
+  freeTicketId?: string;
   dateDebut: string;
   dateFin?: string;
   salle?: string;

@@ -9,10 +9,14 @@ import '../../data/domain.dart';
 class ScannerScreen extends ConsumerStatefulWidget {
   final String eventId;
   final String eventNom;
+  final String? activityId;
+  final String? activiteNom;
   const ScannerScreen({
     super.key,
     required this.eventId,
     required this.eventNom,
+    this.activityId,
+    this.activiteNom,
   });
 
   @override
@@ -46,9 +50,11 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
     });
     await _controller.stop();
     try {
-      final res = await ref
-          .read(checkinRepositoryProvider)
-          .scan(token: raw, eventId: widget.eventId);
+      final res = await ref.read(checkinRepositoryProvider).scan(
+            token: raw,
+            eventId: widget.eventId,
+            activityId: widget.activityId,
+          );
       setState(() => _outcome = res);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -69,7 +75,19 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.eventNom, overflow: TextOverflow.ellipsis),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.eventNom,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 16)),
+            Text(
+              widget.activiteNom ?? 'Entrée générale',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on),
@@ -155,6 +173,10 @@ class _ResultPanel extends StatelessWidget {
                 if (outcome!.message.isNotEmpty)
                   Text(outcome!.message,
                       style: const TextStyle(color: Colors.white, fontSize: 16)),
+                if (outcome!.activiteNom != null)
+                  Text('Activité : ${outcome!.activiteNom}',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                 if (outcome!.participantNom != null)
                   Text('Participant : ${outcome!.participantNom}',
                       style: const TextStyle(color: Colors.white)),

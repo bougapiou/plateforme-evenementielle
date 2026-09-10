@@ -232,9 +232,35 @@ import { ApiError } from '../../core/models';
                   <img [src]="a.imageUrl" alt="" class="h-14 w-20 shrink-0 rounded-lg object-cover" />
                 }
                 <div>
-                  <p class="font-medium text-slate-800">{{ a.titre }}</p>
+                  <p class="font-medium text-slate-800">
+                    {{ a.titre }}
+                    @if (a.acces === 'GRATUIT') {
+                      <span class="badge bg-green-100 text-green-800">Gratuit</span>
+                    } @else if (a.acces === 'PAYANT') {
+                      <span class="badge bg-amber-100 text-amber-800">Payant</span>
+                    }
+                  </p>
                   <p class="text-slate-400">{{ a.salle }}{{ a.intervenant ? ' · ' + a.intervenant : '' }}</p>
                   @if (a.description) { <p class="mt-1 text-slate-500">{{ a.description }}</p> }
+                  @if (a.acces === 'GRATUIT') {
+                    @if (attended().includes(a.id)) {
+                      <p class="mt-1 text-green-700">
+                        Vous participez. Billet dans
+                        <a routerLink="/tableau-de-bord/billets" class="font-semibold underline">Mes billets</a>.
+                      </p>
+                    } @else if (auth.isAuthenticated()) {
+                      <button class="btn-ghost mt-1 text-brand-700" [disabled]="attending()"
+                              (click)="attend(a.id)">Participer (billet gratuit)</button>
+                    } @else {
+                      <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
+                         class="mt-1 inline-block text-brand-700">Connectez-vous pour participer</a>
+                    }
+                  } @else if (a.acces === 'PAYANT') {
+                    <p class="mt-1 text-xs text-slate-500">Billet requis — voir la billetterie plus haut.</p>
+                  }
+                  @if (attendError() && attendErrorFor() === a.id) {
+                    <p class="mt-1 text-sm text-red-700">{{ attendError() }}</p>
+                  }
                 </div>
               </li>
             }
@@ -327,6 +353,11 @@ export class EventDetailComponent {
   stands = signal<Stand[]>([]);
   standReservation = signal<StandReservation | null>(null);
   standError = signal<string | null>(null);
+
+  attended = signal<string[]>([]);
+  attending = signal(false);
+  attendError = signal<string | null>(null);
+  attendErrorFor = signal<string | null>(null);
   structures = signal<StructureSummary[]>([]);
   standStructureId = signal<string | null>(null);
   verifiedStructures = computed(() => this.structures().filter((s) => s.statut === 'VERIFIEE'));
@@ -436,6 +467,23 @@ export class EventDetailComponent {
     this.ticketsService.paySandbox(r.ticketOrderId).subscribe(() =>
       this.registrationsService.byId(r.id).subscribe((x) => this.registration.set(x)),
     );
+  }
+
+  attend(activityId: string): void {
+    this.attendError.set(null);
+    this.attendErrorFor.set(null);
+    this.attending.set(true);
+    this.ticketsService.attendActivity(activityId).subscribe({
+      next: () => {
+        this.attending.set(false);
+        this.attended.set([...this.attended(), activityId]);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.attending.set(false);
+        this.attendErrorFor.set(activityId);
+        this.attendError.set((err.error as ApiError)?.message ?? 'Participation impossible.');
+      },
+    });
   }
 
   reserveStand(s: Stand): void {

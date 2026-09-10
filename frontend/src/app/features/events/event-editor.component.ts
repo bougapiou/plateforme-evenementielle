@@ -166,6 +166,16 @@ type Tab =
           <input class="form-input" placeholder="Salle" formControlName="salle" />
           <input type="datetime-local" class="form-input" formControlName="dateDebut" />
           <input type="datetime-local" class="form-input" formControlName="dateFin" />
+          <div>
+            <label class="form-label">Accès</label>
+            <select class="form-input" formControlName="acces">
+              <option value="SANS_BILLET">Sans billet (accès via le billet de l'événement)</option>
+              <option value="GRATUIT">Gratuit sur billet (participation à la volée)</option>
+              <option value="PAYANT">Payant (billets dédiés à créer dans « Billetterie »)</option>
+            </select>
+          </div>
+          <input type="number" min="0" class="form-input" placeholder="Capacité (optionnel)"
+                 formControlName="capacite" />
           <input class="form-input" placeholder="Intervenant" formControlName="intervenant" />
           <input class="form-input" placeholder="Modérateur" formControlName="moderateur" />
           <div class="sm:col-span-2">
@@ -190,6 +200,8 @@ type Tab =
                 <p class="font-medium text-slate-700">{{ a.titre }}</p>
                 <p class="text-slate-400">
                   {{ dt(a.dateDebut) }}{{ a.salle ? ' · ' + a.salle : '' }}{{ a.typeActivite ? ' · ' + a.typeActivite : '' }}
+                  @if (a.acces === 'GRATUIT') { <span class="badge bg-green-100 text-green-800">Gratuit</span> }
+                  @else if (a.acces === 'PAYANT') { <span class="badge bg-amber-100 text-amber-800">Payant</span> }
                 </p>
               </div>
               <div class="flex gap-2">
@@ -586,6 +598,8 @@ export class EventEditorComponent {
   activityForm = this.fb.nonNullable.group({
     titre: ['', Validators.required],
     typeActivite: [''],
+    acces: ['SANS_BILLET'],
+    capacite: [null as number | null],
     salle: [''],
     dateDebut: ['', Validators.required],
     dateFin: [''],
@@ -868,6 +882,8 @@ export class EventEditorComponent {
       moderateur: v.moderateur || undefined,
       imageUrl: v.imageUrl || undefined,
       typeActivite: (v.typeActivite || undefined) as Activity['typeActivite'],
+      acces: (v.acces || 'SANS_BILLET') as Activity['acces'],
+      capacite: v.capacite ?? undefined,
       dateDebut: new Date(v.dateDebut).toISOString(),
       dateFin: v.dateFin ? new Date(v.dateFin).toISOString() : undefined,
     };
@@ -881,6 +897,7 @@ export class EventEditorComponent {
     this.editingActivityId.set(a.id);
     this.activityForm.reset({
       titre: a.titre, typeActivite: a.typeActivite ?? '', salle: a.salle ?? '',
+      acces: a.acces ?? 'SANS_BILLET', capacite: a.capacite ?? null,
       dateDebut: toLocal(a.dateDebut), dateFin: toLocal(a.dateFin),
       intervenant: a.intervenant ?? '', moderateur: a.moderateur ?? '',
       imageUrl: a.imageUrl ?? null,

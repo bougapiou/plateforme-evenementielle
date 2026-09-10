@@ -1,5 +1,6 @@
 package bf.evenements.plateforme.event.dto;
 
+import bf.evenements.plateforme.event.ActivityAccess;
 import bf.evenements.plateforme.event.ActivityType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +13,8 @@ public record ActivityRequest(
         @NotBlank @Size(max = 200) String titre,
         String description,
         ActivityType typeActivite,
+        /** Access mode; defaults to SANS_BILLET when omitted. */
+        ActivityAccess acces,
         @NotNull Instant dateDebut,
         Instant dateFin,
         @Size(max = 120) String salle,
@@ -22,4 +25,8 @@ public record ActivityRequest(
         UUID speakerId,
         @PositiveOrZero Integer capacite,
         Integer ordre) {
+
+    public ActivityAccess resolvedAcces() {
+        return acces == null ? ActivityAccess.SANS_BILLET : acces;
+    }
 }

@@ -12,6 +12,12 @@ public interface CheckinRepository extends JpaRepository<Checkin, UUID> {
     Optional<Checkin> findFirstByTicketIdAndResultatOrderByScannedAtAsc(UUID ticketId,
                                                                        CheckinResult resultat);
 
+    Optional<Checkin> findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtAsc(
+            UUID ticketId, CheckinResult resultat);
+
+    Optional<Checkin> findFirstByTicketIdAndActivityIdAndResultatOrderByScannedAtAsc(
+            UUID ticketId, UUID activityId, CheckinResult resultat);
+
     Page<Checkin> findByEventIdOrderByScannedAtDesc(UUID eventId, Pageable pageable);
 
     long countByEventIdAndResultat(UUID eventId, CheckinResult resultat);

@@ -107,6 +107,8 @@ class Activity {
   final String titre;
   final String? description;
   final String? typeActivite;
+  /// SANS_BILLET | GRATUIT | PAYANT
+  final String acces;
   final DateTime? dateDebut;
   final DateTime? dateFin;
   final String? salle;
@@ -121,6 +123,7 @@ class Activity {
     required this.titre,
     this.description,
     this.typeActivite,
+    this.acces = 'SANS_BILLET',
     this.dateDebut,
     this.dateFin,
     this.salle,
@@ -131,11 +134,15 @@ class Activity {
     this.imageUrl,
   });
 
+  bool get gratuit => acces == 'GRATUIT';
+  bool get payant => acces == 'PAYANT';
+
   factory Activity.fromJson(Map<String, dynamic> j) => Activity(
         id: j['id'] as String,
         titre: j['titre'] as String,
         description: j['description'] as String?,
         typeActivite: j['typeActivite'] as String?,
+        acces: j['acces'] as String? ?? 'SANS_BILLET',
         dateDebut: parseDate(j['dateDebut']),
         dateFin: parseDate(j['dateFin']),
         salle: j['salle'] as String?,
@@ -1092,6 +1099,7 @@ class ScanOutcome {
   final String resultat; // VALIDE / DEJA_UTILISE / INVALIDE
   final String message;
   final String? eventNom;
+  final String? activiteNom;
   final String? participantNom;
   final String? categorieNom;
   final String? numeroBillet;
@@ -1101,6 +1109,7 @@ class ScanOutcome {
     required this.resultat,
     required this.message,
     this.eventNom,
+    this.activiteNom,
     this.participantNom,
     this.categorieNom,
     this.numeroBillet,
@@ -1111,6 +1120,7 @@ class ScanOutcome {
         resultat: j['resultat'] as String? ?? 'INVALIDE',
         message: j['message'] as String? ?? '',
         eventNom: j['eventNom'] as String?,
+        activiteNom: j['activiteNom'] as String?,
         participantNom: j['participantNom'] as String?,
         categorieNom: j['categorieNom'] as String?,
         numeroBillet: j['numeroBillet'] as String?,
