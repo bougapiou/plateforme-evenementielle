@@ -151,6 +151,14 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
     state = AsyncValue.data(res.user);
   }
 
+  /// Requests a password-reset e-mail (does not touch the session).
+  Future<void> requestPasswordReset(String email) =>
+      _repo.requestPasswordReset(email);
+
+  /// Sets a new password from a reset token (does not sign in).
+  Future<void> resetPassword({required String token, required String password}) =>
+      _repo.resetPassword(token: token, password: password);
+
   Future<void> logout() async {
     await _repo.logout();
     state = const AsyncValue.data(null);

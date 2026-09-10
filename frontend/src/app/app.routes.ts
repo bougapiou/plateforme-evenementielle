@@ -37,6 +37,18 @@ export const routes: Routes = [
           import('./pages/complete-account.component').then((m) => m.CompleteAccountComponent),
         title: 'Finaliser mon compte',
       },
+      {
+        path: 'mot-de-passe-oublie',
+        loadComponent: () =>
+          import('./pages/forgot-password.component').then((m) => m.ForgotPasswordComponent),
+        title: 'Mot de passe oublié',
+      },
+      {
+        path: 'mot-de-passe/reinitialiser',
+        loadComponent: () =>
+          import('./pages/reset-password.component').then((m) => m.ResetPasswordComponent),
+        title: 'Nouveau mot de passe',
+      },
     ],
   },
   {

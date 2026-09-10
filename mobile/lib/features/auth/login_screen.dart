@@ -86,6 +86,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Text(_loading ? 'Connexion…' : 'Se connecter'),
               ),
               TextButton(
+                onPressed: () => context.push('/mot-de-passe-oublie'),
+                child: const Text('Mot de passe oublié ?'),
+              ),
+              const Divider(height: 8),
+              TextButton(
                 onPressed: () => context.push('/inscription'),
                 child: const Text('Créer un compte'),
               ),

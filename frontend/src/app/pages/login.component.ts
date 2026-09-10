@@ -37,7 +37,12 @@ import { ApiError } from '../core/models';
           </button>
         </form>
 
-        <p class="mt-4 text-center text-sm text-slate-500">
+        <p class="mt-3 text-center text-sm">
+          <a routerLink="/mot-de-passe-oublie" class="text-slate-500 hover:text-brand-700">
+            Mot de passe oublié ?
+          </a>
+        </p>
+        <p class="mt-2 text-center text-sm text-slate-500">
           Pas encore de compte ?
           <a routerLink="/inscription" class="font-semibold text-brand-700">Créer un compte</a>
         </p>

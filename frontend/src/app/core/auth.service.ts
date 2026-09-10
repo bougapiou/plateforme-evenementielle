@@ -49,6 +49,16 @@ export class AuthService {
       .pipe(tap((res) => this.persist(res)));
   }
 
+  /** Requests a password-reset link by e-mail. Always resolves (no account enumeration). */
+  requestPasswordReset(email: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/auth/password/forgot`, { email });
+  }
+
+  /** Sets a new password from a token received by e-mail. */
+  resetPassword(token: string, password: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/auth/password/reset`, { token, password });
+  }
+
   /** Opens a passwordless guest session (checkout without an account). */
   guestSession(payload: GuestSessionPayload): Observable<AuthResponse> {
     return this.http

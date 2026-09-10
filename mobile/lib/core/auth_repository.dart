@@ -55,6 +55,28 @@ class AuthRepository {
         if (lastName != null && lastName.isNotEmpty) 'lastName': lastName,
       });
 
+  /// Asks the backend to e-mail a password-reset link. Always succeeds.
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      await _api.dio.post('/auth/password/forgot', data: {'email': email});
+    } on DioException catch (e) {
+      throw _api.toApiException(e);
+    }
+  }
+
+  /// Sets a new password from a token pasted from the reset e-mail.
+  Future<void> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    try {
+      await _api.dio.post('/auth/password/reset',
+          data: {'token': token.trim(), 'password': password});
+    } on DioException catch (e) {
+      throw _api.toApiException(e);
+    }
+  }
+
   Future<void> logout() async {
     final refresh = await _store.refreshToken;
     if (refresh != null) {

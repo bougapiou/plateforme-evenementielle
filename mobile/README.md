@@ -50,6 +50,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 | Notifications | liste in-app, badge non-lus, tout marquer lu, **ouverture du contenu lié** | `GET /notifications` |
 | **Mon compte** | modifier le profil (nom / téléphone), changer le mot de passe | `GET/PATCH /users/me`, `POST /users/me/password` |
 | **Finaliser mon compte** (invités) | après un achat / une inscription : choix d'un mot de passe → la session invité devient un vrai compte | `POST /auth/complete` |
+| **Mot de passe oublié** | demande d'un lien par e-mail, puis nouveau mot de passe à partir du code reçu | `POST /auth/password/forgot`, `POST /auth/password/reset` |
 | **Mes structures** | liste, création, modification, représentants (ajout / retrait) | `/structures`, `/structures/{id}/members` |
 | **Devenir organisateur** | formulaire de demande (rattachement structure optionnel) | `POST /organizers/apply`, `GET /organizers/me` |
 | **Mes événements** (organisateurs) | liste, **création**, gestion complète : infos + image, programme (activités + visuel), billetterie (catégories, quotas, portée), stands, intervenants (photo), partenaires (logo), workflow (soumettre / publier / ouvrir-fermer les inscriptions) | `POST/PUT /events`, `/events/mine`, `/events/{id}/activities|tickets|stand-types|speakers|partners`, `/events/{id}/submit\|publish\|…`, `POST /uploads/image` |

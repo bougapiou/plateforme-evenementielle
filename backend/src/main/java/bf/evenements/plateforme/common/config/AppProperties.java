@@ -8,11 +8,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(
+        /** Public base URL of the web front-end, used to build e-mail links. */
+        String frontendBaseUrl,
         Cors cors,
         Security security,
         Storage storage,
         Payment payment,
         Bootstrap bootstrap) {
+
+    public String frontendBaseUrl() {
+        return frontendBaseUrl == null || frontendBaseUrl.isBlank()
+                ? "http://localhost:4200"
+                : frontendBaseUrl.replaceAll("/+$", "");
+    }
 
     public record Cors(String allowedOrigins) {
         public String[] originsArray() {

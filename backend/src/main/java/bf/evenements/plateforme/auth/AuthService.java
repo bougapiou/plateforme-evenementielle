@@ -3,10 +3,12 @@ package bf.evenements.plateforme.auth;
 import bf.evenements.plateforme.audit.AuditService;
 import bf.evenements.plateforme.auth.dto.AuthResponse;
 import bf.evenements.plateforme.auth.dto.CompleteRegistrationRequest;
+import bf.evenements.plateforme.auth.dto.ForgotPasswordRequest;
 import bf.evenements.plateforme.auth.dto.GuestSessionRequest;
 import bf.evenements.plateforme.auth.dto.LoginRequest;
 import bf.evenements.plateforme.auth.dto.RefreshRequest;
 import bf.evenements.plateforme.auth.dto.RegisterRequest;
+import bf.evenements.plateforme.auth.dto.ResetPasswordRequest;
 import bf.evenements.plateforme.common.config.AppProperties;
 import bf.evenements.plateforme.common.exception.BusinessException;
 import bf.evenements.plateforme.common.exception.ConflictException;
@@ -14,6 +16,8 @@ import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.common.security.JwtService;
 import bf.evenements.plateforme.common.security.TokenHasher;
+import bf.evenements.plateforme.notification.EmailSender;
+import java.time.Duration;
 import java.util.UUID;
 import org.springframework.util.StringUtils;
 import bf.evenements.plateforme.rbac.Role;
@@ -37,9 +41,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
 
+    /** How long a password-reset link stays valid. */
+    private static final Duration RESET_TOKEN_TTL = Duration.ofHours(1);
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final TokenHasher tokenHasher;
@@ -47,6 +55,7 @@ public class AuthService {
     private final AppProperties appProperties;
     private final AuditService auditService;
     private final CurrentUserProvider currentUser;
+    private final EmailSender emailSender;
 
     @Transactional
     public AuthResponse register(RegisterRequest request, String ip) {
@@ -156,6 +165,61 @@ public class AuthService {
         auditService.record(user.getId(), user.getEmail(), "AUTH_ACCOUNT_CLAIMED", "User",
                 user.getId().toString(), null, null);
         return issueTokens(user);
+    }
+
+    /**
+     * Starts a password-reset flow. Always succeeds silently — the response must
+     * not reveal whether the e-mail is registered. Guest accounts (no password
+     * chosen yet) are ignored: they claim their account instead.
+     */
+    @Transactional
+    public void requestPasswordReset(ForgotPasswordRequest request, String ip) {
+        userRepository.findByEmailIgnoreCase(request.email()).ifPresent(user -> {
+            if (user.isGuest()) {
+                return;
+            }
+            Instant now = Instant.now();
+            passwordResetTokenRepository.invalidateAllForUser(user, now);
+
+            String rawToken = tokenHasher.generateOpaqueToken();
+            PasswordResetToken token = new PasswordResetToken();
+            token.setUser(user);
+            token.setTokenHash(tokenHasher.sha256(rawToken));
+            token.setExpiresAt(now.plus(RESET_TOKEN_TTL));
+            passwordResetTokenRepository.save(token);
+
+            String link = appProperties.frontendBaseUrl()
+                    + "/mot-de-passe/reinitialiser?token=" + rawToken;
+            emailSender.send(user.getEmail(), "Réinitialisation de votre mot de passe",
+                    "Bonjour " + user.getFirstName() + ",\n\n"
+                            + "Vous avez demandé à réinitialiser le mot de passe de votre compte "
+                            + "sur la Plateforme Nationale de Gestion des Événements.\n\n"
+                            + "Ouvrez ce lien pour choisir un nouveau mot de passe (valable 1 heure) :\n"
+                            + link + "\n\n"
+                            + "Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail : "
+                            + "votre mot de passe reste inchangé.");
+            auditService.record(user.getId(), user.getEmail(), "AUTH_PASSWORD_RESET_REQUESTED",
+                    "User", user.getId().toString(), ip, null);
+        });
+    }
+
+    /** Consumes a reset token and sets a new password, ending all other sessions. */
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        PasswordResetToken token = passwordResetTokenRepository
+                .findByTokenHash(tokenHasher.sha256(request.token().trim()))
+                .filter(PasswordResetToken::isUsable)
+                .orElseThrow(() -> new BusinessException("RESET_TOKEN_INVALID",
+                        "Ce lien de réinitialisation est invalide ou a expiré. "
+                                + "Demandez-en un nouveau."));
+
+        User user = token.getUser();
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setStatus(UserStatus.ACTIF);
+        token.setUsedAt(Instant.now());
+        refreshTokenRepository.revokeAllForUser(user);
+        auditService.record(user.getId(), user.getEmail(), "AUTH_PASSWORD_RESET", "User",
+                user.getId().toString(), null, null);
     }
 
     private void addRoleFor(User user, UserType type) {
