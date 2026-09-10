@@ -27,6 +27,12 @@ class Fmt {
     final label = devise == 'XOF' ? 'FCFA' : devise;
     return '$n $label';
   }
+
+  /// Price for display: "Gratuit" when the amount is null or zero.
+  static String price(num? amount, [String devise = 'XOF']) {
+    if (amount == null || amount <= 0) return 'Gratuit';
+    return money(amount, devise);
+  }
 }
 
 DateTime? parseDate(dynamic v) {

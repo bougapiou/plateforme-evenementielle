@@ -5,7 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { EventsService } from './events.service';
 import { Activity, EventCategory, EventDetail, EventTicket, Partner, Speaker } from './event.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
-import { formatDateTime, formatFcfa } from '../../shared/format';
+import { formatDateTime, formatFcfa, priceLabel } from '../../shared/format';
 import { ApiError } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
 import { TicketsService } from '../tickets/tickets.service';
@@ -350,7 +350,7 @@ type Tab =
           @for (t of tickets(); track t.id) {
             <li class="card flex items-center justify-between p-3 text-sm">
               <div>
-                <p class="font-medium text-slate-700">{{ t.nom }} — {{ fcfa(t.prixMontant) }}</p>
+                <p class="font-medium text-slate-700">{{ t.nom }} — {{ prix(t.prixMontant) }}</p>
                 <p class="text-slate-400">
                   {{ t.quantiteVendue }}/{{ t.quantiteTotale }} vendus · {{ t.quantiteRestante }} restants
                   · {{ t.portee === 'ACTIVITE' ? (t.activites.length + ' activité(s)') : 'événement entier' }}
@@ -388,7 +388,7 @@ type Tab =
           @for (t of standTypes(); track t.id) {
             <li class="card flex items-center justify-between p-3 text-sm">
               <div>
-                <p class="font-medium text-slate-700">{{ t.nom }} — {{ fcfa(t.prixMontant) }}</p>
+                <p class="font-medium text-slate-700">{{ t.nom }} — {{ prix(t.prixMontant) }}</p>
                 <p class="text-slate-400">
                   {{ t.quantiteReservee }}/{{ t.quantiteTotale }} réservés · {{ t.quantiteRestante }} disponibles
                   {{ t.dimensions ? ' · ' + t.dimensions : '' }}
@@ -691,6 +691,7 @@ export class EventEditorComponent {
 
   dt = (iso?: string) => formatDateTime(iso);
   fcfa = (n?: number) => formatFcfa(n);
+  prix = (n?: number) => priceLabel(n);
 
   private load(id: string): void {
     this.service.byId(id).subscribe((e) => {

@@ -11,7 +11,13 @@ import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
 import { EventPublic, EventTicket } from '../events/event.models';
-import { formatDateRange, formatDateTime, formatFcfa, formatTime } from '../../shared/format';
+import {
+  formatDateRange,
+  formatDateTime,
+  formatFcfa,
+  formatTime,
+  priceLabel,
+} from '../../shared/format';
 import { AuthService } from '../../core/auth.service';
 import { ApiError } from '../../core/models';
 
@@ -125,7 +131,8 @@ import { ApiError } from '../../core/models';
                           {{ t.nom }}
                           <span class="text-xs text-slate-400">· {{ t.quantiteRestante }} dispo</span>
                         </td>
-                        <td class="py-2 text-right font-semibold">{{ fcfa(t.prixMontant) }}</td>
+                        <td class="py-2 text-right font-semibold"
+                            [class.text-slate-400]="!t.prixMontant">{{ prix(t.prixMontant) }}</td>
                         <td class="py-2 pl-3 text-right">
                           <input type="number" min="0" [max]="maxFor(t)" class="form-input w-16"
                                  [ngModel]="qty()[t.id] || 0" (ngModelChange)="setQty(t.id, $event)" />
@@ -417,6 +424,7 @@ export class EventDetailComponent {
   dt = (iso?: string) => formatDateTime(iso);
   time = (iso?: string) => formatTime(iso);
   fcfa = (n?: number) => formatFcfa(n);
+  prix = (n?: number) => priceLabel(n);
   maxFor = (t: EventTicket) => Math.min(t.quantiteRestante, t.limiteParUtilisateur);
   standsOfType = (typeId: string) => this.stands().filter((s) => s.standTypeId === typeId);
 

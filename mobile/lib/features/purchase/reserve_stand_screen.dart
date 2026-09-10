@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
@@ -174,7 +175,7 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
                     Text(type.nom,
                         style: const TextStyle(
                             fontWeight: FontWeight.w600, fontSize: 16)),
-                    Text(type.prixMontant > 0 ? type.prixFormatte : 'Gratuit'),
+                    Text(Fmt.price(type.prixMontant, type.devise)),
                     if (type.dimensions != null)
                       Text(type.dimensions!,
                           style: Theme.of(context).textTheme.bodySmall),
