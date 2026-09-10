@@ -1,10 +1,12 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { EventsService } from '../events/events.service';
 import { TicketsService } from '../tickets/tickets.service';
 import { StandsService } from '../stands/stands.service';
+import { StructuresService } from '../structures/structures.service';
+import { StructureSummary } from '../structures/structure.models';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
@@ -158,7 +160,45 @@ import { ApiError } from '../../core/models';
                 <p class="mt-2 text-green-700">Stand confirmé.</p>
               }
             </div>
+          } @else if (!auth.isAuthenticated() || !auth.hasPermission('STAND_RESERVE')) {
+            <p class="mt-2 text-sm text-slate-500">
+              La réservation de stands est réservée aux comptes <b>structure</b>
+              (entreprise / institution).
+              @if (!auth.isAuthenticated()) {
+                <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
+                   class="font-semibold text-brand-700">Se connecter</a>
+              }
+            </p>
+          } @else if (verifiedStructures().length === 0) {
+            <div class="mt-3 rounded-lg bg-amber-50 p-4 text-sm">
+              @if (structures().length) {
+                <p class="font-medium text-amber-800">Structure en attente de vérification</p>
+                <p class="mt-1 text-slate-600">
+                  Un administrateur doit vérifier votre structure avant que vous
+                  puissiez réserver un stand.
+                </p>
+              } @else {
+                <p class="font-medium text-amber-800">Créez d'abord une structure</p>
+                <p class="mt-1 text-slate-600">
+                  Créez votre structure ; elle sera vérifiée par un administrateur,
+                  puis vous pourrez réserver un stand en son nom.
+                </p>
+              }
+              <a routerLink="/tableau-de-bord/structures" class="btn-primary mt-3 inline-flex">
+                Mes structures
+              </a>
+            </div>
           } @else {
+            <div class="mt-3 max-w-sm">
+              <label class="form-label">Réserver au nom de</label>
+              <select class="form-input" [ngModel]="standStructureId()"
+                      (ngModelChange)="standStructureId.set($event)">
+                <option [ngValue]="null" disabled>Choisir une structure…</option>
+                @for (st of verifiedStructures(); track st.id) {
+                  <option [ngValue]="st.id">{{ st.raisonSociale }}</option>
+                }
+              </select>
+            </div>
             @for (t of standTypes(); track t.id) {
               <div class="mt-3 rounded-lg border border-slate-100 p-3 text-sm">
                 <div class="flex items-center justify-between">
@@ -170,15 +210,13 @@ import { ApiError } from '../../core/models';
                     <button type="button" class="rounded border px-2 py-1 text-xs"
                             [class.border-brand-500]="s.disponible" [class.text-brand-700]="s.disponible"
                             [class.border-slate-200]="!s.disponible" [class.text-slate-300]="!s.disponible"
-                            [disabled]="!s.disponible" (click)="reserveStand(s)">{{ s.numero }}</button>
+                            [disabled]="!s.disponible || !standStructureId()"
+                            (click)="reserveStand(s)">{{ s.numero }}</button>
                   }
                 </div>
               </div>
             }
             @if (standError()) { <p class="mt-2 text-sm text-red-700">{{ standError() }}</p> }
-            @if (auth.isAuthenticated() && !auth.hasPermission('STAND_RESERVE')) {
-              <p class="mt-2 text-xs text-slate-400">Réservé aux comptes structure.</p>
-            }
           }
         </section>
       }
@@ -265,8 +303,8 @@ export class EventDetailComponent {
   private events = inject(EventsService);
   private ticketsService = inject(TicketsService);
   private standsService = inject(StandsService);
+  private structuresService = inject(StructuresService);
   private registrationsService = inject(RegistrationsService);
-  private router = inject(Router);
   auth = inject(AuthService);
 
   slug = input.required<string>();
@@ -289,6 +327,9 @@ export class EventDetailComponent {
   stands = signal<Stand[]>([]);
   standReservation = signal<StandReservation | null>(null);
   standError = signal<string | null>(null);
+  structures = signal<StructureSummary[]>([]);
+  standStructureId = signal<string | null>(null);
+  verifiedStructures = computed(() => this.structures().filter((s) => s.statut === 'VERIFIEE'));
 
   constructor() {
     effect(() => {
@@ -306,6 +347,16 @@ export class EventDetailComponent {
       this.standsService.publicStands(slug).subscribe({ next: (s) => this.stands.set(s), error: () => {} });
     });
     if (this.auth.user()) this.participantNom = this.auth.user()!.fullName;
+    if (this.auth.hasPermission('STAND_RESERVE')) {
+      this.structuresService.mine().subscribe({
+        next: (list) => {
+          this.structures.set(list);
+          const verified = list.filter((s) => s.statut === 'VERIFIEE');
+          if (verified.length === 1) this.standStructureId.set(verified[0].id);
+        },
+        error: () => {},
+      });
+    }
   }
 
   range = (e: EventPublic) => formatDateRange(e.dateDebut, e.dateFin);
@@ -388,22 +439,19 @@ export class EventDetailComponent {
   }
 
   reserveStand(s: Stand): void {
-    if (!this.auth.isAuthenticated()) {
-      this.router.navigate(['/connexion'], { queryParams: { redirect: this.router.url } });
-      return;
-    }
-    if (this.auth.isGuest()) {
-      this.standError.set(
-        'La réservation de stand nécessite un compte structure. Finalisez votre compte, puis rattachez une structure.',
-      );
+    const structureId = this.standStructureId();
+    if (!structureId) {
+      this.standError.set('Choisissez d\'abord une structure.');
       return;
     }
     this.standError.set(null);
-    this.standsService.reserve({ eventId: this.event()!.id, standId: s.id }).subscribe({
-      next: (r) => this.standReservation.set(r),
-      error: (err: HttpErrorResponse) =>
-        this.standError.set((err.error as ApiError)?.message ?? 'Réservation impossible.'),
-    });
+    this.standsService
+      .reserve({ eventId: this.event()!.id, standId: s.id, structureId })
+      .subscribe({
+        next: (r) => this.standReservation.set(r),
+        error: (err: HttpErrorResponse) =>
+          this.standError.set((err.error as ApiError)?.message ?? 'Réservation impossible.'),
+      });
   }
   payStand(): void {
     this.standsService.paySandbox(this.standReservation()!.id).subscribe({

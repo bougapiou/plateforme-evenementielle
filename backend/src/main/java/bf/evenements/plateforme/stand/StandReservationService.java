@@ -16,6 +16,7 @@ import bf.evenements.plateforme.structure.Structure;
 import bf.evenements.plateforme.structure.StructureMember;
 import bf.evenements.plateforme.structure.StructureMemberRepository;
 import bf.evenements.plateforme.structure.StructureRepository;
+import bf.evenements.plateforme.structure.StructureStatus;
 import bf.evenements.plateforme.user.User;
 import bf.evenements.plateforme.user.UserRepository;
 import java.time.Duration;
@@ -95,7 +96,7 @@ public class StandReservationService {
         reservation.setStand(stand);
         reservation.setStandType(type);
         reservation.setUser(me);
-        reservation.setStructure(resolveStructure(request.structureId(), me.getId()));
+        reservation.setStructure(requireVerifiedStructure(request.structureId(), me.getId()));
         reservation.setMontant(type.getPrixMontant());
         reservation.setDevise(type.getDevise());
         reservation.setInformations(request.informations());
@@ -227,10 +228,15 @@ public class StandReservationService {
         return reservation;
     }
 
-    @Nullable
-    private Structure resolveStructure(@Nullable UUID structureId, UUID userId) {
+    /**
+     * A stand is always booked on behalf of a structure the user belongs to,
+     * and that structure must have been verified by an administrator first.
+     */
+    private Structure requireVerifiedStructure(@Nullable UUID structureId, UUID userId) {
         if (structureId == null) {
-            return null;
+            throw new BusinessException("STRUCTURE_REQUIRED",
+                    "La réservation d'un stand se fait au nom d'une structure. "
+                            + "Créez une structure, puis attendez sa vérification par un administrateur.");
         }
         Structure structure = structureRepository.findById(structureId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Structure", structureId));
@@ -238,6 +244,11 @@ public class StandReservationService {
                 .filter(StructureMember::isActive).isPresent();
         if (!member) {
             throw new AccessDeniedException("Vous n'êtes pas membre de cette structure.");
+        }
+        if (structure.getStatut() != StructureStatus.VERIFIEE) {
+            throw new BusinessException("STRUCTURE_NOT_VERIFIED",
+                    "La structure « " + structure.getRaisonSociale() + " » n'est pas encore vérifiée. "
+                            + "Un administrateur doit la valider avant toute réservation de stand.");
         }
         return structure;
     }

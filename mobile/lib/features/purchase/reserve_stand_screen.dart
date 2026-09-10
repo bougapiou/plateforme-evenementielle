@@ -5,7 +5,6 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
-import 'structure_toggle.dart';
 
 class ReserveStandScreen extends ConsumerStatefulWidget {
   final String slug;
@@ -25,7 +24,6 @@ class _Data {
 class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
   late Future<_Data> _future;
   String? _busyStandId;
-  bool _asStructure = false;
   String? _structureId;
 
   @override
@@ -43,8 +41,8 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
   }
 
   Future<void> _reserve(EventDetail event, Stand stand) async {
-    if (_asStructure && _structureId == null) {
-      showSnack(context, 'Choisissez la structure.', error: true);
+    if (_structureId == null) {
+      showSnack(context, 'Choisissez d\'abord une structure.', error: true);
       return;
     }
     setState(() => _busyStandId = stand.id);
@@ -52,7 +50,7 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
       final r = await ref.read(standsRepositoryProvider).reserve(
             eventId: event.id,
             standId: stand.id,
-            structureId: _asStructure ? _structureId : null,
+            structureId: _structureId,
           );
       if (!mounted) return;
       showSnack(context,
@@ -67,104 +65,165 @@ class _ReserveStandScreenState extends ConsumerState<ReserveStandScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final structuresAsync = ref.watch(myStructuresProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Réserver un stand')),
       body: FutureView<_Data>(
         future: _future,
         onRetry: () => setState(() => _future = _load()),
-        builder: (d) {
-          final available = d.stands.where((s) => s.disponible).toList();
-          if (available.isEmpty) {
-            return const EmptyState(
-              icon: Icons.storefront_outlined,
-              title: 'Aucun stand disponible',
-              subtitle: 'Tous les stands de cet événement sont réservés.',
+        builder: (d) => structuresAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => ErrorRetry(
+              error: e, onRetry: () => ref.invalidate(myStructuresProvider)),
+          data: (all) {
+            final verified = all.where((s) => s.verifiee).toList();
+            if (verified.isEmpty) {
+              return _NoVerifiedStructure(pending: all.isNotEmpty);
+            }
+            _structureId ??= verified.length == 1 ? verified.first.id : null;
+            return _body(context, d, verified);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _body(BuildContext context, _Data d, List<StructureSummary> verified) {
+    final available = d.stands.where((s) => s.disponible).toList();
+    final byType = <String, List<Stand>>{};
+    for (final s in available) {
+      byType.putIfAbsent(s.standTypeNom, () => []).add(s);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(d.event.nom, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 4),
+        Text(
+          'Un stand se réserve au nom d\'une structure vérifiée. Il est bloqué '
+          '15 minutes, le temps du paiement.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          value: _structureId,
+          decoration: const InputDecoration(labelText: 'Réserver au nom de'),
+          items: verified
+              .map((s) => DropdownMenuItem(
+                    value: s.id,
+                    child: Text(s.raisonSociale),
+                  ))
+              .toList(),
+          onChanged: (v) => setState(() => _structureId = v),
+        ),
+        if (verified.length < 2)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Gérez vos structures depuis Profil → Mes structures.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        const SizedBox(height: 16),
+        if (available.isEmpty)
+          const EmptyState(
+            icon: Icons.storefront_outlined,
+            title: 'Aucun stand disponible',
+            subtitle: 'Tous les stands de cet événement sont réservés.',
+          )
+        else
+          ...byType.entries.map((entry) {
+            final type = d.types.firstWhere(
+              (t) => t.nom == entry.key,
+              orElse: () => StandType(
+                id: '',
+                nom: entry.key,
+                prixMontant: entry.value.first.prixMontant,
+                devise: 'XOF',
+                prixFormatte: entry.value.first.prixFormatte,
+                quantiteRestante: entry.value.length,
+              ),
             );
-          }
-          // group by type name
-          final byType = <String, List<Stand>>{};
-          for (final s in available) {
-            byType.putIfAbsent(s.standTypeNom, () => []).add(s);
-          }
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text(d.event.nom,
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(
-                'Sélectionnez un stand. Il sera bloqué 15 minutes, le temps du paiement.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              StructureToggle(
-                label: 'Réserver au nom d\'une structure',
-                asStructure: _asStructure,
-                structureId: _structureId,
-                onModeChanged: (v) => setState(() {
-                  _asStructure = v;
-                  if (!v) _structureId = null;
-                }),
-                onStructureChanged: (id) => setState(() => _structureId = id),
-              ),
-              const SizedBox(height: 16),
-              ...byType.entries.map((entry) {
-                final type = d.types.firstWhere(
-                  (t) => t.nom == entry.key,
-                  orElse: () => StandType(
-                    id: '',
-                    nom: entry.key,
-                    prixMontant: entry.value.first.prixMontant,
-                    devise: 'XOF',
-                    prixFormatte: entry.value.first.prixFormatte,
-                    quantiteRestante: entry.value.length,
-                  ),
-                );
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(type.nom,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 16)),
-                        Text(type.prixFormatte),
-                        if (type.dimensions != null)
-                          Text(type.dimensions!,
-                              style: Theme.of(context).textTheme.bodySmall),
-                        if (type.equipements != null)
-                          Text(type.equipements!,
-                              style: Theme.of(context).textTheme.bodySmall),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: entry.value.map((s) {
-                            final busy = _busyStandId == s.id;
-                            return OutlinedButton(
-                              onPressed: _busyStandId != null
-                                  ? null
-                                  : () => _reserve(d.event, s),
-                              child: busy
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2))
-                                  : Text('Stand ${s.numero}'),
-                            );
-                          }).toList(),
-                        ),
-                      ],
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(type.nom,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 16)),
+                    Text(type.prixFormatte),
+                    if (type.dimensions != null)
+                      Text(type.dimensions!,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    if (type.equipements != null)
+                      Text(type.equipements!,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: entry.value.map((s) {
+                        final busy = _busyStandId == s.id;
+                        return OutlinedButton(
+                          onPressed: _busyStandId != null
+                              ? null
+                              : () => _reserve(d.event, s),
+                          child: busy
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
+                              : Text('Stand ${s.numero}'),
+                        );
+                      }).toList(),
                     ),
-                  ),
-                );
-              }),
-            ],
-          );
-        },
+                  ],
+                ),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+}
+
+/// Shown when the user has no verified structure to book a stand with.
+class _NoVerifiedStructure extends StatelessWidget {
+  final bool pending;
+  const _NoVerifiedStructure({required this.pending});
+
+  @override
+  Widget build(BuildContext context) {
+    return EmptyState(
+      icon: Icons.domain_add_outlined,
+      title: pending
+          ? 'Structure en attente de vérification'
+          : 'Créez d\'abord une structure',
+      subtitle: pending
+          ? 'Un administrateur doit vérifier votre structure avant que vous '
+              'puissiez réserver un stand. Vous serez notifié·e.'
+          : 'La réservation de stands est réservée aux entreprises et '
+              'institutions. Créez votre structure ; elle sera ensuite vérifiée '
+              'par un administrateur.',
+      action: Column(
+        children: [
+          FilledButton.icon(
+            onPressed: () => context.push('/structures'),
+            icon: const Icon(Icons.domain_outlined),
+            label: const Text('Mes structures'),
+          ),
+          if (!pending)
+            TextButton(
+              onPressed: () => context.push('/structures/nouvelle'),
+              child: const Text('Créer une structure'),
+            ),
+        ],
       ),
     );
   }
