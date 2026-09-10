@@ -5,18 +5,12 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 
 import bf.evenements.plateforme.support.AbstractIntegrationTest;
+import bf.evenements.plateforme.support.QrTestUtil;
 import bf.evenements.plateforme.support.TestAuth;
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.MultiFormatReader;
-import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
-import com.google.zxing.common.HybridBinarizer;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Map;
-import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 /** Access control scoped to a single activity of a multi-session event. */
@@ -30,9 +24,7 @@ class ActivityCheckinIT extends AbstractIntegrationTest {
         byte[] png = given().header("Authorization", "Bearer " + ownerToken)
                 .when().get("/api/tickets/" + ticketId + "/qr.png")
                 .then().statusCode(200).extract().asByteArray();
-        BufferedImage img = ImageIO.read(new ByteArrayInputStream(png));
-        var bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(img)));
-        return new MultiFormatReader().decode(bitmap).getText();
+        return QrTestUtil.decode(png);
     }
 
     @Test

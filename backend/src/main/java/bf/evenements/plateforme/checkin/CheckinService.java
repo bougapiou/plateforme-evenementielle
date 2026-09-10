@@ -6,6 +6,8 @@ import bf.evenements.plateforme.checkin.dto.ScanResponse;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.common.web.PageResponse;
+import bf.evenements.plateforme.accreditation.Accreditation;
+import bf.evenements.plateforme.accreditation.AccreditationRepository;
 import bf.evenements.plateforme.event.Event;
 import bf.evenements.plateforme.event.EventActivity;
 import bf.evenements.plateforme.event.EventActivityRepository;
@@ -45,6 +47,7 @@ public class CheckinService {
     private final TicketRepository ticketRepository;
     private final EventRepository eventRepository;
     private final EventActivityRepository activityRepository;
+    private final AccreditationRepository accreditationRepository;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
 
@@ -106,11 +109,10 @@ public class CheckinService {
         }
         String activiteNom = activity != null ? activity.getTitre() : null;
 
-        QrCode qr = qrCodeRepository.findByToken(request.token().trim()).orElse(null);
+        String token = request.token().trim();
+        QrCode qr = qrCodeRepository.findByToken(token).orElse(null);
         if (qr == null) {
-            return record(event, activity, me, null, null, CheckinResult.INVALIDE, "QR code inconnu",
-                    new ScanResponse(CheckinResult.INVALIDE, "Ticket invalide", event.getNom(),
-                            activiteNom, null, null, null, null, null));
+            return scanAccreditation(event, activity, activiteNom, me, token);
         }
         Ticket ticket = ticketRepository.findById(qr.getTicket().getId()).orElseThrow();
 
@@ -169,6 +171,44 @@ public class CheckinService {
                 .anyMatch(a -> a.getId().equals(activity.getId()));
     }
 
+    /** The QR is not a ticket — try to match an accreditation badge. */
+    private ScanResponse scanAccreditation(Event event, EventActivity activity, String activiteNom,
+                                           UUID me, String token) {
+        Accreditation accr = accreditationRepository.findByQrToken(token).orElse(null);
+        if (accr == null) {
+            return record(event, activity, me, null, null, null, CheckinResult.INVALIDE,
+                    "QR code inconnu",
+                    new ScanResponse(CheckinResult.INVALIDE, "QR code inconnu", event.getNom(),
+                            activiteNom, null, null, null, null, null));
+        }
+        String label = "Badge · " + accr.fonctionLabel();
+        if (!accr.getEvent().getId().equals(event.getId())) {
+            return recordAccr(event, activity, me, accr, CheckinResult.INVALIDE,
+                    "Badge d'un autre événement",
+                    new ScanResponse(CheckinResult.INVALIDE, "Ce badge concerne un autre événement",
+                            event.getNom(), activiteNom, accr.getPersonneNom(), label,
+                            accr.getNumero(), null, null));
+        }
+        if (accr.getStatut() != Accreditation.AccreditationStatus.ACTIVE) {
+            return recordAccr(event, activity, me, accr, CheckinResult.INVALIDE, "Badge révoqué",
+                    new ScanResponse(CheckinResult.INVALIDE, "Badge révoqué", event.getNom(),
+                            activiteNom, accr.getPersonneNom(), label, accr.getNumero(), null, null));
+        }
+        if (accr.getActivity() != null
+                && (activity == null || !accr.getActivity().getId().equals(activity.getId()))) {
+            return recordAccr(event, activity, me, accr, CheckinResult.INVALIDE,
+                    "Badge lié à l'activité « " + accr.getActivity().getTitre() + " »",
+                    new ScanResponse(CheckinResult.INVALIDE,
+                            "Badge non valable pour cette activité", event.getNom(), activiteNom,
+                            accr.getPersonneNom(), label, accr.getNumero(), null, null));
+        }
+        // Badges allow re-entry — every scan is valid and simply logged.
+        ScanResponse resp = new ScanResponse(CheckinResult.VALIDE,
+                "Accès " + accr.fonctionLabel(), event.getNom(), activiteNom,
+                accr.getPersonneNom(), label, accr.getNumero(), Instant.now(), null);
+        return recordAccr(event, activity, me, accr, CheckinResult.VALIDE, null, resp);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<CheckinView> list(UUID eventId, Pageable pageable) {
         requireOrganiser(eventId);
@@ -190,14 +230,15 @@ public class CheckinService {
     // --- helpers ---
 
     private ScanResponse record(Event event, EventActivity activity, UUID scannedBy, UUID qrId,
-                                UUID ticketId, CheckinResult resultat, String detail,
-                                ScanResponse response) {
+                                UUID ticketId, UUID accreditationId, CheckinResult resultat,
+                                String detail, ScanResponse response) {
         Checkin checkin = new Checkin();
         checkin.setEventId(event.getId());
         checkin.setActivityId(activity != null ? activity.getId() : null);
         checkin.setScannedBy(scannedBy);
         checkin.setQrCodeId(qrId);
         checkin.setTicketId(ticketId);
+        checkin.setAccreditationId(accreditationId);
         checkin.setResultat(resultat);
         checkin.setScannedAt(Instant.now());
         checkin.setDetail(detail);
@@ -208,6 +249,18 @@ public class CheckinService {
                         + (activity != null ? " activite=" + activity.getTitre() : "")
                         + " resultat=" + resultat);
         return response;
+    }
+
+    private ScanResponse record(Event event, EventActivity activity, UUID scannedBy, UUID qrId,
+                                UUID ticketId, CheckinResult resultat, String detail,
+                                ScanResponse response) {
+        return record(event, activity, scannedBy, qrId, ticketId, null, resultat, detail, response);
+    }
+
+    private ScanResponse recordAccr(Event event, EventActivity activity, UUID scannedBy,
+                                    Accreditation accr, CheckinResult resultat, String detail,
+                                    ScanResponse response) {
+        return record(event, activity, scannedBy, null, null, accr.getId(), resultat, detail, response);
     }
 
     private void requireControl(Event event, UUID userId) {

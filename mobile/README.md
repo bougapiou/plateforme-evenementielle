@@ -56,6 +56,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 | **Mes événements** (organisateurs) | liste, **création**, gestion complète : infos + image, programme (activités + visuel), billetterie (catégories, quotas, portée), stands, intervenants (photo), partenaires (logo), workflow (soumettre / publier / ouvrir-fermer les inscriptions) | `POST/PUT /events`, `/events/mine`, `/events/{id}/activities|tickets|stand-types|speakers|partners`, `/events/{id}/submit\|publish\|…`, `POST /uploads/image` |
 | Contrôle à l'entrée | choix de l'événement **puis de l'activité** (ou entrée générale), scan caméra du QR → VALIDE / DÉJÀ UTILISÉ / INVALIDE (un billet d'activité n'est valable que pour la sienne) | `GET /checkins/events` (+ `/{id}/activities`), `POST /checkins/scan` (avec `activityId`) |
 | Participer à une activité gratuite | bouton « Participer » sur une activité en accès gratuit → billet + QR immédiats | `POST /activities/{id}/attend` |
+| **Accréditations** (organisateurs) | badges nominatifs (conférencier, exposant, modérateur, MC, panéliste, compétiteur, presse, staff…) pour une activité ou tout l'événement, badge PDF + QR, révocation | `GET/POST /events/{id}/accreditations`, `POST /accreditations/{id}/revoke`, `/badge.pdf` |
 | Profil | compte, rôles, déconnexion | — |
 
 Un **organisateur** peut désormais créer et gérer ses événements de bout en bout

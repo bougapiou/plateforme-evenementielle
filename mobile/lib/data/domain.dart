@@ -1095,6 +1095,73 @@ class Organizer {
       );
 }
 
+/// Accreditation roles (CONFERENCIER, EXPOSANT, …) and their French labels.
+const kAccreditationRoles = <String, String>{
+  'CONFERENCIER': 'Conférencier',
+  'EXPOSANT': 'Exposant',
+  'MODERATEUR': 'Modérateur',
+  'MAITRE_CEREMONIE': 'Maître de cérémonie',
+  'PANELISTE': 'Panéliste',
+  'COMPETITEUR': 'Compétiteur',
+  'INVITE': 'Invité',
+  'PRESSE': 'Presse',
+  'STAFF': 'Staff / organisation',
+  'AUTRE': 'Autre (préciser)',
+};
+
+class Accreditation {
+  final String id;
+  final String eventId;
+  final String? activityId;
+  final String? activiteNom;
+  final String numero;
+  final String personneNom;
+  final String? personneEmail;
+  final String? organisation;
+  final String fonction;
+  final String fonctionLibelle;
+  final String? photoUrl;
+  final String statut; // ACTIVE / REVOQUEE
+  final String qrImageUrl;
+  final String badgePdfUrl;
+
+  Accreditation({
+    required this.id,
+    required this.eventId,
+    this.activityId,
+    this.activiteNom,
+    required this.numero,
+    required this.personneNom,
+    this.personneEmail,
+    this.organisation,
+    required this.fonction,
+    required this.fonctionLibelle,
+    this.photoUrl,
+    required this.statut,
+    required this.qrImageUrl,
+    required this.badgePdfUrl,
+  });
+
+  bool get active => statut == 'ACTIVE';
+
+  factory Accreditation.fromJson(Map<String, dynamic> j) => Accreditation(
+        id: j['id'] as String,
+        eventId: j['eventId'] as String,
+        activityId: j['activityId'] as String?,
+        activiteNom: j['activiteNom'] as String?,
+        numero: j['numero'] as String? ?? '',
+        personneNom: j['personneNom'] as String? ?? '',
+        personneEmail: j['personneEmail'] as String?,
+        organisation: j['organisation'] as String?,
+        fonction: j['fonction'] as String? ?? 'AUTRE',
+        fonctionLibelle: j['fonctionLibelle'] as String? ?? '',
+        photoUrl: j['photoUrl'] as String?,
+        statut: j['statut'] as String? ?? 'ACTIVE',
+        qrImageUrl: j['qrImageUrl'] as String? ?? '',
+        badgePdfUrl: j['badgePdfUrl'] as String? ?? '',
+      );
+}
+
 class ScanOutcome {
   final String resultat; // VALIDE / DEJA_UTILISE / INVALIDE
   final String message;

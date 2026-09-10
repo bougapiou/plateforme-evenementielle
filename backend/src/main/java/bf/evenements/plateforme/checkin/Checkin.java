@@ -26,6 +26,10 @@ public class Checkin extends BaseEntity {
     @Column(name = "ticket_id")
     private UUID ticketId;
 
+    /** Set instead of {@link #ticketId} when the scan matched an accreditation badge. */
+    @Column(name = "accreditation_id")
+    private UUID accreditationId;
+
     @Column(name = "event_id", nullable = false)
     private UUID eventId;
 
