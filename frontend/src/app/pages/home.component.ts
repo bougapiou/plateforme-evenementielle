@@ -48,6 +48,6 @@ export class HomeComponent {
   features = [
     { title: 'Billetterie électronique', text: 'Catégories, quotas, QR codes et contrôle à l’entrée.' },
     { title: 'Réservation de stands', text: 'Types de stands, plan interactif, blocage temporaire.' },
-    { title: 'Paiement en ligne', text: 'Mobile money et FasoArzeka, confirmation par webhook sécurisé.' },
+    { title: 'Paiement en ligne', text: 'FasoArzeka, confirmation par webhook sécurisé.' },
   ];
 }
