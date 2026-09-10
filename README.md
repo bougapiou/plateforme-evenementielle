@@ -68,7 +68,7 @@ M0 fondations · M1 auth & RBAC (JWT, invité, **mot de passe oublié**) · M2 s
 (workflow, **activités/programme**, intervenants, partenaires, site public) ·
 M4 billetterie (quotas, portée événement/activité, **activité gratuite/payante,
 participation & contrôle par activité**) · M5 stands (blocage 15 min,
-anti-double réservation) · M6 inscriptions (particulier/structure, documents, **parcours invité sans compte**) ·
+anti-double réservation, **ouverture aux particuliers en option**) · M6 inscriptions (particulier/structure, documents, **parcours invité sans compte**) ·
 M7 paiements (`PaymentProvider`, sandbox, webhook HMAC) · M8 billets QR (PNG + PDF) ·
 M9 contrôle à l'entrée (scan, **par activité**, **entrée/sortie + comptage du flux**, **badges/accréditations**) · M10 factures & reçus (PDF) · M11 notifications ·
 M12 statistiques & dashboards · M15 durcissement + données de démo.
