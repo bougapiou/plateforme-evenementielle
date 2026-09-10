@@ -17,7 +17,8 @@ public final class TestAuth {
     public static String registerAndToken(String email, String type) {
         return given().contentType(ContentType.JSON)
                 .body(Map.of("email", email, "password", "Secret123",
-                        "firstName", "Test", "lastName", "User", "type", type))
+                        "firstName", "Test", "lastName", "User",
+                        "phone", "+226 70 00 00 00", "type", type))
                 .when().post("/api/auth/register")
                 .then().statusCode(201)
                 .extract().path("accessToken");

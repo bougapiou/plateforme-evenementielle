@@ -16,12 +16,19 @@ class CompleteAccountScreen extends ConsumerStatefulWidget {
 
 class _CompleteAccountScreenState extends ConsumerState<CompleteAccountScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   bool _saving = false;
 
+  bool _needsEmail(UserSummary? u) {
+    final e = u?.email ?? '';
+    return e.isEmpty || e.endsWith('@guest.plateforme.local');
+  }
+
   @override
   void dispose() {
+    _email.dispose();
     _password.dispose();
     _confirm.dispose();
     super.dispose();
@@ -29,11 +36,13 @@ class _CompleteAccountScreenState extends ConsumerState<CompleteAccountScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final needsEmail = _needsEmail(ref.read(authControllerProvider).valueOrNull);
     setState(() => _saving = true);
     try {
-      await ref
-          .read(authControllerProvider.notifier)
-          .completeRegistration(password: _password.text);
+      await ref.read(authControllerProvider.notifier).completeRegistration(
+            password: _password.text,
+            email: needsEmail ? _email.text.trim() : null,
+          );
       if (mounted) {
         showSnack(context, 'Compte créé. Vous pouvez vous connecter partout.');
         context.pop();
@@ -68,14 +77,27 @@ class _CompleteAccountScreenState extends ConsumerState<CompleteAccountScreen> {
                 decoration: const InputDecoration(labelText: 'Nom'),
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                initialValue: user.email,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Adresse e-mail',
-                  helperText: 'Ce sera votre identifiant de connexion.',
+              if (_needsEmail(user))
+                TextFormField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Adresse e-mail',
+                    helperText: 'Nécessaire pour vous connecter et recevoir vos billets.',
+                  ),
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? 'Adresse e-mail invalide'
+                      : null,
+                )
+              else
+                TextFormField(
+                  initialValue: user.email,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Adresse e-mail',
+                    helperText: 'Ce sera votre identifiant de connexion.',
+                  ),
                 ),
-              ),
               const SizedBox(height: 12),
             ],
             TextFormField(

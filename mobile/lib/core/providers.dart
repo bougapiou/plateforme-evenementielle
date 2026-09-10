@@ -125,14 +125,14 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
   Future<void> guestSession({
     required String firstName,
     required String lastName,
-    required String email,
-    String? phone,
+    required String phone,
+    String? email,
   }) async {
     final res = await _repo.guestSession(
       firstName: firstName,
       lastName: lastName,
-      email: email,
       phone: phone,
+      email: email,
     );
     state = AsyncValue.data(res.user);
   }
@@ -140,11 +140,13 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
   /// Turns the current guest session into a full account.
   Future<void> completeRegistration({
     required String password,
+    String? email,
     String? firstName,
     String? lastName,
   }) async {
     final res = await _repo.completeRegistration(
       password: password,
+      email: email,
       firstName: firstName,
       lastName: lastName,
     );

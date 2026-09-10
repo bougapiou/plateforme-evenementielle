@@ -15,7 +15,8 @@ public record RegisterRequest(
         @NotBlank @Size(min = 8, max = 72) String password,
         @NotBlank @Size(max = 100) String firstName,
         @NotBlank @Size(max = 100) String lastName,
-        @Pattern(regexp = "^$|^\\+?[0-9 ]{6,20}$", message = "numero de telephone invalide")
+        @NotBlank
+        @Pattern(regexp = "^\\+?[0-9 ]{6,20}$", message = "numero de telephone invalide")
         String phone,
         UserType type) {
 

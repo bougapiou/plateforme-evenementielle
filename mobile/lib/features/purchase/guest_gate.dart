@@ -74,8 +74,8 @@ class _GuestSheetState extends ConsumerState<_GuestSheet> {
       await ref.read(authControllerProvider.notifier).guestSession(
             firstName: _prenom.text.trim(),
             lastName: _nom.text.trim(),
-            email: _email.text.trim(),
-            phone: _tel.text.trim().isEmpty ? null : _tel.text.trim(),
+            phone: _tel.text.trim(),
+            email: _email.text.trim().isEmpty ? null : _email.text.trim(),
           );
       if (mounted) Navigator.pop(context, const _Choice.session());
     } on ApiException catch (e) {
@@ -159,21 +159,25 @@ class _GuestSheetState extends ConsumerState<_GuestSheet> {
               ]),
               const SizedBox(height: 10),
               TextFormField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Adresse e-mail *',
-                  helperText: 'Vos billets y seront envoyés.',
-                ),
-                validator: (v) =>
-                    (v == null || !v.contains('@')) ? 'E-mail invalide' : null,
+                controller: _tel,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Téléphone *'),
+                validator: (v) => (v == null ||
+                        !RegExp(r'^\+?[0-9 ]{6,20}$').hasMatch(v.trim()))
+                    ? 'Numéro de téléphone invalide'
+                    : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
-                controller: _tel,
-                keyboardType: TextInputType.phone,
-                decoration:
-                    const InputDecoration(labelText: 'Téléphone (facultatif)'),
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Adresse e-mail (facultatif)',
+                  helperText: 'Pour recevoir vos billets et créer un compte.',
+                ),
+                validator: (v) => (v != null && v.trim().isNotEmpty && !v.contains('@'))
+                    ? 'E-mail invalide'
+                    : null,
               ),
               const SizedBox(height: 16),
               FilledButton(

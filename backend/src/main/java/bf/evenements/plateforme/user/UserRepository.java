@@ -10,4 +10,7 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     Optional<User> findByEmailIgnoreCase(String email);
 
     boolean existsByEmailIgnoreCase(String email);
+
+    /** Reuse an existing phone-only guest session (checkout without an e-mail). */
+    Optional<User> findFirstByPhoneAndGuestTrueOrderByCreatedAtDesc(String phone);
 }

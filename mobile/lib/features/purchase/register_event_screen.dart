@@ -102,8 +102,8 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
           await ref.read(authControllerProvider.notifier).guestSession(
                 firstName: _prenom.text.trim(),
                 lastName: _nom.text.trim(),
-                email: _email.text.trim(),
-                phone: _tel.text.trim().isEmpty ? null : _tel.text.trim(),
+                phone: _tel.text.trim(),
+                email: _email.text.trim().isEmpty ? null : _email.text.trim(),
               );
         } on ApiException catch (e) {
           if (!mounted) return;
@@ -121,18 +121,21 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
       final contactNom = _asStructure
           ? _contactNom.text.trim()
           : (user?.fullName ?? '${_prenom.text.trim()} ${_nom.text.trim()}'.trim());
-      final contactEmail = _asStructure
+      final rawEmail = _asStructure
           ? _contactEmail.text.trim()
           : (user?.email ?? _email.text.trim());
-      final contactTel = _tel.text.trim().isEmpty ? null : _tel.text.trim();
+      final contactEmail =
+          rawEmail.endsWith('@guest.plateforme.local') ? '' : rawEmail;
+      // Backend falls back to the account phone when this is empty.
+      final contactTel = _tel.text.trim();
 
       final reg = await ref.read(registrationsRepositoryProvider).register(
             eventId: event.id,
             type: _asStructure ? 'STRUCTURE' : 'PARTICULIER',
             structureId: _asStructure ? _structureId : null,
             contactNom: contactNom,
-            contactEmail: contactEmail,
-            contactTelephone: contactTel,
+            contactEmail: contactEmail.isEmpty ? null : contactEmail,
+            contactTelephone: contactTel.isEmpty ? null : contactTel,
             informations: _infos.text.trim().isEmpty ? null : _infos.text.trim(),
             participants: participants,
           );
@@ -276,18 +279,24 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
                 ]),
                 const SizedBox(height: 12),
                 TextFormField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Adresse e-mail'),
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? 'E-mail invalide' : null,
+                  controller: _tel,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(labelText: 'Téléphone *'),
+                  validator: (v) => (v == null ||
+                          !RegExp(r'^\+?[0-9 ]{6,20}$').hasMatch(v.trim()))
+                      ? 'Numéro de téléphone invalide'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  controller: _tel,
-                  keyboardType: TextInputType.phone,
-                  decoration:
-                      const InputDecoration(labelText: 'Téléphone (facultatif)'),
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                      labelText: 'Adresse e-mail (facultatif)'),
+                  validator: (v) =>
+                      (v != null && v.trim().isNotEmpty && !v.contains('@'))
+                          ? 'E-mail invalide'
+                          : null,
                 ),
               ] else if (_asStructure) ...[
                 Text('Personne à contacter',

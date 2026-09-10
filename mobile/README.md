@@ -37,7 +37,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 |------|-------|-----|
 | Catalogue | recherche + filtres catégorie, cartes événement | `GET /public/events` |
 | Détail événement | infos, programme (activités), intervenants, partenaires, billetterie, stands | `GET /public/events/{slug}` (+ `/tickets`, `/stand-types`, `/stands`) |
-| Achat de billets | sélection catégories + quantités, total, commande (option **au nom d'une structure**). **Sans compte** : une session invité (nom + e-mail) est ouverte à la volée | `POST /ticket-orders`, `POST /auth/guest` |
+| Achat de billets | sélection catégories + quantités, total, commande (option **au nom d'une structure**). **Sans compte** : session invité à la volée (nom + **téléphone** ; e-mail facultatif). Un événement gratuit = **1 billet par personne** | `POST /ticket-orders`, `POST /auth/guest` |
 | Paiement | choix du moyen (Orange/Moov/Telecel Money, FasoArzeka, carte), sandbox | `POST /payments` + `/payments/{ref}/simulate` |
 | Inscription | formulaire **particulier ou structure** + participants. **Sans compte** pour un particulier : session invité à la volée | `POST /events/{id}/registrations`, `POST /auth/guest` |
 | Détail inscription | participants, **pièces jointes** (photo/galerie → upload/suppression), annulation, confirmation PDF | `GET/POST/DELETE /registrations/{id}/documents`, `/registrations/{id}/confirmation.pdf` |

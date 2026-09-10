@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -40,13 +40,25 @@ import { ApiError } from '../core/models';
               <dt class="text-slate-400">Nom</dt>
               <dd class="font-medium text-slate-700">{{ auth.user()?.fullName }}</dd>
             </div>
-            <div class="mt-1 flex justify-between">
-              <dt class="text-slate-400">E-mail</dt>
-              <dd class="font-medium text-slate-700">{{ auth.user()?.email }}</dd>
-            </div>
+            @if (!needsEmail()) {
+              <div class="mt-1 flex justify-between">
+                <dt class="text-slate-400">E-mail</dt>
+                <dd class="font-medium text-slate-700">{{ auth.user()?.email }}</dd>
+              </div>
+            }
           </dl>
 
           <form class="mt-5 space-y-4" [formGroup]="form" (ngSubmit)="submit()">
+            @if (needsEmail()) {
+              <div>
+                <label class="form-label" for="email">Adresse e-mail</label>
+                <input id="email" type="email" class="form-input" formControlName="email"
+                       autocomplete="email" />
+                <p class="mt-1 text-xs text-slate-400">
+                  Nécessaire pour vous connecter et recevoir vos billets.
+                </p>
+              </div>
+            }
             <div>
               <label class="form-label" for="password">Mot de passe</label>
               <input id="password" type="password" class="form-input" formControlName="password"
@@ -80,15 +92,26 @@ export class CompleteAccountComponent {
   loading = signal(false);
   error = signal<string | null>(null);
 
+  /** A phone-only guest has a synthetic e-mail and must supply a real one. */
+  needsEmail = computed(() => {
+    const e = this.auth.user()?.email ?? '';
+    return !e || e.endsWith('@guest.plateforme.local');
+  });
+
   form = this.fb.nonNullable.group({
+    email: [''],
     password: ['', [Validators.required, Validators.minLength(8)]],
     confirm: ['', [Validators.required]],
   });
 
   submit(): void {
-    const { password, confirm } = this.form.getRawValue();
+    const { email, password, confirm } = this.form.getRawValue();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      return;
+    }
+    if (this.needsEmail() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      this.error.set('Indiquez une adresse e-mail valide.');
       return;
     }
     if (password !== confirm) {
@@ -97,7 +120,9 @@ export class CompleteAccountComponent {
     }
     this.loading.set(true);
     this.error.set(null);
-    this.auth.completeRegistration({ password }).subscribe({
+    this.auth
+      .completeRegistration(this.needsEmail() ? { password, email } : { password })
+      .subscribe({
       next: () => this.router.navigateByUrl('/tableau-de-bord'),
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);

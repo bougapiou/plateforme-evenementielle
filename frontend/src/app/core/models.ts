@@ -14,14 +14,16 @@ export interface UserSummary {
 }
 
 export interface GuestSessionPayload {
-  email: string;
   firstName: string;
   lastName: string;
-  phone?: string;
+  phone: string;
+  email?: string;
 }
 
 export interface CompleteRegistrationPayload {
   password: string;
+  /** Required only when the guest checked out with a phone but no e-mail. */
+  email?: string;
   firstName?: string;
   lastName?: string;
 }

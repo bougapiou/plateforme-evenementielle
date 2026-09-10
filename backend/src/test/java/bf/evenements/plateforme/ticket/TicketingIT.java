@@ -126,6 +126,46 @@ class TicketingIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void only_one_free_ticket_per_person_and_per_event() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("f1-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+        String eventId = publishedEvent(orga, admin)[0];
+
+        String freeA = as(orga).body(Map.of("nom", "Invitation A", "prixMontant", 0,
+                        "portee", "EVENEMENT", "quantiteTotale", 50))
+                .when().post("/api/events/" + eventId + "/tickets").then().statusCode(201)
+                .body("limiteParUtilisateur", equalTo(1))
+                .extract().path("id");
+        String freeB = as(orga).body(Map.of("nom", "Invitation B", "prixMontant", 0,
+                        "portee", "EVENEMENT", "quantiteTotale", 50))
+                .when().post("/api/events/" + eventId + "/tickets").then().statusCode(201)
+                .extract().path("id");
+        String paid = as(orga).body(Map.of("nom", "Pass payant", "prixMontant", 3000,
+                        "portee", "EVENEMENT", "quantiteTotale", 50))
+                .when().post("/api/events/" + eventId + "/tickets").then().statusCode(201)
+                .extract().path("id");
+
+        String buyer = TestAuth.registerAndToken("f1-buyer-" + n + "@example.bf", "PARTICULIER");
+
+        // first free ticket, and a request for 3 is capped to 1
+        as(buyer).body(Map.of("eventId", eventId,
+                        "lignes", List.of(Map.of("eventTicketId", freeA, "quantite", 3))))
+                .when().post("/api/ticket-orders").then().statusCode(201);
+
+        // a second free ticket (other category, same event) is refused
+        as(buyer).body(Map.of("eventId", eventId,
+                        "lignes", List.of(Map.of("eventTicketId", freeB, "quantite", 1))))
+                .when().post("/api/ticket-orders")
+                .then().statusCode(422).body("code", equalTo("FREE_TICKET_LIMIT"));
+
+        // a paid ticket is still allowed
+        as(buyer).body(Map.of("eventId", eventId,
+                        "lignes", List.of(Map.of("eventTicketId", paid, "quantite", 2))))
+                .when().post("/api/ticket-orders").then().statusCode(201);
+    }
+
+    @Test
     void cancelling_a_pending_order_releases_the_quota() {
         long n = System.nanoTime();
         String orga = TestAuth.organizerToken("cancel-orga-" + n + "@example.bf");

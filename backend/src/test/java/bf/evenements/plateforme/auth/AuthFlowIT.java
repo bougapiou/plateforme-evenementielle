@@ -46,7 +46,8 @@ class AuthFlowIT extends AbstractIntegrationTest {
                         "email", email,
                         "password", "Secret123",
                         "firstName", "Amina",
-                        "lastName", "Ouedraogo"))
+                        "lastName", "Ouedraogo",
+                        "phone", "+226 70 11 22 33"))
                 .when().post("/api/auth/register")
                 .then().statusCode(201)
                 .body("accessToken", notNullValue())
@@ -111,7 +112,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
         String email = "dup" + System.nanoTime() + "@example.bf";
         Map<String, String> body = Map.of(
                 "email", email, "password", "Secret123",
-                "firstName", "Paul", "lastName", "Kabore");
+                "firstName", "Paul", "lastName", "Kabore", "phone", "+226 70 44 55 66");
 
         given().contentType(ContentType.JSON).body(body)
                 .when().post("/api/auth/register").then().statusCode(201);
@@ -128,7 +129,8 @@ class AuthFlowIT extends AbstractIntegrationTest {
 
         // --- guest session, no password ---
         String guestToken = given().contentType(ContentType.JSON)
-                .body(Map.of("email", email, "firstName", "Awa", "lastName", "Invitee"))
+                .body(Map.of("email", email, "firstName", "Awa", "lastName", "Invitee",
+                        "phone", "+226 70 77 88 99"))
                 .when().post("/api/auth/guest")
                 .then().statusCode(200)
                 .body("user.guest", equalTo(true))
@@ -140,7 +142,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                 .body(Map.of("email", email, "password", "whatever"))
                 .when().post("/api/auth/login").then().statusCode(401);
 
-        // --- claim the account ---
+        // --- claim the account (the e-mail was given, so no extra e-mail needed) ---
         given().header("Authorization", "Bearer " + guestToken)
                 .contentType(ContentType.JSON)
                 .body(Map.of("password", "MonMotDePasse!2026"))
@@ -155,7 +157,8 @@ class AuthFlowIT extends AbstractIntegrationTest {
 
         // a fresh guest session on that (now real) e-mail is refused
         given().contentType(ContentType.JSON)
-                .body(Map.of("email", email, "firstName", "X", "lastName", "Y"))
+                .body(Map.of("email", email, "firstName", "X", "lastName", "Y",
+                        "phone", "+226 71 00 00 00"))
                 .when().post("/api/auth/guest")
                 .then().statusCode(409).body("code", equalTo("ACCOUNT_EXISTS"));
 
@@ -173,15 +176,49 @@ class AuthFlowIT extends AbstractIntegrationTest {
     void register_upgrades_an_existing_guest_account() {
         String email = "guest2reg" + System.nanoTime() + "@example.bf";
         given().contentType(ContentType.JSON)
-                .body(Map.of("email", email, "firstName", "B", "lastName", "C"))
+                .body(Map.of("email", email, "firstName", "B", "lastName", "C",
+                        "phone", "+226 72 00 00 00"))
                 .when().post("/api/auth/guest").then().statusCode(200);
 
         given().contentType(ContentType.JSON)
                 .body(Map.of("email", email, "password", "Passw0rd!2026",
-                        "firstName", "B", "lastName", "C"))
+                        "firstName", "B", "lastName", "C", "phone", "+226 72 00 00 00"))
                 .when().post("/api/auth/register")
                 .then().statusCode(201)
                 .body("user.guest", equalTo(false));
+    }
+
+    @Test
+    void phone_only_guest_must_add_an_email_to_claim_the_account() {
+        String phone = "+226 73 " + (System.nanoTime() % 100000000);
+
+        // guest checkout with a phone but no e-mail
+        String guestToken = given().contentType(ContentType.JSON)
+                .body(Map.of("firstName", "Sié", "lastName", "Palé", "phone", phone))
+                .when().post("/api/auth/guest")
+                .then().statusCode(200).body("user.guest", equalTo(true))
+                .extract().path("accessToken");
+
+        // the same phone reuses the same guest session
+        given().contentType(ContentType.JSON)
+                .body(Map.of("firstName", "Sié", "lastName", "Palé", "phone", phone))
+                .when().post("/api/auth/guest").then().statusCode(200);
+
+        // claiming without an e-mail is refused
+        given().header("Authorization", "Bearer " + guestToken).contentType(ContentType.JSON)
+                .body(Map.of("password", "MotDePasse!2026"))
+                .when().post("/api/auth/complete")
+                .then().statusCode(422).body("code", equalTo("EMAIL_REQUIRED"));
+
+        // with an e-mail it works, and login by that e-mail works
+        String realEmail = "sie" + System.nanoTime() + "@example.bf";
+        given().header("Authorization", "Bearer " + guestToken).contentType(ContentType.JSON)
+                .body(Map.of("password", "MotDePasse!2026", "email", realEmail))
+                .when().post("/api/auth/complete")
+                .then().statusCode(200).body("user.guest", equalTo(false));
+        given().contentType(ContentType.JSON)
+                .body(Map.of("email", realEmail, "password", "MotDePasse!2026"))
+                .when().post("/api/auth/login").then().statusCode(200);
     }
 
     @Test
@@ -189,7 +226,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
         String email = "oubli" + System.nanoTime() + "@example.bf";
         String oldRefresh = given().contentType(ContentType.JSON)
                 .body(Map.of("email", email, "password", "Ancien!2026",
-                        "firstName", "Fatou", "lastName", "Sawadogo"))
+                        "firstName", "Fatou", "lastName", "Sawadogo", "phone", "+226 74 00 00 00"))
                 .when().post("/api/auth/register").then().statusCode(201)
                 .extract().path("refreshToken");
 

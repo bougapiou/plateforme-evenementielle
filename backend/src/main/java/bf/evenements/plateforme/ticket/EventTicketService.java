@@ -100,6 +100,9 @@ public class EventTicketService {
         if (r.limiteParUtilisateur() != null) {
             t.setLimiteParUtilisateur(r.limiteParUtilisateur());
         }
+        if (t.getPrixMontant().signum() == 0) {
+            t.setLimiteParUtilisateur(1); // one free ticket per person
+        }
         t.setVenteDebut(r.venteDebut());
         t.setVenteFin(r.venteFin());
         if (r.actif() != null) {

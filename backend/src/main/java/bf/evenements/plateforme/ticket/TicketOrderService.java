@@ -83,6 +83,7 @@ public class TicketOrderService {
 
         String devise = null;
         BigDecimal total = BigDecimal.ZERO;
+        int freeQty = 0;
 
         for (CreateOrderRequest.Line line : request.lignes()) {
             EventTicket ticket = ticketRepository.findByIdForUpdate(line.eventTicketId())
@@ -93,6 +94,13 @@ public class TicketOrderService {
                         "Une catégorie de ticket n'appartient pas à cet événement.");
             }
             int qty = line.quantite();
+            boolean free = ticket.getPrixMontant().signum() == 0;
+            if (free && qty > 1) {
+                qty = 1; // one free ticket per person, always
+            }
+            if (free) {
+                freeQty += qty;
+            }
             if (!ticket.onSale(now)) {
                 throw new BusinessException("TICKET_NOT_ON_SALE",
                         "La catégorie « " + ticket.getNom() + " » n'est pas en vente.");
@@ -123,6 +131,14 @@ public class TicketOrderService {
             orderLine.setPrixUnitaire(ticket.getPrixMontant());
             order.addLine(orderLine);
             total = total.add(ticket.getPrixMontant().multiply(BigDecimal.valueOf(qty)));
+        }
+
+        // At most one free ticket per person and per event (all free categories combined).
+        if (freeQty > 0
+                && ticketEntityRepository.countFreeTicketsForUserAndEvent(buyer.getId(), event.getId())
+                        + freeQty > 1) {
+            throw new BusinessException("FREE_TICKET_LIMIT",
+                    "Un seul billet gratuit par personne pour cet événement.");
         }
 
         order.setDevise(devise);

@@ -98,12 +98,13 @@ import { ApiError } from '../../core/models';
               </div>
               <div class="grid max-w-lg gap-3 sm:grid-cols-2">
                 <div>
-                  <label class="form-label">Adresse e-mail</label>
-                  <input class="form-input" type="email" [(ngModel)]="guestEmail" />
+                  <label class="form-label">Téléphone *</label>
+                  <input class="form-input" [(ngModel)]="guestPhone" placeholder="+226 70 00 00 00" />
                 </div>
                 <div>
-                  <label class="form-label">Téléphone (facultatif)</label>
-                  <input class="form-input" [(ngModel)]="guestPhone" />
+                  <label class="form-label">Adresse e-mail (facultatif)</label>
+                  <input class="form-input" type="email" [(ngModel)]="guestEmail" />
+                  <p class="mt-1 text-xs text-slate-400">Pour recevoir vos billets et créer un compte.</p>
                 </div>
               </div>
             } @else {
@@ -409,17 +410,22 @@ export class EventDetailComponent {
       const first = this.guestFirstName.trim();
       const last = this.guestLastName.trim();
       const email = this.guestEmail.trim();
-      if (!first || !last || !email.includes('@')) {
-        this.error.set('Renseignez votre prénom, votre nom et un e-mail valide.');
+      const phone = this.guestPhone.trim();
+      if (!first || !last || !/^\+?[0-9 ]{6,20}$/.test(phone)) {
+        this.error.set('Renseignez votre prénom, votre nom et un numéro de téléphone.');
+        return;
+      }
+      if (email && !email.includes('@')) {
+        this.error.set('L\'adresse e-mail n\'est pas valide.');
         return;
       }
       this.submitting.set(true);
       this.auth
         .guestSession({
-          email,
+          email: email || undefined,
           firstName: first,
           lastName: last,
-          phone: this.guestPhone.trim() || undefined,
+          phone,
         })
         .subscribe({
           next: () => this.doRegister(`${first} ${last}`.trim()),
