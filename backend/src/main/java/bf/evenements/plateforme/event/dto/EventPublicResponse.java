@@ -31,6 +31,7 @@ public record EventPublicResponse(
         String conditionsParticipation,
         boolean hasActivities,
         boolean standsActifs,
+        boolean standsParticuliers,
         Instant inscriptionDebut,
         Instant inscriptionFin,
         EventStatus statut,
@@ -50,6 +51,7 @@ public record EventPublicResponse(
                 e.getAdresse(), e.getVille(), e.getPays(), e.getLatitude(), e.getLongitude(),
                 e.getContactEmail(), e.getContactTelephone(), e.getSiteWeb(),
                 e.getConditionsParticipation(), e.isHasActivities(), e.isStandsActifs(),
+                e.isStandsParticuliers(),
                 e.getInscriptionDebut(), e.getInscriptionFin(), e.getStatut(),
                 e.getOrganizer().getNomAffichage(), programme, speakers, partners);
     }

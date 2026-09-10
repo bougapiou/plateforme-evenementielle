@@ -180,6 +180,7 @@ class EventFull {
   final int? capaciteMax;
   final bool hasActivities;
   final bool standsActifs;
+  final bool standsParticuliers;
   final bool validationInscription;
   final bool controleSortie;
   final DateTime? inscriptionDebut;
@@ -209,6 +210,7 @@ class EventFull {
     this.capaciteMax,
     this.hasActivities = false,
     this.standsActifs = false,
+    this.standsParticuliers = false,
     this.validationInscription = false,
     this.controleSortie = false,
     this.inscriptionDebut,
@@ -243,6 +245,7 @@ class EventFull {
         capaciteMax: j['capaciteMax'] as int?,
         hasActivities: j['hasActivities'] as bool? ?? false,
         standsActifs: j['standsActifs'] as bool? ?? false,
+        standsParticuliers: j['standsParticuliers'] as bool? ?? false,
         validationInscription: j['validationInscription'] as bool? ?? false,
         controleSortie: j['controleSortie'] as bool? ?? false,
         inscriptionDebut: parseDate(j['inscriptionDebut']),
@@ -326,6 +329,7 @@ class EventDetail {
   final String? conditionsParticipation;
   final bool hasActivities;
   final bool standsActifs;
+  final bool standsParticuliers;
   final DateTime? inscriptionDebut;
   final DateTime? inscriptionFin;
   final String statut;
@@ -355,6 +359,7 @@ class EventDetail {
     this.conditionsParticipation,
     this.hasActivities = false,
     this.standsActifs = false,
+    this.standsParticuliers = false,
     this.inscriptionDebut,
     this.inscriptionFin,
     this.statut = '',
@@ -390,6 +395,7 @@ class EventDetail {
         conditionsParticipation: j['conditionsParticipation'] as String?,
         hasActivities: j['hasActivities'] as bool? ?? false,
         standsActifs: j['standsActifs'] as bool? ?? false,
+        standsParticuliers: j['standsParticuliers'] as bool? ?? false,
         inscriptionDebut: parseDate(j['inscriptionDebut']),
         inscriptionFin: parseDate(j['inscriptionFin']),
         statut: j['statut'] as String? ?? '',

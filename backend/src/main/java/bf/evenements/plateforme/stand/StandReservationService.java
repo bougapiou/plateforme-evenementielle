@@ -96,7 +96,10 @@ public class StandReservationService {
         reservation.setStand(stand);
         reservation.setStandType(type);
         reservation.setUser(me);
-        reservation.setStructure(requireVerifiedStructure(request.structureId(), me.getId()));
+        reservation.setStructure(
+                event.isStandsParticuliers() && request.structureId() == null
+                        ? null // individual booking allowed on this event
+                        : requireVerifiedStructure(request.structureId(), me.getId()));
         reservation.setMontant(type.getPrixMontant());
         reservation.setDevise(type.getDevise());
         reservation.setInformations(request.informations());

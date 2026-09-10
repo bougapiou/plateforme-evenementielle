@@ -61,6 +61,7 @@ export interface EventDetail extends EventSummary {
   siteWeb?: string;
   conditionsParticipation?: string;
   hasActivities: boolean;
+  standsParticuliers?: boolean;
   validationInscription?: boolean;
   controleSortie?: boolean;
   inscriptionDebut?: string;
@@ -96,6 +97,7 @@ export interface EventPayload {
   conditionsParticipation?: string;
   hasActivities: boolean;
   standsActifs: boolean;
+  standsParticuliers?: boolean;
   validationInscription?: boolean;
   controleSortie?: boolean;
   inscriptionDebut?: string;

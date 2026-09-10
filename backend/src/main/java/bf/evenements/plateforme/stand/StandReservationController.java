@@ -37,7 +37,7 @@ public class StandReservationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('" + Permissions.STAND_RESERVE + "')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Réserver un stand (blocage temporaire 15 min)")
     public StandReservationResponse reserve(@Valid @RequestBody CreateStandReservationRequest request) {
         return service.reserve(request);

@@ -182,4 +182,35 @@ class StandReservationIT extends AbstractIntegrationTest {
                 .when().post("/api/stand-reservations")
                 .then().statusCode(201).body("statut", equalTo("RESERVE_TEMP"));
     }
+
+    @Test
+    void an_individual_can_reserve_when_the_event_allows_particuliers() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("sp-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+
+        var res = as(orga).body(Map.of("nom", "Salon " + n,
+                        "dateDebut", "2027-10-01T08:00:00Z", "dateFin", "2027-10-10T18:00:00Z",
+                        "ville", "Ouagadougou",
+                        "standsActifs", true, "standsParticuliers", true))
+                .when().post("/api/events").then().statusCode(201)
+                .body("standsParticuliers", equalTo(true))
+                .extract().response();
+        String eventId = res.path("id");
+        String slug = res.path("slug");
+        as(orga).when().post("/api/events/" + eventId + "/submit").then().statusCode(200);
+        as(admin).when().post("/api/events/" + eventId + "/validate").then().statusCode(200);
+        as(orga).when().post("/api/events/" + eventId + "/publish").then().statusCode(200);
+
+        as(orga).body(Map.of("nom", "Petit stand", "prixMontant", 50000, "quantiteTotale", 4))
+                .when().post("/api/events/" + eventId + "/stand-types").then().statusCode(201);
+        String standId = given().when().get("/api/public/events/" + slug + "/stands")
+                .then().statusCode(200).extract().path("[0].id");
+
+        // a plain particulier — no structure — can reserve
+        String particulier = TestAuth.registerAndToken("sp-user-" + n + "@example.bf", "PARTICULIER");
+        as(particulier).body(Map.of("eventId", eventId, "standId", standId))
+                .when().post("/api/stand-reservations")
+                .then().statusCode(201).body("statut", equalTo("RESERVE_TEMP"));
+    }
 }
