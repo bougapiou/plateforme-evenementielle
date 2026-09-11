@@ -25,11 +25,15 @@ import bf.evenements.plateforme.ticket.TicketRepository;
 import bf.evenements.plateforme.ticket.TicketScope;
 import bf.evenements.plateforme.ticket.TicketStatus;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -266,6 +270,50 @@ public class CheckinService {
         return activityFlow(eventId, activityId);
     }
 
+    /**
+     * Full per-ticket breakdown — entries, exits, re-entries and current state,
+     * one row per ticket number — for the event's general entry or one activity.
+     * Most recently scanned tickets first.
+     */
+    @Transactional(readOnly = true)
+    public List<TicketFlowView> ticketDetails(UUID eventId, UUID activityId) {
+        requireControlAccess(eventId);
+        List<Checkin> scans = activityId == null
+                ? checkinRepository.findByEventIdAndActivityIdIsNullAndTicketIdIsNotNullOrderByScannedAtAsc(
+                        eventId)
+                : checkinRepository.findByEventIdAndActivityIdAndTicketIdIsNotNullOrderByScannedAtAsc(
+                        eventId, activityId);
+        if (scans.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, List<Checkin>> byTicket = scans.stream()
+                .collect(Collectors.groupingBy(Checkin::getTicketId, LinkedHashMap::new, Collectors.toList()));
+        Map<UUID, Ticket> tickets = ticketRepository.findAllById(byTicket.keySet()).stream()
+                .collect(Collectors.toMap(Ticket::getId, t -> t));
+
+        List<TicketFlowView> views = new ArrayList<>();
+        for (var entry : byTicket.entrySet()) {
+            List<Checkin> forTicket = entry.getValue(); // ascending by scannedAt
+            long entrees = forTicket.stream().filter(c -> c.getResultat() == CheckinResult.VALIDE
+                    && c.getSens() == CheckinDirection.ENTREE).count();
+            long sorties = forTicket.stream().filter(c -> c.getResultat() == CheckinResult.VALIDE
+                    && c.getSens() == CheckinDirection.SORTIE).count();
+            long reentrees = Math.max(0, entrees - 1);
+            Checkin lastValid = forTicket.stream()
+                    .filter(c -> c.getResultat() == CheckinResult.VALIDE)
+                    .reduce((a, b) -> b).orElse(null);
+            boolean present = lastValid != null && lastValid.getSens() == CheckinDirection.ENTREE;
+            Instant dernierScan = forTicket.get(forTicket.size() - 1).getScannedAt();
+            Ticket t = tickets.get(entry.getKey());
+            views.add(new TicketFlowView(entry.getKey(), t != null ? t.getNumero() : "—",
+                    t != null ? t.getParticipantNom() : null,
+                    t != null ? t.getEventTicket().getNom() : null,
+                    entrees, sorties, reentrees, present, dernierScan));
+        }
+        views.sort(Comparator.comparing(TicketFlowView::dernierScan).reversed());
+        return views;
+    }
+
     /** Real-time attendance: event-level flow + one line per activity. */
     @Transactional(readOnly = true)
     public AttendanceView attendance(UUID eventId) {
@@ -325,6 +373,12 @@ public class CheckinService {
 
     public record ActivityFlow(UUID id, String titre, Instant dateDebut, String acces,
                                Map<String, Long> flux) {
+    }
+
+    /** One row per ticket: its number, holder, category and its full entry/exit history. */
+    public record TicketFlowView(UUID ticketId, String numero, String participantNom,
+                                 String categorieNom, long entrees, long sorties, long reentrees,
+                                 boolean present, Instant dernierScan) {
     }
 
     // --- helpers ---

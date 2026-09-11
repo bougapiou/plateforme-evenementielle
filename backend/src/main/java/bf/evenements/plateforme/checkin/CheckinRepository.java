@@ -53,4 +53,12 @@ public interface CheckinRepository extends JpaRepository<Checkin, UUID> {
                                                 CheckinResult resultat);
 
     List<Checkin> findByEventId(UUID eventId);
+
+    /** All ticket scans (badges excluded) for the general entry of an event, oldest first. */
+    List<Checkin> findByEventIdAndActivityIdIsNullAndTicketIdIsNotNullOrderByScannedAtAsc(
+            UUID eventId);
+
+    /** All ticket scans (badges excluded) for one activity, oldest first. */
+    List<Checkin> findByEventIdAndActivityIdAndTicketIdIsNotNullOrderByScannedAtAsc(
+            UUID eventId, UUID activityId);
 }
