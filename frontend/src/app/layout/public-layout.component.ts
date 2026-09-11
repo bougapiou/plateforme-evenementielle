@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { IconComponent } from '../shared/icon.component';
 
 @Component({
   selector: 'app-public-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent],
   template: `
     <div class="flex min-h-full flex-col">
       <header class="border-b border-slate-200 bg-white">
@@ -17,6 +18,10 @@ import { AuthService } from '../core/auth.service';
           <nav class="flex items-center gap-1 text-sm font-medium">
             <a routerLink="/" routerLinkActive="text-brand-700"
                [routerLinkActiveOptions]="{ exact: true }" class="btn-ghost">Événements</a>
+            <a routerLink="/scanner" routerLinkActive="text-brand-700"
+               class="btn-ghost inline-flex items-center gap-1.5">
+              <app-icon name="scan" class="h-4 w-4" /> Scanner
+            </a>
             @if (auth.isGuest()) {
               <a routerLink="/tableau-de-bord" class="btn-ghost">Mes billets</a>
               <a routerLink="/finaliser-compte" class="btn-primary">Créer mon compte</a>

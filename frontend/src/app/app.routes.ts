@@ -49,6 +49,12 @@ export const routes: Routes = [
           import('./pages/reset-password.component').then((m) => m.ResetPasswordComponent),
         title: 'Nouveau mot de passe',
       },
+      {
+        path: 'scanner',
+        loadComponent: () =>
+          import('./features/public/qr-scanner.component').then((m) => m.QrScannerComponent),
+        title: 'Scanner un QR code',
+      },
     ],
   },
   {

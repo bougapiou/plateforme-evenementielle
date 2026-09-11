@@ -174,4 +174,27 @@ class EventWorkflowIT extends AbstractIntegrationTest {
         as(orga).when().post("/api/events/" + eventId + "/submit")
                 .then().statusCode(200).body("statut", equalTo("SOUMIS"));
     }
+
+    @Test
+    void the_organiser_can_get_a_qr_code_for_the_event_but_a_stranger_cannot() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("orga-qr-" + n + "@example.bf");
+        String other = TestAuth.organizerToken("orga-qr-other-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+
+        String eventId = as(orga).body(Map.of("nom", "Foire aux QR " + n,
+                        "dateDebut", "2027-04-01T08:00:00Z", "dateFin", "2027-04-02T18:00:00Z",
+                        "ville", "Ouagadougou"))
+                .when().post("/api/events").then().statusCode(201).extract().path("id");
+
+        byte[] png = as(orga).when().get("/api/events/" + eventId + "/qr.png")
+                .then().statusCode(200)
+                .contentType("image/png")
+                .extract().asByteArray();
+        org.assertj.core.api.Assertions.assertThat(png.length).isGreaterThan(0);
+
+        // an admin can fetch it too, but another organiser cannot
+        as(admin).when().get("/api/events/" + eventId + "/qr.png").then().statusCode(200);
+        as(other).when().get("/api/events/" + eventId + "/qr.png").then().statusCode(403);
+    }
 }

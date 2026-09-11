@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -84,6 +85,15 @@ public class EventController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         eventService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping(value = "/{id}/qr.png", produces = MediaType.IMAGE_PNG_VALUE)
+    @PreAuthorize("hasAuthority('" + Permissions.EVENT_READ + "')")
+    @Operation(summary = "QR code de la page publique de l'événement (à imprimer / afficher)")
+    public ResponseEntity<byte[]> qr(@PathVariable UUID id) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(eventService.qrPng(id));
     }
 
     // --- workflow (organiser) ---

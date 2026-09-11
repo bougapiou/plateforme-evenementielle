@@ -1,16 +1,17 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { EventsService } from '../events/events.service';
-import { TicketsService } from '../tickets/tickets.service';
+import { IssuedTicket, TicketsService } from '../tickets/tickets.service';
 import { StandsService } from '../stands/stands.service';
 import { StructuresService } from '../structures/structures.service';
 import { StructureSummary } from '../structures/structure.models';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
-import { EventPublic, EventTicket } from '../events/event.models';
+import { EventPublic, EventTicket, MyTicket } from '../events/event.models';
 import {
   formatDateRange,
   formatDateTime,
@@ -64,6 +65,29 @@ import { ApiError } from '../../core/models';
               <p class="mt-2 text-green-700">Inscription confirmée.</p>
             } @else if (r.statut === 'EN_ATTENTE') {
               <p class="mt-2 text-amber-700">En attente de validation par l'organisateur.</p>
+            }
+
+            @if (ticketReceipts().length) {
+              <div class="mt-4 space-y-3">
+                <p class="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+                  Votre billet est prêt. Pas besoin de l'imprimer : la version numérique,
+                  affichée sur votre téléphone, suffit pour l'entrée.
+                </p>
+                @for (t of ticketReceipts(); track t.id) {
+                  <div class="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
+                    @if (ticketQr()[t.id]; as qr) {
+                      <img [src]="qr" alt="QR du billet" class="h-16 w-16 rounded border border-slate-100" />
+                    }
+                    <div class="flex-1">
+                      <p class="font-medium text-slate-800">Billet {{ t.numero }}</p>
+                      <p class="text-slate-400">{{ t.categorieNom }}</p>
+                    </div>
+                    <button type="button" class="btn-primary" (click)="downloadTicket(t)">
+                      Télécharger
+                    </button>
+                  </div>
+                }
+              </div>
             }
 
             @if (auth.isGuest()) {
@@ -269,11 +293,19 @@ import { ApiError } from '../../core/models';
                   <p class="text-slate-400">{{ a.salle }}{{ a.intervenant ? ' · ' + a.intervenant : '' }}</p>
                   @if (a.description) { <p class="mt-1 text-slate-500">{{ a.description }}</p> }
                   @if (a.acces === 'GRATUIT') {
-                    @if (attended().includes(a.id)) {
-                      <p class="mt-1 text-green-700">
-                        Vous participez. Billet dans
-                        <a routerLink="/tableau-de-bord/billets" class="font-semibold underline">Mes billets</a>.
-                      </p>
+                    @if (attendedTickets()[a.id]; as t) {
+                      <div class="mt-2 flex max-w-sm items-center gap-3 rounded-lg border border-slate-200 p-2">
+                        @if (ticketQr()[t.id]; as qr) {
+                          <img [src]="qr" alt="QR du billet" class="h-14 w-14 rounded border border-slate-100" />
+                        }
+                        <div class="flex-1 text-xs">
+                          <p class="font-medium text-green-700">Vous participez — billet {{ t.numero }}</p>
+                          <p class="text-slate-400">Pas besoin d'imprimer, la version numérique suffit.</p>
+                        </div>
+                        <button type="button" class="btn-ghost text-brand-700" (click)="downloadTicket(t)">
+                          Télécharger
+                        </button>
+                      </div>
                     } @else if (auth.isAuthenticated()) {
                       <button class="btn-ghost mt-1 text-brand-700" [disabled]="attending()"
                               (click)="attend(a.id)">Participer (billet gratuit)</button>
@@ -351,12 +383,13 @@ import { ApiError } from '../../core/models';
     }
   `,
 })
-export class EventDetailComponent {
+export class EventDetailComponent implements OnDestroy {
   private events = inject(EventsService);
   private ticketsService = inject(TicketsService);
   private standsService = inject(StandsService);
   private structuresService = inject(StructuresService);
   private registrationsService = inject(RegistrationsService);
+  private sanitizer = inject(DomSanitizer);
   auth = inject(AuthService);
 
   slug = input.required<string>();
@@ -368,6 +401,14 @@ export class EventDetailComponent {
   qty = signal<Record<string, number>>({});
   registration = signal<Registration | null>(null);
   participantNom = '';
+
+  // Billets obtenus (commande payée, ou activité gratuite) — affichés directement,
+  // pas besoin d'aller sur « Mes billets ».
+  ticketReceipts = signal<MyTicket[]>([]);
+  ticketQr = signal<Record<string, SafeUrl>>({});
+  attendedTickets = signal<Record<string, IssuedTicket>>({});
+  private ticketReceiptIds = new Set<string>();
+  private qrObjectUrls: string[] = [];
 
   // Guest checkout (visitor without an account)
   guestFirstName = '';
@@ -490,6 +531,7 @@ export class EventDetailComponent {
         next: (r) => {
           this.submitting.set(false);
           this.registration.set(r);
+          this.loadOrderTicketsIfPaid(r);
         },
         error: (err: HttpErrorResponse) => {
           this.submitting.set(false);
@@ -501,7 +543,10 @@ export class EventDetailComponent {
   pay(r: Registration): void {
     if (!r.ticketOrderId) return;
     this.ticketsService.paySandbox(r.ticketOrderId).subscribe(() =>
-      this.registrationsService.byId(r.id).subscribe((x) => this.registration.set(x)),
+      this.registrationsService.byId(r.id).subscribe((x) => {
+        this.registration.set(x);
+        this.loadOrderTicketsIfPaid(x);
+      }),
     );
   }
 
@@ -510,9 +555,11 @@ export class EventDetailComponent {
     this.attendErrorFor.set(null);
     this.attending.set(true);
     this.ticketsService.attendActivity(activityId).subscribe({
-      next: () => {
+      next: (t) => {
         this.attending.set(false);
         this.attended.set([...this.attended(), activityId]);
+        this.attendedTickets.set({ ...this.attendedTickets(), [activityId]: t });
+        this.loadTicketQr(t.id);
       },
       error: (err: HttpErrorResponse) => {
         this.attending.set(false);
@@ -520,6 +567,45 @@ export class EventDetailComponent {
         this.attendError.set((err.error as ApiError)?.message ?? 'Participation impossible.');
       },
     });
+  }
+
+  /** Once a ticket order is paid (free orders confirm instantly), show its tickets right here. */
+  private loadOrderTicketsIfPaid(r: Registration): void {
+    if (r.ticketOrderStatut !== 'PAYEE' || !r.ticketOrderReference) return;
+    this.ticketsService.myTickets().subscribe((all) => {
+      all
+        .filter((t) => t.orderReference === r.ticketOrderReference)
+        .forEach((t) => {
+          if (this.ticketReceiptIds.has(t.id)) return;
+          this.ticketReceiptIds.add(t.id);
+          this.ticketReceipts.set([...this.ticketReceipts(), t]);
+          this.loadTicketQr(t.id);
+        });
+    });
+  }
+
+  private loadTicketQr(ticketId: string): void {
+    if (this.ticketQr()[ticketId]) return;
+    this.ticketsService.qrBlob(ticketId).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      this.qrObjectUrls.push(url);
+      this.ticketQr.set({ ...this.ticketQr(), [ticketId]: this.sanitizer.bypassSecurityTrustUrl(url) });
+    });
+  }
+
+  downloadTicket(t: { id: string; numero: string }): void {
+    this.ticketsService.pdfBlob(t.id).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `billet-${t.numero}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.qrObjectUrls.forEach((u) => URL.revokeObjectURL(u));
   }
 
   reserveStand(s: Stand): void {

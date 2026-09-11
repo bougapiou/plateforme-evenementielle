@@ -44,6 +44,11 @@ export class EventsService extends ApiBase {
     return this.http.post<EventDetail>(`${this.base}/events/${id}/${action}`, body);
   }
 
+  /** QR code (PNG) linking to the event's public page — to print or display on site. */
+  qrBlob(id: string): Observable<Blob> {
+    return this.http.get(`${this.base}/events/${id}/qr.png`, { responseType: 'blob' });
+  }
+
   // --- programme / speakers / partners ---
   activities(eventId: string): Observable<Activity[]> {
     return this.get<Activity[]>(`/events/${eventId}/activities`);
