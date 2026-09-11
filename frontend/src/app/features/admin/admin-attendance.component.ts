@@ -1,23 +1,29 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { ActivityFlow, AttendanceView, CheckinService } from '../checkin/checkin.service';
 import { EventSummary } from '../events/event.models';
 import { IconComponent } from '../../shared/icon.component';
 import { formatDateTime } from '../../shared/format';
 
-const REFRESH_MS = 8000;
+const REFRESH_MS = 2000;
 
 @Component({
   selector: 'app-admin-attendance',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, RouterLink, IconComponent],
   template: `
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold text-slate-800">Présence / Flux — temps réel</h1>
-      @if (data()) {
-        <button class="btn-ghost text-brand-700" (click)="refreshNow()">Actualiser</button>
-      }
+      <div class="flex items-center gap-3">
+        <a routerLink="/tableau-de-bord/presence/billets" class="btn-ghost text-brand-700">
+          Détail par billet →
+        </a>
+        @if (data()) {
+          <button class="btn-ghost text-brand-700" (click)="refreshNow()">Actualiser</button>
+        }
+      </div>
     </div>
 
     <div class="mt-4 card p-4">

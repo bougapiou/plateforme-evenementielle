@@ -2,6 +2,7 @@ package bf.evenements.plateforme.checkin;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 
 import bf.evenements.plateforme.support.AbstractIntegrationTest;
 import bf.evenements.plateforme.support.QrTestUtil;
@@ -89,6 +90,15 @@ class ExitControlIT extends AbstractIntegrationTest {
                 .body("sorties", equalTo(1))
                 .body("presents", equalTo(1))
                 .body("reentrees", equalTo(1));
+
+        // per-ticket detail : one row, with its number and its full history
+        as(orga).when().get("/api/events/" + eventId + "/checkin-details")
+                .then().statusCode(200)
+                .body("[0].numero", notNullValue())
+                .body("[0].entrees", equalTo(2))
+                .body("[0].sorties", equalTo(1))
+                .body("[0].reentrees", equalTo(1))
+                .body("[0].present", equalTo(true));
     }
 
     @Test

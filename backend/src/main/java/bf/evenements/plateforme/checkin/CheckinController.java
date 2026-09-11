@@ -87,6 +87,15 @@ public class CheckinController {
         return checkinService.attendance(eventId);
     }
 
+    @GetMapping("/events/{eventId}/checkin-details")
+    @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "') or hasAuthority('"
+            + Permissions.EVENT_VALIDATE + "')")
+    @Operation(summary = "Détail des entrées / sorties / ré-entrées, billet par billet")
+    public List<CheckinService.TicketFlowView> ticketDetails(@PathVariable UUID eventId,
+            @RequestParam(required = false) UUID activityId) {
+        return checkinService.ticketDetails(eventId, activityId);
+    }
+
     // --- personnel de contrôle ---
 
     @GetMapping("/events/{eventId}/staff")

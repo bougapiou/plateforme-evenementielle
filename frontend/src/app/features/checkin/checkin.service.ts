@@ -49,6 +49,19 @@ export interface AttendanceView {
   activites: ActivityFlow[];
 }
 
+/** One row per ticket number: its full entry / exit / re-entry history. */
+export interface TicketFlowView {
+  ticketId: string;
+  numero: string;
+  participantNom?: string;
+  categorieNom?: string;
+  entrees: number;
+  sorties: number;
+  reentrees: number;
+  present: boolean;
+  dernierScan?: string;
+}
+
 export interface StaffMember {
   id: string;
   userId: string;
@@ -88,6 +101,10 @@ export class CheckinService extends ApiBase {
   /** Real-time attendance: event-level flow + one line per activity. */
   attendance(eventId: string): Observable<AttendanceView> {
     return this.get<AttendanceView>(`/events/${eventId}/attendance`);
+  }
+  /** Full per-ticket entry/exit/re-entry history for the event or one activity. */
+  ticketDetails(eventId: string, activityId?: string): Observable<TicketFlowView[]> {
+    return this.get<TicketFlowView[]>(`/events/${eventId}/checkin-details`, { activityId });
   }
   staff(eventId: string): Observable<StaffMember[]> {
     return this.get<StaffMember[]>(`/events/${eventId}/staff`);

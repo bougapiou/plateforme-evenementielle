@@ -5,7 +5,7 @@ import { CheckinService } from './checkin.service';
 import { IconComponent } from '../../shared/icon.component';
 import { formatTime } from '../../shared/format';
 
-const REFRESH_MS = 6000;
+const REFRESH_MS = 2000;
 
 /**
  * Full-screen, chrome-free display of the four live flow counters — meant for

@@ -183,6 +183,16 @@ export const routes: Routes = [
           ),
         title: 'Présence / Flux',
       },
+      {
+        path: 'presence/billets',
+        canActivate: [authGuard],
+        data: { permission: 'CHECKIN_SCAN' },
+        loadComponent: () =>
+          import('./features/checkin/ticket-flow.component').then(
+            (m) => m.TicketFlowComponent,
+          ),
+        title: 'Détail des billets',
+      },
     ],
   },
   {
