@@ -1,7 +1,8 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { EventsService } from './events.service';
 import { Activity, EventCategory, EventDetail, EventTicket, Partner, Speaker } from './event.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
@@ -153,6 +154,28 @@ type Tab =
             <p class="text-xs text-slate-400">Les informations ne sont plus modifiables dans cet état.</p>
           }
         </form>
+
+        <div class="card mt-4 flex flex-wrap items-center gap-4 p-5">
+          <div>
+            @if (qrUrl(); as url) {
+              <img [src]="url" alt="QR code de l'événement"
+                   class="h-28 w-28 rounded-lg border border-slate-200 bg-white p-1" />
+            } @else {
+              <div class="h-28 w-28 animate-pulse rounded-lg bg-slate-100"></div>
+            }
+          </div>
+          <div class="max-w-md flex-1">
+            <h3 class="font-semibold text-slate-800">QR de l'événement</h3>
+            <p class="mt-1 text-sm text-slate-500">
+              À imprimer sur une affiche ou un flyer : toute personne qui le scanne
+              arrive directement sur la page de l'événement, sans avoir à le chercher,
+              pour s'inscrire ou prendre son billet.
+            </p>
+            <button type="button" class="btn-ghost mt-2 text-brand-700" (click)="downloadQr()">
+              Télécharger le QR
+            </button>
+          </div>
+        </div>
       }
 
       <!-- PROGRAMME -->
@@ -533,9 +556,10 @@ type Tab =
     }
   `,
 })
-export class EventEditorComponent {
+export class EventEditorComponent implements OnDestroy {
   private fb = inject(FormBuilder);
   private service = inject(EventsService);
+  private sanitizer = inject(DomSanitizer);
   private ticketsService = inject(TicketsService);
   private standsService = inject(StandsService);
   private registrationsService = inject(RegistrationsService);
@@ -545,6 +569,8 @@ export class EventEditorComponent {
 
   id = input.required<string>();
   event = signal<EventDetail | null>(null);
+  qrUrl = signal<SafeUrl | null>(null);
+  private qrObjectUrl?: string;
   categories = signal<EventCategory[]>([]);
   activities = signal<Activity[]>([]);
   speakers = signal<Speaker[]>([]);
@@ -689,7 +715,27 @@ export class EventEditorComponent {
   fcfa = (n?: number) => formatFcfa(n);
   prix = (n?: number) => priceLabel(n);
 
+  ngOnDestroy(): void {
+    if (this.qrObjectUrl) URL.revokeObjectURL(this.qrObjectUrl);
+  }
+
+  downloadQr(): void {
+    if (!this.qrObjectUrl || !this.event()) return;
+    const a = document.createElement('a');
+    a.href = this.qrObjectUrl;
+    a.download = `qr-${this.event()!.slug}.png`;
+    a.click();
+  }
+
   private load(id: string): void {
+    this.service.qrBlob(id).subscribe({
+      next: (blob) => {
+        if (this.qrObjectUrl) URL.revokeObjectURL(this.qrObjectUrl);
+        this.qrObjectUrl = URL.createObjectURL(blob);
+        this.qrUrl.set(this.sanitizer.bypassSecurityTrustUrl(this.qrObjectUrl));
+      },
+      error: () => this.qrUrl.set(null),
+    });
     this.service.byId(id).subscribe((e) => {
       this.event.set(e);
       this.form.reset({

@@ -1,10 +1,12 @@
 package bf.evenements.plateforme.event;
 
 import bf.evenements.plateforme.audit.AuditService;
+import bf.evenements.plateforme.common.config.AppProperties;
 import bf.evenements.plateforme.common.exception.BusinessException;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.common.web.PageResponse;
+import bf.evenements.plateforme.common.web.QrImages;
 import bf.evenements.plateforme.common.web.Slugs;
 import bf.evenements.plateforme.event.dto.EventRequest;
 import bf.evenements.plateforme.event.dto.EventResponse;
@@ -35,6 +37,7 @@ public class EventService {
     private final bf.evenements.plateforme.notification.NotificationService notificationService;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
+    private final AppProperties appProperties;
 
     // ---------------------------------------------------------------- CRUD
 
@@ -200,6 +203,22 @@ public class EventService {
     /** Loads an event the caller manages (owner) — sub-resource services use this. */
     public Event loadManaged(UUID eventId) {
         return loadForManage(eventId);
+    }
+
+    /**
+     * QR code (PNG) for the event's public page — meant to be printed on a
+     * poster/flyer so a visitor can scan it, land on the event and register
+     * or take a ticket straight away. Owner or admin only.
+     */
+    @Transactional(readOnly = true)
+    public byte[] qrPng(UUID id) {
+        Event event = loadForManage(id);
+        return QrImages.png(publicUrl(event), 320);
+    }
+
+    /** Public URL of the event's page, used for the QR code and shared links. */
+    public String publicUrl(Event event) {
+        return appProperties.frontendBaseUrl() + "/evenements/" + event.getSlug();
     }
 
     Event load(UUID id) {
