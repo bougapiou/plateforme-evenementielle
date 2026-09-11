@@ -476,7 +476,8 @@ type Tab =
               } @empty { <li class="py-2 text-slate-400">Aucun personnel.</li> }
             </ul>
             <p class="mt-2 text-xs text-slate-400">
-              Le personnel accède au scanner via « Contrôle à l'entrée ».
+              Le personnel accède au scanner via « Contrôle à l'entrée » et peut
+              suivre les compteurs de cet événement dans « Présence / Flux ».
             </p>
           </div>
 

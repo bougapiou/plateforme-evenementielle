@@ -112,6 +112,13 @@ class CheckinIT extends AbstractIntegrationTest {
                 .when().post("/api/checkins/scan")
                 .then().statusCode(200).body("resultat", equalTo("VALIDE"));
 
+        // control staff (not the organiser) can read the live counters and the
+        // attendance view for the event they are assigned to
+        as(staffToken).when().get("/api/events/" + eventId + "/checkin-stats")
+                .then().statusCode(200).body("valides", greaterThanOrEqualTo(1));
+        as(staffToken).when().get("/api/events/" + eventId + "/attendance")
+                .then().statusCode(200).body("eventId", equalTo(eventId));
+
         // the controllable-events endpoint lists this event for the organiser,
         // for the assigned staff member, and for an admin
         as(orga).when().get("/api/checkins/events")

@@ -28,7 +28,7 @@ export class IconComponent {
 export type IconName =
   | 'home' | 'calendar' | 'ticket' | 'qr' | 'users' | 'building' | 'chart'
   | 'login' | 'logout' | 'present' | 'check' | 'x' | 'badge' | 'card' | 'bell'
-  | 'key' | 'scan' | 'repeat' | 'dot';
+  | 'key' | 'scan' | 'repeat' | 'dot' | 'expand';
 
 const ICONS: Record<string, string> = {
   home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
@@ -50,4 +50,5 @@ const ICONS: Record<string, string> = {
   scan: '<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/>',
   repeat: '<path d="M4 9a5 5 0 0 1 5-5h9l-3-3M20 15a5 5 0 0 1-5 5H6l3 3"/>',
   dot: '<circle cx="12" cy="12" r="3"/>',
+  expand: '<path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/>',
 };
