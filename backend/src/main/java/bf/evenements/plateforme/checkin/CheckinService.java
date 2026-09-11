@@ -255,14 +255,14 @@ public class CheckinService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> stats(UUID eventId) {
-        requireOrganiser(eventId);
+        requireControlAccess(eventId);
         return eventFlow(eventId);
     }
 
     /** Same counters, scoped to a single activity of the event. */
     @Transactional(readOnly = true)
     public Map<String, Long> statsForActivity(UUID eventId, UUID activityId) {
-        requireOrganiser(eventId);
+        requireControlAccess(eventId);
         return activityFlow(eventId, activityId);
     }
 
@@ -373,6 +373,13 @@ public class CheckinService {
         if (!allowed) {
             throw new AccessDeniedException("Vous n'êtes pas habilité à contrôler cet événement.");
         }
+    }
+
+    /** Owner, assigned control staff, or admin — same audience as {@link #requireControl}. */
+    private void requireControlAccess(UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Événement", eventId));
+        requireControl(event, currentUser.requireId());
     }
 
     private void requireOrganiser(UUID eventId) {

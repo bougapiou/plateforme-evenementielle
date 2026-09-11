@@ -77,6 +77,7 @@ export class DashboardLayoutComponent {
     { label: 'Vue d’ensemble', path: '/tableau-de-bord', icon: 'home', exact: true },
     { label: 'Mes événements', path: '/tableau-de-bord/evenements', icon: 'calendar', permission: 'EVENT_CREATE' },
     { label: 'Contrôle à l’entrée', path: '/tableau-de-bord/controle', icon: 'scan', permission: 'CHECKIN_SCAN' },
+    { label: 'Présence / Flux', path: '/tableau-de-bord/presence', icon: 'present', permission: 'CHECKIN_SCAN' },
     { label: 'Mes inscriptions', path: '/tableau-de-bord/inscriptions', icon: 'check' },
     { label: 'Mes billets', path: '/tableau-de-bord/billets', icon: 'ticket' },
     { label: 'Mes stands', path: '/tableau-de-bord/stands', icon: 'building' },
@@ -88,7 +89,6 @@ export class DashboardLayoutComponent {
 
   private readonly adminNav: NavItem[] = [
     { label: 'Événements', path: '/tableau-de-bord/admin/evenements', icon: 'calendar', permission: 'EVENT_VALIDATE' },
-    { label: 'Présence / Flux', path: '/tableau-de-bord/admin/flux', icon: 'present', permission: 'EVENT_VALIDATE' },
     { label: 'Utilisateurs', path: '/tableau-de-bord/admin/utilisateurs', icon: 'users', permission: 'USER_READ' },
     { label: 'Structures', path: '/tableau-de-bord/admin/structures', icon: 'building', permission: 'STRUCTURE_READ' },
     { label: 'Organisateurs', path: '/tableau-de-bord/admin/organisateurs', icon: 'badge', permission: 'ORGANIZER_MANAGE' },

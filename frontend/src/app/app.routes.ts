@@ -174,9 +174,9 @@ export const routes: Routes = [
         title: 'Événements',
       },
       {
-        path: 'admin/flux',
+        path: 'presence',
         canActivate: [authGuard],
-        data: { permission: 'EVENT_VALIDATE' },
+        data: { permission: 'CHECKIN_SCAN' },
         loadComponent: () =>
           import('./features/admin/admin-attendance.component').then(
             (m) => m.AdminAttendanceComponent,
@@ -184,6 +184,19 @@ export const routes: Routes = [
         title: 'Présence / Flux',
       },
     ],
+  },
+  {
+    // Écran de présence en plein écran, sans navbar ni sidebar — pour un
+    // moniteur à l'entrée. Réservé aux mêmes personnes que la page ci-dessus
+    // (organisateur, personnel de contrôle assigné, administrateur).
+    path: 'presence/:eventId',
+    canActivate: [authGuard],
+    data: { permission: 'CHECKIN_SCAN' },
+    loadComponent: () =>
+      import('./features/checkin/presence-kiosk.component').then(
+        (m) => m.PresenceKioskComponent,
+      ),
+    title: 'Présence — écran',
   },
   {
     path: '**',

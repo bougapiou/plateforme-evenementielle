@@ -1,7 +1,7 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
-import { AttendanceView, CheckinService } from '../checkin/checkin.service';
+import { ActivityFlow, AttendanceView, CheckinService } from '../checkin/checkin.service';
 import { EventSummary } from '../events/event.models';
 import { IconComponent } from '../../shared/icon.component';
 import { formatDateTime } from '../../shared/format';
@@ -29,11 +29,19 @@ const REFRESH_MS = 8000;
       @if (loaded() && events().length === 0) {
         <p class="mt-2 text-xs text-slate-400">Aucun événement à superviser.</p>
       }
+      <p class="mt-2 text-xs text-slate-400">
+        Cette page suit les mêmes personnes que le contrôle à l'entrée : vous, et
+        le « Personnel de contrôle » ajouté sur l'onglet Contrôle de l'événement.
+      </p>
     </div>
 
     @if (data(); as d) {
-      <p class="mt-4 text-sm text-slate-500">
-        Mise à jour automatique toutes les {{ refreshSeconds }} s
+      <p class="mt-4 flex items-center justify-between text-sm text-slate-500">
+        <span>Mise à jour automatique toutes les {{ refreshSeconds }} s</span>
+        <a [href]="kioskHref()" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1 text-brand-700 hover:underline">
+          <app-icon name="expand" class="h-4 w-4" /> Plein écran
+        </a>
       </p>
 
       <h2 class="mt-3 font-semibold text-slate-800">{{ d.eventNom }}</h2>
@@ -71,6 +79,7 @@ const REFRESH_MS = 8000;
                 <th class="px-2 text-center">Sorties</th>
                 <th class="px-2 text-center">Présents</th>
                 <th class="px-2 text-center">Ré-entrées</th>
+                <th class="pl-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -87,6 +96,12 @@ const REFRESH_MS = 8000;
                   <td class="px-2 text-center font-semibold text-slate-700">{{ a.flux['sorties'] || 0 }}</td>
                   <td class="px-2 text-center font-semibold text-brand-700">{{ a.flux['presents'] || 0 }}</td>
                   <td class="px-2 text-center font-semibold text-amber-700">{{ a.flux['reentrees'] || 0 }}</td>
+                  <td class="pl-2 text-right">
+                    <a [href]="kioskHref(a)" target="_blank" rel="noopener" title="Plein écran"
+                       class="text-slate-400 hover:text-brand-700">
+                      <app-icon name="expand" class="h-4 w-4" />
+                    </a>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -137,6 +152,18 @@ export class AdminAttendanceComponent implements OnDestroy {
         next: (v) => this.data.set(v),
         error: () => {},
       });
+  }
+
+  /** Link to the full-screen, chrome-free display for the current event or one activity. */
+  kioskHref(activity?: ActivityFlow): string {
+    const d = this.data();
+    if (!d) return '';
+    const params = new URLSearchParams({ nom: activity ? activity.titre : d.eventNom });
+    if (activity) {
+      params.set('activityId', activity.id);
+      params.set('activiteNom', activity.titre);
+    }
+    return `/presence/${d.eventId}?${params.toString()}`;
   }
 
   refreshNow(): void {
