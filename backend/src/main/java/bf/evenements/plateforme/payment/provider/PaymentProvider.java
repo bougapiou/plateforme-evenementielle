@@ -22,8 +22,17 @@ public interface PaymentProvider {
      */
     WebhookResult verifyWebhook(String rawBody, String signatureHeader);
 
-    record Context(String reference, Money amount, String customerEmail, String description,
-                   String returnUrl) {
+    /**
+     * Asks the provider directly for a payment's current status — a safety net
+     * for a missed/delayed webhook, or the only trustworthy source when the
+     * webhook itself is unsigned. Not every provider supports this.
+     */
+    default WebhookResult checkStatus(String reference) {
+        throw new UnsupportedOperationException(name() + " ne permet pas de vérifier un paiement à la demande.");
+    }
+
+    record Context(String reference, Money amount, String customerEmail, String customerPhone,
+                   String description, String returnUrl) {
     }
 
     record Initiation(String providerRef, String redirectUrl) {
@@ -34,7 +43,9 @@ public interface PaymentProvider {
     }
 
     enum Outcome {
-        SUCCESS, FAILED, CANCELLED
+        SUCCESS, FAILED, CANCELLED,
+        /** The provider reports the payment is still being processed — no state change yet. */
+        PENDING
     }
 
     class WebhookVerificationException extends ApiException {
