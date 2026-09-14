@@ -1,14 +1,18 @@
 package bf.evenements.plateforme.payment;
 
+import bf.evenements.plateforme.common.config.AppProperties;
 import bf.evenements.plateforme.common.web.PageResponse;
 import bf.evenements.plateforme.payment.dto.InitiatePaymentRequest;
 import bf.evenements.plateforme.payment.dto.PaymentResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +37,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final AppProperties appProperties;
+    private final ObjectMapper objectMapper;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -75,6 +81,12 @@ public class PaymentController {
         return paymentService.simulate(reference, outcome);
     }
 
+    @PostMapping("/{reference}/recheck")
+    @Operation(summary = "Revérifier un paiement auprès du fournisseur (filet de sécurité)")
+    public PaymentResponse recheck(@PathVariable String reference) {
+        return paymentService.recheck(reference);
+    }
+
     @PostMapping("/webhook")
     @Operation(summary = "Webhook du fournisseur de paiement (signé HMAC)")
     public ResponseEntity<String> webhook(HttpServletRequest request,
@@ -83,5 +95,23 @@ public class PaymentController {
         String body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         paymentService.handleWebhook(body, signature);
         return ResponseEntity.ok("ok");
+    }
+
+    /**
+     * FasoArzeka's own redirect: an unsigned GET with the transaction's query
+     * parameters (doc §3.1). We never trust these values directly — see
+     * {@code ArzekaPaymentProvider.verifyWebhook} — they only carry the
+     * {@code paymentRequestId} that lets us re-check the real status
+     * server-to-server before touching the payment. The browser is then sent
+     * back to the app.
+     */
+    @GetMapping("/arzeka/callback")
+    @Operation(summary = "Retour FasoArzeka (redirection navigateur, non authentifiée)")
+    public ResponseEntity<Void> arzekaCallback(@RequestParam Map<String, String> params)
+            throws IOException {
+        paymentService.handleWebhook(objectMapper.writeValueAsString(params), null);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(appProperties.frontendBaseUrl() + "/tableau-de-bord/paiements"))
+                .build();
     }
 }

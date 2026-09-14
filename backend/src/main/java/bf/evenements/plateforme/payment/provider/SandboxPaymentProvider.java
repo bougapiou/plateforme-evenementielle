@@ -44,6 +44,7 @@ public class SandboxPaymentProvider implements PaymentProvider {
             Outcome outcome = switch (node.path("outcome").asText("FAILED").toUpperCase()) {
                 case "SUCCESS", "REUSSI" -> Outcome.SUCCESS;
                 case "CANCELLED", "ANNULE" -> Outcome.CANCELLED;
+                case "PENDING" -> Outcome.PENDING;
                 default -> Outcome.FAILED;
             };
             return new WebhookResult(

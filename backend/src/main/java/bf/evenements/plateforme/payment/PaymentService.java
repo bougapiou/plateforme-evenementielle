@@ -83,7 +83,7 @@ public class PaymentService {
 
         PaymentProvider.Initiation init = provider().initiate(new PaymentProvider.Context(
                 payment.getReference(), target.amount(), target.customerEmail(),
-                target.description(), request.returnUrl()));
+                target.customerPhone(), target.description(), request.returnUrl()));
         payment.setProviderRef(init.providerRef());
         payment.setPaymentUrl(init.redirectUrl());
         payment = paymentRepository.save(payment);
@@ -116,6 +116,27 @@ public class PaymentService {
         }
 
         applyOutcome(payment, result);
+    }
+
+    /**
+     * Asks the active provider for a payment's live status — a safety net when
+     * a webhook is missed or delayed. Owner or PAYMENT_MANAGE only; a no-op if
+     * the payment already left EN_ATTENTE.
+     */
+    @Transactional
+    public PaymentResponse recheck(String reference) {
+        Payment payment = paymentRepository.findByReference(reference)
+                .orElseThrow(() -> ResourceNotFoundException.of("Paiement", reference));
+        if (!payment.getUserId().equals(currentUser.requireId())
+                && !currentUser.hasAuthority(bf.evenements.plateforme.rbac.Permissions.PAYMENT_MANAGE)) {
+            throw new AccessDeniedException("Accès au paiement refusé.");
+        }
+        if (payment.getStatut() != PaymentStatus.EN_ATTENTE) {
+            return PaymentResponse.from(payment);
+        }
+        PaymentProvider.WebhookResult result = provider().checkStatus(reference);
+        applyOutcome(payment, result);
+        return PaymentResponse.from(paymentRepository.findByReference(reference).orElseThrow());
     }
 
     /** Sandbox helper: simulates the provider POSTing a signed webhook. Owner only. */
@@ -189,6 +210,8 @@ public class PaymentService {
 
     private void applyOutcome(Payment payment, PaymentProvider.WebhookResult result) {
         switch (result.outcome()) {
+            case PENDING -> log.debug("Paiement toujours en attente côté fournisseur : {}",
+                    payment.getReference());
             case SUCCESS -> {
                 payment.setStatut(PaymentStatus.REUSSI);
                 payment.setTransactionRef(result.transactionRef());
@@ -236,6 +259,7 @@ public class PaymentService {
                             "Commande non payable (" + o.getStatut() + ").");
                 }
                 yield new Target(o.getEvent().getId(), o.total(), o.getAcheteurEmail(),
+                        o.getUser().getPhone(),
                         "Billets " + o.getEvent().getNom() + " (" + o.getReference() + ")");
             }
             case STAND_RESERVATION -> {
@@ -248,13 +272,14 @@ public class PaymentService {
                     throw new BusinessException("RESERVATION_NOT_PAYABLE",
                             "Réservation non payable (" + r.getStatut() + ").");
                 }
-                yield new Target(r.getEvent().getId(), r.amount(), null,
+                yield new Target(r.getEvent().getId(), r.amount(), null, r.getUser().getPhone(),
                         "Stand " + r.getStand().getNumero() + " — " + r.getEvent().getNom());
             }
         };
     }
 
-    private record Target(UUID eventId, Money amount, String customerEmail, String description) {
+    private record Target(UUID eventId, Money amount, String customerEmail, String customerPhone,
+                          String description) {
         Target {
             if (amount == null || amount.amount().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new BusinessException("NOTHING_TO_PAY", "Aucun montant à régler.");

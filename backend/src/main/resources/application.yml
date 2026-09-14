@@ -88,6 +88,22 @@ app:
       first-name: Super
       last-name: Admin
 
+# Passerelle de paiement FasoArzeka (AvePLUS) — utilisée seulement quand
+# app.payment.provider=arzeka ; le provider "sandbox" ne lit jamais ce bloc.
+# Les identifiants réels vont dans un .env local (jamais commité) — voir
+# .env.example. Test : https://pgw-test.fasoarzeka.bf
+arzeka:
+  base-url: ${FASOARZEKA_BASE_URL:https://pgw-test.fasoarzeka.bf}
+  initiate-payment-uri: ${FASOARZEKA_INITIATE_PAYMENT_URI:/AvepayPaymentGatewayUI/avepay-payment/app/validorder}
+  check-order-status-uri: ${FASOARZEKA_CHECK_ORDER_STATUS_URI:/AvepayPaymentGatewayUI/avepay-payment/app/getThirdPartyMapInfo}
+  auth-uri: ${FASOARZEKA_AUTH_URI:/AvepayPaymentGatewayUI/avepay-payment/auth/getToken}
+  merchant-id: ${FASOARZEKA_MERCHANT_ID:}
+  username: ${FASOARZEKA_USERNAME:}
+  password: ${FASOARZEKA_PASSWORD:}
+  grant-type: ${FASOARZEKA_GRANT_TYPE:access_token}
+  callback-base-url: ${APP_CALLBACK_BASE_URL:http://localhost:8080}
+  test-static-token: ${FASOARZEKA_TEST_STATIC_TOKEN:}
+
 logging:
   level:
     org.flywaydb: info
