@@ -38,6 +38,9 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.mail.port", () -> "3025");
         // rate limiter off for integration tests (many auth calls from 127.0.0.1)
         registry.add("app.security.rate-limit-per-minute", () -> "0");
+        // Tests always exercise the sandbox provider (pay-sandbox/simulate),
+        // no matter what a developer's local .env has PAYMENT_PROVIDER set to.
+        registry.add("app.payment.provider", () -> "sandbox");
     }
 
     @BeforeEach
