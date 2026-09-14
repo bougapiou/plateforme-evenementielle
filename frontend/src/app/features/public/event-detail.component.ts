@@ -10,6 +10,7 @@ import { StructuresService } from '../structures/structures.service';
 import { StructureSummary } from '../structures/structure.models';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
+import { PaymentsService } from '../payments/payments.service';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
 import { EventPublic, EventTicket, MyTicket } from '../events/event.models';
 import {
@@ -389,6 +390,7 @@ export class EventDetailComponent implements OnDestroy {
   private standsService = inject(StandsService);
   private structuresService = inject(StructuresService);
   private registrationsService = inject(RegistrationsService);
+  private paymentsService = inject(PaymentsService);
   private sanitizer = inject(DomSanitizer);
   auth = inject(AuthService);
 
@@ -542,7 +544,9 @@ export class EventDetailComponent implements OnDestroy {
 
   pay(r: Registration): void {
     if (!r.ticketOrderId) return;
-    this.ticketsService.paySandbox(r.ticketOrderId).subscribe(() =>
+    // For a real provider this navigates the browser away — nothing more to
+    // do here; the payer lands back on « Mes paiements » once done.
+    this.paymentsService.payOrRedirect('TICKET_ORDER', r.ticketOrderId).subscribe(() =>
       this.registrationsService.byId(r.id).subscribe((x) => {
         this.registration.set(x);
         this.loadOrderTicketsIfPaid(x);
@@ -625,8 +629,9 @@ export class EventDetailComponent implements OnDestroy {
       });
   }
   payStand(): void {
-    this.standsService.paySandbox(this.standReservation()!.id).subscribe({
-      next: (r) => this.standReservation.set(r),
+    const id = this.standReservation()!.id;
+    this.paymentsService.payOrRedirect('STAND_RESERVATION', id).subscribe({
+      next: () => this.standsService.byId(id).subscribe((r) => this.standReservation.set(r)),
       error: (err: HttpErrorResponse) =>
         this.standError.set((err.error as ApiError)?.message ?? 'Paiement impossible.'),
     });

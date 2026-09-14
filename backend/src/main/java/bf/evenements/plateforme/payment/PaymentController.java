@@ -110,8 +110,9 @@ public class PaymentController {
     public ResponseEntity<Void> arzekaCallback(@RequestParam Map<String, String> params)
             throws IOException {
         paymentService.handleWebhook(objectMapper.writeValueAsString(params), null);
-        return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(appProperties.frontendBaseUrl() + "/tableau-de-bord/paiements"))
-                .build();
+        String reference = params.get("paymentRequestId");
+        String target = appProperties.frontendBaseUrl() + "/tableau-de-bord/paiements"
+                + (reference != null ? "?reference=" + reference : "");
+        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(target)).build();
     }
 }

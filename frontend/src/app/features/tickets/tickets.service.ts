@@ -59,8 +59,8 @@ export class TicketsService extends ApiBase {
   cancelOrder(id: string): Observable<TicketOrder> {
     return this.http.post<TicketOrder>(`${this.base}/ticket-orders/${id}/cancel`, {});
   }
-  paySandbox(id: string): Observable<TicketOrder> {
-    return this.http.post<TicketOrder>(`${this.base}/ticket-orders/${id}/pay-sandbox`, {});
+  orderById(id: string): Observable<TicketOrder> {
+    return this.get<TicketOrder>(`/ticket-orders/${id}`);
   }
   myTickets(): Observable<MyTicket[]> {
     return this.get<MyTicket[]>('/tickets/my');

@@ -4,6 +4,7 @@ import { StandsService } from './stands.service';
 import { StandReservation } from './stand.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { formatDateTime } from '../../shared/format';
+import { PaymentsService } from '../payments/payments.service';
 import { downloadBlob } from '../invoices/invoices.service';
 
 @Component({
@@ -47,6 +48,7 @@ import { downloadBlob } from '../invoices/invoices.service';
 })
 export class MyStandsComponent {
   private service = inject(StandsService);
+  private paymentsService = inject(PaymentsService);
   reservations = signal<StandReservation[]>([]);
   dt = (iso?: string) => formatDateTime(iso);
 
@@ -57,7 +59,7 @@ export class MyStandsComponent {
     this.service.myReservations().subscribe((p) => this.reservations.set(p.content));
   }
   pay(r: StandReservation): void {
-    this.service.paySandbox(r.id).subscribe(() => this.reload());
+    this.paymentsService.payOrRedirect('STAND_RESERVATION', r.id).subscribe(() => this.reload());
   }
   cancel(r: StandReservation): void {
     this.service.cancel(r.id).subscribe(() => this.reload());

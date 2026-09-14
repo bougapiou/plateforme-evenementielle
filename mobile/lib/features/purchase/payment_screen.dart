@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -8,7 +9,13 @@ import '../../core/widgets.dart';
 import '../../data/domain.dart';
 
 /// Payment step for a ticket order (TICKET_ORDER) or a stand reservation
-/// (STAND_RESERVATION). Uses the sandbox provider: initiate → simulate callback.
+/// (STAND_RESERVATION).
+///
+/// With the sandbox provider (dev/démo) : initiate → simulate callback,
+/// instant result. With a real provider (ex. FasoArzeka) : initiate → open
+/// its hosted checkout in an in-app browser → once closed, re-check the
+/// payment (the real confirmation always comes from the provider, not from
+/// the app closing the browser).
 class PaymentScreen extends ConsumerStatefulWidget {
   final String targetType;
   final String targetId;
@@ -81,20 +88,86 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         targetId: widget.targetId,
         moyen: _method,
       );
-      final result =
-          await payments.simulate(payment.reference, outcome: outcome);
-      if (!mounted) return;
-      if (result.reussi) {
-        _showSuccess();
-      } else {
-        setState(() => _error =
-            'Le paiement a échoué (${statutLabel(result.statut)}). Vous pouvez réessayer.');
+      if (payment.provider == 'sandbox') {
+        final result =
+            await payments.simulate(payment.reference, outcome: outcome);
+        if (!mounted) return;
+        if (result.reussi) {
+          _showSuccess();
+        } else {
+          setState(() => _error =
+              'Le paiement a échoué (${statutLabel(result.statut)}). Vous pouvez réessayer.');
+        }
+        return;
       }
+      await _payWithRealProvider(payment);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _processing = false);
     }
+  }
+
+  /// Opens the provider's own hosted checkout page. It stays an in-app
+  /// browser (not a full app-switch) so closing it — whether the payer
+  /// finished paying or gave up — naturally hands control back here.
+  Future<void> _payWithRealProvider(Payment payment) async {
+    final uri = Uri.tryParse(payment.paymentUrl ?? '');
+    if (uri == null) {
+      if (mounted) setState(() => _error = 'Lien de paiement invalide.');
+      return;
+    }
+    final opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    if (!opened) {
+      if (mounted) setState(() => _error = 'Impossible d\'ouvrir la page de paiement.');
+      return;
+    }
+    if (!mounted) return;
+    // The payer closed the checkout page — ask the provider what really
+    // happened rather than assume anything from that alone.
+    try {
+      final result =
+          await ref.read(paymentsRepositoryProvider).recheck(payment.reference);
+      if (!mounted) return;
+      if (result.reussi) {
+        _showSuccess();
+      } else if (result.statut == 'EN_ATTENTE') {
+        _showPending(payment.reference);
+      } else {
+        setState(() => _error =
+            'Paiement non confirmé (${statutLabel(result.statut)}). Vous pouvez réessayer.');
+      }
+    } on ApiException {
+      if (mounted) _showPending(payment.reference);
+    }
+  }
+
+  void _showPending(String reference) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        icon: const Icon(Icons.hourglass_top, color: Color(0xFFB45309), size: 40),
+        title: const Text('Confirmation en attente'),
+        content: Text(
+          'Nous n\'avons pas encore reçu la confirmation du paiement $reference. '
+          'Si vous avez bien payé, elle arrive généralement en quelques instants — '
+          'vous pouvez suivre son statut dans « Mes paiements ».',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fermer'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.go(_isOrder ? '/billets' : '/activite');
+            },
+            child: Text(_isOrder ? 'Voir mes billets' : 'Voir mes réservations'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSuccess() {

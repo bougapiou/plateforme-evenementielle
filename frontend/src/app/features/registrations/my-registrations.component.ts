@@ -4,7 +4,7 @@ import { RegistrationsService } from './registrations.service';
 import { Registration } from './registration.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { formatDate } from '../../shared/format';
-import { TicketsService } from '../tickets/tickets.service';
+import { PaymentsService } from '../payments/payments.service';
 import { downloadBlob } from '../invoices/invoices.service';
 
 @Component({
@@ -50,7 +50,7 @@ import { downloadBlob } from '../invoices/invoices.service';
 })
 export class MyRegistrationsComponent {
   private service = inject(RegistrationsService);
-  private ticketsService = inject(TicketsService);
+  private paymentsService = inject(PaymentsService);
   registrations = signal<Registration[]>([]);
   date = (iso?: string) => formatDate(iso);
 
@@ -62,7 +62,7 @@ export class MyRegistrationsComponent {
   }
   pay(r: Registration): void {
     if (r.ticketOrderId) {
-      this.ticketsService.paySandbox(r.ticketOrderId).subscribe(() => this.reload());
+      this.paymentsService.payOrRedirect('TICKET_ORDER', r.ticketOrderId).subscribe(() => this.reload());
     }
   }
   cancel(r: Registration): void {
