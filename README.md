@@ -13,7 +13,7 @@ tableaux de bord et statistiques.
 | Backend API | Spring Boot 3 · Java 21 · JPA · PostgreSQL · Flyway |
 | Frontend    | Angular 19 · Tailwind CSS                       |
 | Mobile      | Flutter · Riverpod · go_router (catalogue, billetterie, paiement, inscriptions, stands, portefeuille QR hors-ligne, factures, notifications, scan de contrôle) |
-| Paiement    | Abstraction `PaymentProvider` + provider *sandbox* (FasoArzeka ) |
+| Paiement    | Abstraction `PaymentProvider` : *sandbox* (défaut) + **FasoArzeka réel** (`PAYMENT_PROVIDER=arzeka`) |
 | PDF / QR    | PDFBox · ZXing                                  |
 | Devise      | FCFA (XOF) par défaut, multi-devises prévu      |
 
@@ -72,7 +72,9 @@ M4 billetterie (quotas, portée événement/activité, **activité gratuite/paya
 participation & contrôle par activité**) · M5 stands (blocage 15 min,
 anti-double réservation, **ouverture aux particuliers en option**) · M6 inscriptions (particulier/structure, documents, **parcours invité sans compte**,
 **billet affiché immédiatement après commande — pas besoin d'imprimer**) ·
-M7 paiements (`PaymentProvider`, sandbox, webhook HMAC) · M8 billets QR (PNG + PDF) ·
+M7 paiements (`PaymentProvider`, sandbox + **FasoArzeka réel**, webhook HMAC ;
+le retour FasoArzeka étant non signé, il n'est jamais cru sur parole — le
+statut est revérifié auprès de leur API authentifiée) · M8 billets QR (PNG + PDF) ·
 M9 contrôle des accès (scan, **par activité**, **sens entrée/sortie choisi par l'agent à chaque scan + comptage du flux par activité**, **tableau de bord Présence temps réel (rafraîchi toutes les 2 s) accessible à l'organisateur et au personnel de contrôle assigné, avec un écran plein format sans navigation et un détail billet par billet**, **badges/accréditations**) · M10 factures & reçus (PDF) · M11 notifications ·
 M12 statistiques & dashboards · M15 durcissement + données de démo.
 
