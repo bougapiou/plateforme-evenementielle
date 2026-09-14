@@ -45,11 +45,11 @@ export class StandsService extends ApiBase {
   myReservations(): Observable<Page<StandReservation>> {
     return this.get<Page<StandReservation>>('/stand-reservations/my', { size: 50 });
   }
+  byId(id: string): Observable<StandReservation> {
+    return this.get<StandReservation>(`/stand-reservations/${id}`);
+  }
   cancel(id: string): Observable<StandReservation> {
     return this.http.post<StandReservation>(`${this.base}/stand-reservations/${id}/cancel`, {});
-  }
-  paySandbox(id: string): Observable<StandReservation> {
-    return this.http.post<StandReservation>(`${this.base}/stand-reservations/${id}/pay-sandbox`, {});
   }
   confirmationPdf(id: string): Observable<Blob> {
     return this.http.get(`${this.base}/stand-reservations/${id}/confirmation.pdf`, {

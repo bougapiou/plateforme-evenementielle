@@ -444,6 +444,12 @@ class PaymentsRepository extends _Base {
   Future<Payment> get(String id) =>
       _get('/payments/$id', (d) => Payment.fromJson(d as Map<String, dynamic>));
 
+  /// Re-checks a payment with the provider — a safety net if a webhook is missed/delayed.
+  Future<Payment> recheck(String reference) => _post(
+        '/payments/$reference/recheck',
+        (d) => Payment.fromJson(d as Map<String, dynamic>),
+      );
+
   Future<Paged<Payment>> mine({int page = 0}) => _get(
         '/payments/my',
         (d) => Paged.fromJson(d as Map<String, dynamic>, Payment.fromJson),

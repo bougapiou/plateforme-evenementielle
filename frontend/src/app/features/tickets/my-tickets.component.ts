@@ -2,6 +2,7 @@ import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { TicketsService } from './tickets.service';
+import { PaymentsService } from '../payments/payments.service';
 import { MyTicket, TicketOrder } from '../events/event.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { formatDate, formatDateTime } from '../../shared/format';
@@ -73,6 +74,7 @@ import { formatDate, formatDateTime } from '../../shared/format';
 })
 export class MyTicketsComponent implements OnDestroy {
   private service = inject(TicketsService);
+  private paymentsService = inject(PaymentsService);
   private sanitizer = inject(DomSanitizer);
 
   tickets = signal<MyTicket[]>([]);
@@ -117,7 +119,7 @@ export class MyTicketsComponent implements OnDestroy {
   }
 
   pay(o: TicketOrder): void {
-    this.service.paySandbox(o.id).subscribe(() => this.reload());
+    this.paymentsService.payOrRedirect('TICKET_ORDER', o.id).subscribe(() => this.reload());
   }
   cancel(o: TicketOrder): void {
     this.service.cancelOrder(o.id).subscribe(() => this.reload());

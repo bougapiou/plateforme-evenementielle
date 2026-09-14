@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, switchMap } from 'rxjs';
+import { EMPTY, Observable, switchMap } from 'rxjs';
 import { ApiBase } from '../../core/api';
 import { Page } from '../../core/models';
 
@@ -43,11 +43,32 @@ export class PaymentsService extends ApiBase {
     );
   }
 
-  /** Sandbox one-shot: initiate then simulate a successful callback. */
-  payNow(targetType: PaymentTargetType, targetId: string, moyen = 'MOBILE_MONEY_ORANGE'): Observable<Payment> {
+  /**
+   * Initiates a payment, then adapts to whichever provider is active:
+   * - "sandbox" completes right away (instant demo payment, current UX).
+   * - a real provider (e.g. "arzeka") sends the browser to its checkout
+   *   page (`paymentUrl`) — the observable then simply completes with no
+   *   value, since the page is navigating away.
+   */
+  payOrRedirect(
+    targetType: PaymentTargetType,
+    targetId: string,
+    moyen?: string,
+  ): Observable<Payment> {
     return this.initiate({ targetType, targetId, moyen }).pipe(
-      switchMap((p) => this.simulate(p.reference, 'SUCCESS')),
+      switchMap((p) => {
+        if (p.provider === 'sandbox') {
+          return this.simulate(p.reference, 'SUCCESS');
+        }
+        window.location.href = p.paymentUrl!;
+        return EMPTY;
+      }),
     );
+  }
+
+  /** Re-checks a payment with the provider — a safety net if a webhook is missed/delayed. */
+  recheck(reference: string): Observable<Payment> {
+    return this.http.post<Payment>(`${this.base}/payments/${reference}/recheck`, {});
   }
 
   mine(): Observable<Page<Payment>> {
