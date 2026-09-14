@@ -167,7 +167,7 @@ type Tab =
           <div class="max-w-md flex-1">
             <h3 class="font-semibold text-slate-800">QR de l'événement</h3>
             <p class="mt-1 text-sm text-slate-500">
-              À imprimer sur une affiche ou un flyer : toute personne qui le scanne
+              À afficher sur un écran : toute personne qui le scanne
               arrive directement sur la page de l'événement, sans avoir à le chercher,
               pour s'inscrire ou prendre son billet.
             </p>
