@@ -71,7 +71,7 @@ public class Payment extends BaseEntity {
     @Column(nullable = false, length = 20)
     private PaymentStatus statut = PaymentStatus.EN_ATTENTE;
 
-    @Column(name = "payment_url", length = 1000)
+    @Column(name = "payment_url", columnDefinition = "text")
     private String paymentUrl;
 
     @Column(name = "echec_motif", length = 500)
