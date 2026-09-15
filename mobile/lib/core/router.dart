@@ -35,6 +35,7 @@ import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/change_password_screen.dart';
 import '../features/invoices/invoices_screen.dart';
 import '../features/notifications/notifications_screen.dart';
+import '../features/scanner/public_scanner_screen.dart';
 import '../features/scanner/scanner_home_screen.dart';
 import '../features/scanner/scanner_screen.dart';
 import '../features/profile/profile_screen.dart';
@@ -264,6 +265,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profil/mot-de-passe',
         parentNavigatorKey: _rootKey,
         builder: (_, __) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: '/scanner-qr',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const PublicScannerScreen(),
       ),
       GoRoute(
         path: '/scanner',
