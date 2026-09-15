@@ -65,6 +65,18 @@ class _PublicScannerScreenState extends State<PublicScannerScreen> {
     setState(() => _error = 'Ce code ne correspond pas à un lien reconnu.');
   }
 
+  String _describeError(MobileScannerException error) {
+    switch (error.errorCode) {
+      case MobileScannerErrorCode.permissionDenied:
+        return 'Accès à la caméra refusé. Autorisez la caméra pour cette '
+            'application dans les réglages du téléphone, puis réessayez.';
+      case MobileScannerErrorCode.unsupported:
+        return 'La caméra n\'est pas disponible sur cet appareil.';
+      default:
+        return 'Impossible de démarrer la caméra (${error.errorCode.name}).';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,7 +108,42 @@ class _PublicScannerScreenState extends State<PublicScannerScreen> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                MobileScanner(controller: _controller, onDetect: _onDetect),
+                MobileScanner(
+                  controller: _controller,
+                  onDetect: _onDetect,
+                  errorBuilder: (context, error, child) => ColoredBox(
+                    color: Colors.black,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.videocam_off,
+                                color: Colors.white, size: 40),
+                            const SizedBox(height: 12),
+                            Text(
+                              _describeError(error),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            if (error.errorCode ==
+                                MobileScannerErrorCode.permissionDenied) ...[
+                              const SizedBox(height: 16),
+                              OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white)),
+                                onPressed: () => _controller.start(),
+                                child: const Text('Réessayer'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 Container(
                   width: 240,
                   height: 240,
