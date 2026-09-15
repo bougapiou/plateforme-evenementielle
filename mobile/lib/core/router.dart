@@ -35,6 +35,7 @@ import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/change_password_screen.dart';
 import '../features/invoices/invoices_screen.dart';
 import '../features/notifications/notifications_screen.dart';
+import '../features/scanner/find_ticket_screen.dart';
 import '../features/scanner/public_scanner_screen.dart';
 import '../features/scanner/scanner_home_screen.dart';
 import '../features/scanner/scanner_screen.dart';
@@ -50,6 +51,7 @@ const _publicPrefixes = [
   '/inscription',
   '/mot-de-passe',
   '/scanner-qr',
+  '/retrouver-billet',
 ];
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -271,6 +273,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/scanner-qr',
         parentNavigatorKey: _rootKey,
         builder: (_, __) => const PublicScannerScreen(),
+      ),
+      GoRoute(
+        path: '/retrouver-billet',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const FindTicketScreen(),
       ),
       GoRoute(
         path: '/scanner',
