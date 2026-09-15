@@ -123,6 +123,17 @@ const REFRESH_MS = 2000;
           </tbody>
         </table>
       </div>
+
+      <div class="mt-4 grid grid-cols-2 gap-3 sm:w-80">
+        <div class="rounded-lg bg-slate-50 p-3 text-center">
+          <p class="text-2xl font-bold tabular-nums text-slate-800">{{ visiteurs() }}</p>
+          <p class="text-xs text-slate-500">visiteurs (billets entrés au moins une fois)</p>
+        </div>
+        <div class="rounded-lg bg-slate-50 p-3 text-center">
+          <p class="text-2xl font-bold tabular-nums text-slate-800">{{ stats()['entrees'] || 0 }}</p>
+          <p class="text-xs text-slate-500">visites (nombre d'entrées)</p>
+        </div>
+      </div>
     }
   `,
 })
@@ -148,6 +159,9 @@ export class TicketFlowComponent implements OnDestroy {
         t.numero.toLowerCase().includes(q) || (t.participantNom ?? '').toLowerCase().includes(q),
     );
   });
+
+  /** Distinct paid tickets that were let in at least once (excludes rejected-only scans). */
+  visiteurs = computed(() => this.tickets().filter((t) => t.entrees > 0).length);
 
   private poll?: Subscription;
 
