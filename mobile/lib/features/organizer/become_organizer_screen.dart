@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/models.dart';
+import '../../core/phone_field.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -19,7 +20,7 @@ class _BecomeOrganizerScreenState extends ConsumerState<BecomeOrganizerScreen> {
   final _nom = TextEditingController();
   final _description = TextEditingController();
   final _email = TextEditingController();
-  final _tel = TextEditingController();
+  String _tel = '';
   final _site = TextEditingController();
   String? _structureId;
   bool _saving = false;
@@ -41,7 +42,6 @@ class _BecomeOrganizerScreenState extends ConsumerState<BecomeOrganizerScreen> {
     _nom.dispose();
     _description.dispose();
     _email.dispose();
-    _tel.dispose();
     _site.dispose();
     super.dispose();
   }
@@ -56,7 +56,7 @@ class _BecomeOrganizerScreenState extends ConsumerState<BecomeOrganizerScreen> {
                 _description.text.trim().isEmpty ? null : _description.text.trim(),
             structureId: _structureId,
             contactEmail: _email.text.trim().isEmpty ? null : _email.text.trim(),
-            contactTelephone: _tel.text.trim().isEmpty ? null : _tel.text.trim(),
+            contactTelephone: _tel.trim().isEmpty ? null : _tel.trim(),
             siteWeb: _site.text.trim().isEmpty ? null : _site.text.trim(),
           );
       if (mounted) {
@@ -170,11 +170,10 @@ class _BecomeOrganizerScreenState extends ConsumerState<BecomeOrganizerScreen> {
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _tel,
-                  decoration:
-                      const InputDecoration(labelText: 'Téléphone de contact'),
-                  keyboardType: TextInputType.phone,
+                PhoneField(
+                  initialValue: _tel,
+                  label: 'Téléphone de contact',
+                  onChanged: (v) => _tel = v,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

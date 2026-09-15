@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/faso.dart';
 import '../../core/models.dart';
+import '../../core/phone_field.dart';
 import '../../core/providers.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -17,7 +18,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _email = TextEditingController();
-  final _phone = TextEditingController();
+  String _phone = '';
   final _password = TextEditingController();
   String _type = 'PARTICULIER';
   bool _loading = false;
@@ -28,7 +29,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _firstName.dispose();
     _lastName.dispose();
     _email.dispose();
-    _phone.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -45,7 +45,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             lastName: _lastName.text.trim(),
             email: _email.text.trim(),
             password: _password.text,
-            phone: _phone.text.trim(),
+            phone: _phone.trim(),
             type: _type,
           );
       if (mounted) context.go('/evenements');
@@ -91,14 +91,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     (v == null || !v.contains('@')) ? 'E-mail invalide' : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _phone,
-                decoration: const InputDecoration(labelText: 'Téléphone'),
-                keyboardType: TextInputType.phone,
-                validator: (v) => (v == null ||
-                        !RegExp(r'^\+?[0-9 ]{6,20}$').hasMatch(v.trim()))
-                    ? 'Numéro de téléphone invalide'
-                    : null,
+              PhoneField(
+                onChanged: (v) => _phone = v,
+                required: true,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(

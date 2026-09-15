@@ -11,6 +11,7 @@ import { StructureSummary } from '../structures/structure.models';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
 import { PaymentsService } from '../payments/payments.service';
+import { PhoneInputComponent } from '../../shared/phone-input.component';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
 import { EventPublic, EventTicket, MyTicket } from '../events/event.models';
 import {
@@ -26,7 +27,7 @@ import { ApiError } from '../../core/models';
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, PhoneInputComponent],
   template: `
     @if (event(); as e) {
       <div class="rounded-xl bg-slate-100">
@@ -130,7 +131,7 @@ import { ApiError } from '../../core/models';
               <div class="grid max-w-lg gap-3 sm:grid-cols-2">
                 <div>
                   <label class="form-label">Téléphone *</label>
-                  <input class="form-input" [(ngModel)]="guestPhone" placeholder="+226 70 00 00 00" />
+                  <app-phone-input [(ngModel)]="guestPhone" />
                 </div>
                 <div>
                   <label class="form-label">Adresse e-mail (facultatif)</label>

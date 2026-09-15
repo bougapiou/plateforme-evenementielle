@@ -6,12 +6,13 @@ import { StructuresService } from '../structures/structures.service';
 import { Organizer } from './organizer.models';
 import { StructureSummary } from '../structures/structure.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PhoneInputComponent } from '../../shared/phone-input.component';
 import { ApiError } from '../../core/models';
 
 @Component({
   selector: 'app-organizer',
   standalone: true,
-  imports: [ReactiveFormsModule, StatusBadgeComponent],
+  imports: [ReactiveFormsModule, StatusBadgeComponent, PhoneInputComponent],
   template: `
     <h1 class="text-xl font-bold text-slate-800">Espace organisateur</h1>
 
@@ -59,7 +60,7 @@ import { ApiError } from '../../core/models';
           </div>
           <div>
             <label class="form-label">Téléphone de contact</label>
-            <input class="form-input" formControlName="contactTelephone" />
+            <app-phone-input formControlName="contactTelephone" />
           </div>
         </div>
         <div>

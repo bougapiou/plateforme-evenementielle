@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
 import '../../core/image_field.dart';
 import '../../core/models.dart';
+import '../../core/phone_field.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 
@@ -26,7 +27,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   final _lieu = TextEditingController();
   final _adresse = TextEditingController();
   final _contactEmail = TextEditingController();
-  final _contactTel = TextEditingController();
+  String _contactTel = '';
   final _capacite = TextEditingController();
 
   String? _categoryId;
@@ -65,7 +66,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     _lieu.text = e.lieu ?? '';
     _adresse.text = e.adresse ?? '';
     _contactEmail.text = e.contactEmail ?? '';
-    _contactTel.text = e.contactTelephone ?? '';
+    _contactTel = e.contactTelephone ?? '';
     _capacite.text = e.capaciteMax?.toString() ?? '';
     _categoryId = e.categoryId;
     _dateDebut = e.dateDebut?.toLocal();
@@ -84,7 +85,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   void dispose() {
     for (final c in [
       _nom, _sigle, _descCourte, _descLongue, _ville, _lieu, _adresse,
-      _contactEmail, _contactTel, _capacite
+      _contactEmail, _capacite
     ]) {
       c.dispose();
     }
@@ -134,8 +135,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
       if (_adresse.text.trim().isNotEmpty) 'adresse': _adresse.text.trim(),
       if (_contactEmail.text.trim().isNotEmpty)
         'contactEmail': _contactEmail.text.trim(),
-      if (_contactTel.text.trim().isNotEmpty)
-        'contactTelephone': _contactTel.text.trim(),
+      if (_contactTel.trim().isNotEmpty)
+        'contactTelephone': _contactTel.trim(),
       if (_capacite.text.trim().isNotEmpty)
         'capaciteMax': int.tryParse(_capacite.text.trim()),
       if (_coverUrl != null) 'coverUrl': _coverUrl,
@@ -210,8 +211,13 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
                     keyboard: TextInputType.number),
                 _text(_contactEmail, 'E-mail de contact',
                     keyboard: TextInputType.emailAddress),
-                _text(_contactTel, 'Téléphone de contact',
-                    keyboard: TextInputType.phone),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: PhoneField(
+                    initialValue: _contactTel,
+                    onChanged: (v) => _contactTel = v,
+                  ),
+                ),
                 _text(_descCourte, 'Description courte'),
                 _text(_descLongue, 'Description détaillée', lines: 4),
                 const SizedBox(height: 8),

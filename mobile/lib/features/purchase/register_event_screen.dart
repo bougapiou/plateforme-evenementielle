@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/models.dart';
+import '../../core/phone_field.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -42,7 +43,7 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
   final _contactNom = TextEditingController();
   final _contactEmail = TextEditingController();
   // Phone — optional, used in every mode.
-  final _tel = TextEditingController();
+  String _tel = '';
   final _infos = TextEditingController();
 
   /// Extra attendees. Empty = the account holder is the sole participant.
@@ -62,7 +63,6 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
     _email.dispose();
     _contactNom.dispose();
     _contactEmail.dispose();
-    _tel.dispose();
     _infos.dispose();
     for (final p in _participants) {
       p.dispose();
@@ -102,7 +102,7 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
           await ref.read(authControllerProvider.notifier).guestSession(
                 firstName: _prenom.text.trim(),
                 lastName: _nom.text.trim(),
-                phone: _tel.text.trim(),
+                phone: _tel.trim(),
                 email: _email.text.trim().isEmpty ? null : _email.text.trim(),
               );
         } on ApiException catch (e) {
@@ -127,7 +127,7 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
       final contactEmail =
           rawEmail.endsWith('@guest.plateforme.local') ? '' : rawEmail;
       // Backend falls back to the account phone when this is empty.
-      final contactTel = _tel.text.trim();
+      final contactTel = _tel.trim();
 
       final reg = await ref.read(registrationsRepositoryProvider).register(
             eventId: event.id,
@@ -278,14 +278,10 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
                   ),
                 ]),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _tel,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Téléphone *'),
-                  validator: (v) => (v == null ||
-                          !RegExp(r'^\+?[0-9 ]{6,20}$').hasMatch(v.trim()))
-                      ? 'Numéro de téléphone invalide'
-                      : null,
+                PhoneField(
+                  initialValue: _tel,
+                  required: true,
+                  onChanged: (v) => _tel = v,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -318,11 +314,10 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
                       (v == null || !v.contains('@')) ? 'E-mail invalide' : null,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _tel,
-                  keyboardType: TextInputType.phone,
-                  decoration:
-                      const InputDecoration(labelText: 'Téléphone (facultatif)'),
+                PhoneField(
+                  initialValue: _tel,
+                  label: 'Téléphone (facultatif)',
+                  onChanged: (v) => _tel = v,
                 ),
               ] else ...[
                 Card(
@@ -334,11 +329,10 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _tel,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                      labelText: 'Téléphone de contact (facultatif)'),
+                PhoneField(
+                  initialValue: _tel,
+                  label: 'Téléphone de contact (facultatif)',
+                  onChanged: (v) => _tel = v,
                 ),
               ],
 

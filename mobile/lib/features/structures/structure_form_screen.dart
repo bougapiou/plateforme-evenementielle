@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/models.dart';
+import '../../core/phone_field.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import 'structures_screen.dart';
@@ -24,7 +25,7 @@ class _StructureFormScreenState extends ConsumerState<StructureFormScreen> {
   final _ifu = TextEditingController();
   final _adresse = TextEditingController();
   final _ville = TextEditingController();
-  final _telephone = TextEditingController();
+  String _telephone = '';
   final _email = TextEditingController();
   final _siteWeb = TextEditingController();
   final _description = TextEditingController();
@@ -50,7 +51,7 @@ class _StructureFormScreenState extends ConsumerState<StructureFormScreen> {
     _ifu.text = s.ifu ?? '';
     _adresse.text = s.adresse ?? '';
     _ville.text = s.ville ?? '';
-    _telephone.text = s.telephone ?? '';
+    _telephone = s.telephone ?? '';
     _email.text = s.email ?? '';
     _siteWeb.text = s.siteWeb ?? '';
     _description.text = s.description ?? '';
@@ -61,7 +62,7 @@ class _StructureFormScreenState extends ConsumerState<StructureFormScreen> {
   void dispose() {
     for (final c in [
       _raisonSociale, _sigle, _secteur, _rccm, _ifu, _adresse,
-      _ville, _telephone, _email, _siteWeb, _description
+      _ville, _email, _siteWeb, _description
     ]) {
       c.dispose();
     }
@@ -77,7 +78,7 @@ class _StructureFormScreenState extends ConsumerState<StructureFormScreen> {
         if (_ifu.text.trim().isNotEmpty) 'ifu': _ifu.text.trim(),
         if (_adresse.text.trim().isNotEmpty) 'adresse': _adresse.text.trim(),
         if (_ville.text.trim().isNotEmpty) 'ville': _ville.text.trim(),
-        if (_telephone.text.trim().isNotEmpty) 'telephone': _telephone.text.trim(),
+        if (_telephone.trim().isNotEmpty) 'telephone': _telephone.trim(),
         if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
         if (_siteWeb.text.trim().isNotEmpty) 'siteWeb': _siteWeb.text.trim(),
         if (_description.text.trim().isNotEmpty) 'description': _description.text.trim(),
@@ -149,7 +150,13 @@ class _StructureFormScreenState extends ConsumerState<StructureFormScreen> {
                 _field(_ifu, 'IFU'),
                 _field(_adresse, 'Adresse'),
                 _field(_ville, 'Ville'),
-                _field(_telephone, 'Téléphone', keyboard: TextInputType.phone),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: PhoneField(
+                    initialValue: _telephone,
+                    onChanged: (v) => _telephone = v,
+                  ),
+                ),
                 _field(_email, 'E-mail', keyboard: TextInputType.emailAddress),
                 _field(_siteWeb, 'Site web'),
                 _field(_description, 'Description', lines: 3),
