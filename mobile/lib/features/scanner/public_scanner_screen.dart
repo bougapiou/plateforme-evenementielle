@@ -120,21 +120,18 @@ class _PublicScannerScreenState extends State<PublicScannerScreen> {
               children: [
                 const Text('Ou collez le lien du QR'),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _linkCtrl,
-                        decoration: const InputDecoration(hintText: 'https://…'),
-                        onSubmitted: _go,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () => _go(_linkCtrl.text),
-                      child: const Text('Ouvrir'),
-                    ),
-                  ],
+                TextField(
+                  controller: _linkCtrl,
+                  decoration: const InputDecoration(hintText: 'https://…'),
+                  onSubmitted: _go,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => _go(_linkCtrl.text),
+                    child: const Text('Ouvrir'),
+                  ),
                 ),
               ],
             ),
