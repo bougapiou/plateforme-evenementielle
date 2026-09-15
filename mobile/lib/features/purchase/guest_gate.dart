@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/models.dart';
+import '../../core/phone_field.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 
@@ -55,7 +56,7 @@ class _GuestSheetState extends ConsumerState<_GuestSheet> {
   final _prenom = TextEditingController();
   final _nom = TextEditingController();
   final _email = TextEditingController();
-  final _tel = TextEditingController();
+  String _tel = '';
   bool _busy = false;
 
   @override
@@ -63,7 +64,6 @@ class _GuestSheetState extends ConsumerState<_GuestSheet> {
     _prenom.dispose();
     _nom.dispose();
     _email.dispose();
-    _tel.dispose();
     super.dispose();
   }
 
@@ -74,7 +74,7 @@ class _GuestSheetState extends ConsumerState<_GuestSheet> {
       await ref.read(authControllerProvider.notifier).guestSession(
             firstName: _prenom.text.trim(),
             lastName: _nom.text.trim(),
-            phone: _tel.text.trim(),
+            phone: _tel.trim(),
             email: _email.text.trim().isEmpty ? null : _email.text.trim(),
           );
       if (mounted) Navigator.pop(context, const _Choice.session());
@@ -158,14 +158,10 @@ class _GuestSheetState extends ConsumerState<_GuestSheet> {
                 ),
               ]),
               const SizedBox(height: 10),
-              TextFormField(
-                controller: _tel,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Téléphone *'),
-                validator: (v) => (v == null ||
-                        !RegExp(r'^\+?[0-9 ]{6,20}$').hasMatch(v.trim()))
-                    ? 'Numéro de téléphone invalide'
-                    : null,
+              PhoneField(
+                initialValue: _tel,
+                required: true,
+                onChanged: (v) => _tel = v,
               ),
               const SizedBox(height: 10),
               TextFormField(

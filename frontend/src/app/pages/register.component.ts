@@ -4,11 +4,12 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../core/auth.service';
 import { ApiError, UserType } from '../core/models';
+import { PhoneInputComponent } from '../shared/phone-input.component';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, PhoneInputComponent],
   template: `
     <div class="mx-auto max-w-lg">
       <img src="assets/logo.png" alt="Plateforme Nationale des Événements"
@@ -37,7 +38,7 @@ import { ApiError, UserType } from '../core/models';
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
               <label class="form-label" for="phone">Téléphone</label>
-              <input id="phone" class="form-input" formControlName="phone" placeholder="+226 70 00 00 00" />
+              <app-phone-input id="phone" formControlName="phone" />
             </div>
             <div>
               <label class="form-label" for="type">Type de compte</label>

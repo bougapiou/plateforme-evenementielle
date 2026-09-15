@@ -5,12 +5,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { StructuresService } from './structures.service';
 import { STRUCTURE_TYPES, StructureSummary } from './structure.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PhoneInputComponent } from '../../shared/phone-input.component';
 import { ApiError } from '../../core/models';
 
 @Component({
   selector: 'app-structures-list',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, StatusBadgeComponent],
+  imports: [ReactiveFormsModule, RouterLink, StatusBadgeComponent, PhoneInputComponent],
   template: `
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold text-slate-800">Mes structures</h1>
@@ -56,7 +57,7 @@ import { ApiError } from '../../core/models';
           </div>
           <div>
             <label class="form-label">Téléphone</label>
-            <input class="form-input" formControlName="telephone" />
+            <app-phone-input formControlName="telephone" />
           </div>
         </div>
         @if (error()) {
