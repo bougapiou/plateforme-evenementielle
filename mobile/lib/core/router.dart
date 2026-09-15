@@ -49,6 +49,7 @@ const _publicPrefixes = [
   '/connexion',
   '/inscription',
   '/mot-de-passe',
+  '/scanner-qr',
 ];
 
 final routerProvider = Provider<GoRouter>((ref) {
