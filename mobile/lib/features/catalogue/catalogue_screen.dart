@@ -56,6 +56,11 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
       appBar: AppBar(
         title: const FasoMark(height: 26),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: 'Scanner un QR code',
+            onPressed: () => context.push('/scanner-qr'),
+          ),
           if (!signedIn)
             TextButton(
               onPressed: () => context.push('/connexion'),

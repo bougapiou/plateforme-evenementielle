@@ -16,9 +16,20 @@ class ProfileScreen extends ConsumerWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Profil')),
         body: Center(
-          child: FilledButton(
-            onPressed: () => context.push('/connexion'),
-            child: const Text('Se connecter'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FilledButton(
+                onPressed: () => context.push('/connexion'),
+                child: const Text('Se connecter'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/scanner-qr'),
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Scanner un QR code'),
+              ),
+            ],
           ),
         ),
       );
@@ -98,6 +109,13 @@ class ProfileScreen extends ConsumerWidget {
             ),
           const Divider(height: 16),
           _sectionLabel(context, 'Mes activités'),
+          ListTile(
+            leading: const Icon(Icons.qr_code_scanner),
+            title: const Text('Scanner un QR code'),
+            subtitle: const Text('Ouvrir un événement depuis son affiche'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/scanner-qr'),
+          ),
           ListTile(
             leading: const Icon(Icons.history),
             title: const Text('Mon activité'),
