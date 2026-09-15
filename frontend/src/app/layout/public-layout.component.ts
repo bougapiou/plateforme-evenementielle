@@ -22,6 +22,12 @@ import { IconComponent } from '../shared/icon.component';
                class="btn-ghost inline-flex items-center gap-1.5">
               <app-icon name="scan" class="h-4 w-4" /> Scanner
             </a>
+            @if (!auth.isAuthenticated()) {
+              <a routerLink="/retrouver-billet" routerLinkActive="text-brand-700"
+                 class="btn-ghost inline-flex items-center gap-1.5">
+                <app-icon name="ticket" class="h-4 w-4" /> Retrouver mon billet
+              </a>
+            }
             @if (auth.isGuest()) {
               <a routerLink="/tableau-de-bord" class="btn-ghost">Mes billets</a>
               <a routerLink="/finaliser-compte" class="btn-primary">Créer mon compte</a>

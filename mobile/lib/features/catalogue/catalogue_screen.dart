@@ -61,11 +61,17 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
             tooltip: 'Scanner un QR code',
             onPressed: () => context.push('/scanner-qr'),
           ),
-          if (!signedIn)
+          if (!signedIn) ...[
+            IconButton(
+              icon: const Icon(Icons.confirmation_number_outlined),
+              tooltip: 'Retrouver mon billet',
+              onPressed: () => context.push('/retrouver-billet'),
+            ),
             TextButton(
               onPressed: () => context.push('/connexion'),
               child: const Text('Connexion'),
             ),
+          ],
         ],
       ),
       body: Column(

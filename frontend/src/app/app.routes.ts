@@ -55,6 +55,12 @@ export const routes: Routes = [
           import('./features/public/qr-scanner.component').then((m) => m.QrScannerComponent),
         title: 'Scanner un QR code',
       },
+      {
+        path: 'retrouver-billet',
+        loadComponent: () =>
+          import('./features/public/find-ticket.component').then((m) => m.FindTicketComponent),
+        title: 'Retrouver mon billet',
+      },
     ],
   },
   {

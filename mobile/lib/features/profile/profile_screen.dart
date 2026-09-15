@@ -29,6 +29,12 @@ class ProfileScreen extends ConsumerWidget {
                 icon: const Icon(Icons.qr_code_scanner),
                 label: const Text('Scanner un QR code'),
               ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/retrouver-billet'),
+                icon: const Icon(Icons.confirmation_number_outlined),
+                label: const Text('Retrouver mon billet'),
+              ),
             ],
           ),
         ),
