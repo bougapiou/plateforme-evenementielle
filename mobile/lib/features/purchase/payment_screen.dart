@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/documents.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -76,7 +77,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     );
   }
 
-  Future<void> _pay(String outcome) async {
+  Future<void> _pay(String outcome, _Target target) async {
     setState(() {
       _processing = true;
       _error = null;
@@ -93,14 +94,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             await payments.simulate(payment.reference, outcome: outcome);
         if (!mounted) return;
         if (result.reussi) {
-          _showSuccess();
+          _showSuccess(target);
         } else {
           setState(() => _error =
               'Le paiement a échoué (${statutLabel(result.statut)}). Vous pouvez réessayer.');
         }
         return;
       }
-      await _payWithRealProvider(payment);
+      await _payWithRealProvider(payment, target);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -111,7 +112,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   /// Opens the provider's own hosted checkout page. It stays an in-app
   /// browser (not a full app-switch) so closing it — whether the payer
   /// finished paying or gave up — naturally hands control back here.
-  Future<void> _payWithRealProvider(Payment payment) async {
+  Future<void> _payWithRealProvider(Payment payment, _Target target) async {
     final uri = Uri.tryParse(payment.paymentUrl ?? '');
     if (uri == null) {
       if (mounted) setState(() => _error = 'Lien de paiement invalide.');
@@ -130,7 +131,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           await ref.read(paymentsRepositoryProvider).recheck(payment.reference);
       if (!mounted) return;
       if (result.reussi) {
-        _showSuccess();
+        _showSuccess(target);
       } else if (result.statut == 'EN_ATTENTE') {
         _showPending(payment.reference);
       } else {
@@ -170,7 +171,25 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     );
   }
 
-  void _showSuccess() {
+  /// Best-effort: fetch the tickets this order produced and download each
+  /// PDF right away, so the payer doesn't have to go find them afterwards.
+  Future<void> _autoDownloadTickets(String orderReference) async {
+    try {
+      final all = await ref.read(ticketsRepositoryProvider).myTickets();
+      final mine = all.where((t) => t.orderReference == orderReference);
+      final api = ref.read(apiClientProvider);
+      for (final t in mine) {
+        await fetchAndPresentDocument(api,
+            path: '/api/tickets/${t.id}/pdf',
+            filename: 'billet-${t.numero}.pdf');
+      }
+    } catch (_) {
+      // best-effort — the ticket stays available in « Mes billets » regardless
+    }
+  }
+
+  void _showSuccess(_Target target) {
+    if (_isOrder) _autoDownloadTickets(target.reference);
     final isGuest = ref.read(isGuestProvider);
     showDialog(
       context: context,
@@ -292,7 +311,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       style: const TextStyle(color: Color(0xFF991B1B))),
                 ),
               FilledButton.icon(
-                onPressed: _processing ? null : () => _pay('SUCCESS'),
+                onPressed: _processing ? null : () => _pay('SUCCESS', t),
                 icon: _processing
                     ? const SizedBox(
                         width: 18,
@@ -305,7 +324,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: _processing ? null : () => _pay('FAILURE'),
+                onPressed: _processing ? null : () => _pay('FAILURE', t),
                 child: const Text('Simuler un paiement échoué'),
               ),
               const SizedBox(height: 4),

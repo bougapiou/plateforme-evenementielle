@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/documents.dart';
 import '../../core/format.dart';
 import '../../core/media.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
+import '../purchase/guest_gate.dart';
 import '../shell/app_shell.dart';
 
 class _Bundle {
@@ -182,19 +184,22 @@ class _Body extends ConsumerWidget {
         if (payantTickets.isNotEmpty) ...[
           const SizedBox(height: 20),
           _Section('Billetterie'),
-          ...payantTickets.map((t) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(t.nom),
-                  subtitle: Text([
-                    t.gratuit ? 'Gratuit' : t.prixFormatte,
-                    if (t.portee == 'ACTIVITE' && t.activites.isNotEmpty)
-                      'Activités : ${t.activites.join(', ')}',
-                    '${t.quantiteRestante} place(s) restante(s)',
-                  ].join('\n')),
-                  isThreeLine: t.portee == 'ACTIVITE',
-                ),
-              )),
+          if (canRegister)
+            _TicketPurchaseSection(event: e, tickets: payantTickets)
+          else
+            ...payantTickets.map((t) => Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(t.nom),
+                    subtitle: Text([
+                      t.gratuit ? 'Gratuit' : t.prixFormatte,
+                      if (t.portee == 'ACTIVITE' && t.activites.isNotEmpty)
+                        'Activités : ${t.activites.join(', ')}',
+                      '${t.quantiteRestante} place(s) restante(s)',
+                    ].join('\n')),
+                    isThreeLine: t.portee == 'ACTIVITE',
+                  ),
+                )),
         ],
 
         // --- Stands ---
@@ -218,13 +223,6 @@ class _Body extends ConsumerWidget {
 
         // --- Actions ---
         if (canRegister) ...[
-          if (payantTickets.isNotEmpty)
-            FilledButton.icon(
-              onPressed: () => context.push('/evenements/${e.slug}/billets'),
-              icon: const Icon(Icons.confirmation_number_outlined),
-              label: const Text('Acheter des billets'),
-            ),
-          const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () => context.push('/evenements/${e.slug}/inscription'),
             icon: const Icon(Icons.how_to_reg_outlined),
@@ -416,4 +414,245 @@ class _AccessChip extends StatelessWidget {
             style: TextStyle(
                 color: color, fontSize: 11, fontWeight: FontWeight.w600)),
       );
+}
+
+/// Buy tickets right on the event page — no separate screen. A single
+/// category is auto-selected (and its quantity hidden if free, since a free
+/// category is capped at 1 per person); with several categories, the list
+/// below acts as the picker. On success: free tickets are issued and their
+/// PDF downloaded immediately; paid ones go through the payment screen,
+/// which downloads them automatically once payment is confirmed.
+class _TicketPurchaseSection extends ConsumerStatefulWidget {
+  final EventDetail event;
+  final List<EventTicketType> tickets;
+  const _TicketPurchaseSection({required this.event, required this.tickets});
+
+  @override
+  ConsumerState<_TicketPurchaseSection> createState() =>
+      _TicketPurchaseSectionState();
+}
+
+class _TicketPurchaseSectionState
+    extends ConsumerState<_TicketPurchaseSection> {
+  final Map<String, int> _qty = {};
+  bool _submitting = false;
+  String? _error;
+  List<Ticket>? _issued;
+
+  bool get _single => widget.tickets.length == 1;
+  bool get _singleFree => _single && widget.tickets.first.gratuit;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_single) _qty[widget.tickets.first.id] = 1;
+  }
+
+  num get _total {
+    num sum = 0;
+    for (final t in widget.tickets) {
+      sum += t.prixMontant * (_qty[t.id] ?? 0);
+    }
+    return sum;
+  }
+
+  int get _count => _qty.values.fold(0, (a, b) => a + b);
+
+  Future<void> _submit() async {
+    final lignes = {
+      for (final e in _qty.entries)
+        if (e.value > 0) e.key: e.value,
+    };
+    if (lignes.isEmpty) return;
+    if (!await GuestGate.ensureSession(context, ref)) return;
+    if (!mounted) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      final order = await ref
+          .read(ticketsRepositoryProvider)
+          .createOrder(eventId: widget.event.id, lignes: lignes);
+      if (!mounted) return;
+      if (order.montantTotal == 0) {
+        await _downloadIssued(order.reference);
+      } else {
+        context.push('/paiement/TICKET_ORDER/${order.id}');
+      }
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _downloadIssued(String orderReference) async {
+    final all = await ref.read(ticketsRepositoryProvider).myTickets();
+    final mine =
+        all.where((t) => t.orderReference == orderReference).toList();
+    if (mounted) setState(() => _issued = mine);
+    final api = ref.read(apiClientProvider);
+    for (final t in mine) {
+      try {
+        await fetchAndPresentDocument(api,
+            path: '/api/tickets/${t.id}/pdf',
+            filename: 'billet-${t.numero}.pdf');
+      } catch (_) {
+        // best-effort auto-download — the button below covers a failure
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_issued != null) {
+      return Card(
+        color: const Color(0xFFE8F5E9),
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Billet obtenu',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF15803D))),
+              const SizedBox(height: 4),
+              Text(
+                'Téléchargé automatiquement. Pas besoin de l\'imprimer, la '
+                'version numérique suffit.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              for (final t in _issued!)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text('Billet ${t.numero}')),
+                      TextButton(
+                        onPressed: () => fetchAndPresentDocument(
+                          ref.read(apiClientProvider),
+                          path: '/api/tickets/${t.id}/pdf',
+                          filename: 'billet-${t.numero}.pdf',
+                        ),
+                        child: const Text('Retélécharger'),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_singleFree)
+          Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.tickets.first.nom,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  const Text('Gratuit'),
+                ],
+              ),
+            ),
+          )
+        else
+          ...widget.tickets.map((t) => _TicketRow(
+                ticket: t,
+                quantity: _qty[t.id] ?? 0,
+                onChanged: (v) => setState(() => _qty[t.id] = v),
+              )),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(_error!, style: const TextStyle(color: Colors.red)),
+          ),
+        FilledButton(
+          onPressed: _submitting || _count == 0 ? null : _submit,
+          child: Text(_submitting
+              ? 'Un instant…'
+              : _singleFree
+                  ? 'Obtenir mon billet (Gratuit)'
+                  : 'Commander ($_count — ${Fmt.price(_total)})'),
+        ),
+      ],
+    );
+  }
+}
+
+class _TicketRow extends StatelessWidget {
+  final EventTicketType ticket;
+  final int quantity;
+  final ValueChanged<int> onChanged;
+  const _TicketRow({
+    required this.ticket,
+    required this.quantity,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final max = ticket.limiteParUtilisateur > 0
+        ? ticket.limiteParUtilisateur
+        : ticket.quantiteRestante;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(ticket.nom,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 2),
+            Text(ticket.gratuit ? 'Gratuit' : ticket.prixFormatte,
+                style: Theme.of(context).textTheme.bodyMedium),
+            if (ticket.description != null) ...[
+              const SizedBox(height: 4),
+              Text(ticket.description!,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ],
+            if (ticket.portee == 'ACTIVITE' && ticket.activites.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('Activités : ${ticket.activites.join(', ')}',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text('${ticket.quantiteRestante} restant(s)',
+                    style: Theme.of(context).textTheme.bodySmall),
+                const Spacer(),
+                IconButton.outlined(
+                  onPressed:
+                      quantity > 0 ? () => onChanged(quantity - 1) : null,
+                  icon: const Icon(Icons.remove),
+                ),
+                SizedBox(
+                  width: 36,
+                  child: Text('$quantity', textAlign: TextAlign.center),
+                ),
+                IconButton.outlined(
+                  onPressed:
+                      quantity < max ? () => onChanged(quantity + 1) : null,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
