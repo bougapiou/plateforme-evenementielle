@@ -17,7 +17,7 @@ class AppConfig {
     if (_override.isNotEmpty) return _override;
     return kIsWeb
         ? 'http://localhost:8080/api'
-        : 'http://10.65.36.82:8080/api';
+        : 'http://10.65.36.101:8080/api';
   }
 
   /// Server origin (`scheme://host:port`) — [apiBaseUrl] without its `/api` suffix.
