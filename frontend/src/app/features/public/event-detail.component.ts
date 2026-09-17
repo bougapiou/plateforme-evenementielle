@@ -146,7 +146,12 @@ import { ApiError } from '../../core/models';
               </div>
             }
 
-            @if (tickets().length) {
+            @if (singleFreeTicket(); as t) {
+              <p class="text-sm text-slate-600">
+                Billet : <span class="font-medium">{{ t.nom }}</span>
+                <span class="text-slate-400">— Gratuit</span>
+              </p>
+            } @else if (tickets().length) {
               <div>
                 <p class="form-label">Billets</p>
                 <table class="w-full max-w-lg text-sm">
@@ -171,7 +176,8 @@ import { ApiError } from '../../core/models';
             }
             @if (error()) { <p class="text-sm text-red-700">{{ error() }}</p> }
             <button class="btn-primary" [disabled]="submitting()" (click)="submit()">
-              {{ totalQty() > 0 ? 'S\\'inscrire et commander (' + totalQty() + ' billet(s))' : 'S\\'inscrire' }}
+              {{ singleFreeTicket() ? 'Obtenir mon billet'
+                 : totalQty() > 0 ? 'S\\'inscrire et commander (' + totalQty() + ' billet(s))' : 'S\\'inscrire' }}
             </button>
           </div>
         }
@@ -402,6 +408,10 @@ export class EventDetailComponent implements OnDestroy {
   error = signal<string | null>(null);
   submitting = signal(false);
   qty = signal<Record<string, number>>({});
+  /** Only category, and it's free: no picker to show, quantity is implicitly 1. */
+  singleFreeTicket = computed(() =>
+    this.tickets().length === 1 && !this.tickets()[0].prixMontant ? this.tickets()[0] : null,
+  );
   registration = signal<Registration | null>(null);
   participantNom = '';
 
@@ -445,7 +455,13 @@ export class EventDetailComponent implements OnDestroy {
         error: () => this.loadError.set("Cet événement n'est pas disponible."),
       });
       this.ticketsService.publicTickets(slug).subscribe({
-        next: (t) => this.tickets.set(t.filter((x) => x.enVente || x.quantiteRestante > 0)),
+        next: (t) => {
+          const filtered = t.filter((x) => x.enVente || x.quantiteRestante > 0);
+          this.tickets.set(filtered);
+          // A single category — free or paid — defaults to quantity 1 so
+          // there's nothing to fill in beyond the contact form.
+          if (filtered.length === 1) this.qty.set({ [filtered[0].id]: 1 });
+        },
         error: () => this.tickets.set([]),
       });
       this.standsService.publicTypes(slug).subscribe({ next: (t) => this.standTypes.set(t), error: () => {} });
@@ -585,6 +601,7 @@ export class EventDetailComponent implements OnDestroy {
           this.ticketReceiptIds.add(t.id);
           this.ticketReceipts.set([...this.ticketReceipts(), t]);
           this.loadTicketQr(t.id);
+          this.downloadTicket(t);
         });
     });
   }

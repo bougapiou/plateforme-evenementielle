@@ -9,7 +9,6 @@ import '../features/auth/forgot_password_screen.dart';
 import '../features/auth/reset_password_screen.dart';
 import '../features/catalogue/catalogue_screen.dart';
 import '../features/event/event_detail_screen.dart';
-import '../features/purchase/buy_tickets_screen.dart';
 import '../features/purchase/register_event_screen.dart';
 import '../features/purchase/reserve_stand_screen.dart';
 import '../features/purchase/payment_screen.dart';
@@ -121,11 +120,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/evenements/:slug',
         parentNavigatorKey: _rootKey,
         builder: (_, s) => EventDetailScreen(slug: s.pathParameters['slug']!),
-      ),
-      GoRoute(
-        path: '/evenements/:slug/billets',
-        parentNavigatorKey: _rootKey,
-        builder: (_, s) => BuyTicketsScreen(slug: s.pathParameters['slug']!),
       ),
       GoRoute(
         path: '/evenements/:slug/inscription',
