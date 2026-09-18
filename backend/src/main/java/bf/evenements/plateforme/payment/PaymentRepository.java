@@ -16,6 +16,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>,
 
     boolean existsByReference(String reference);
 
+    boolean existsByEventId(UUID eventId);
+
     Page<Payment> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
     Optional<Payment> findFirstByTargetTypeAndTargetIdAndStatutOrderByCreatedAtDesc(

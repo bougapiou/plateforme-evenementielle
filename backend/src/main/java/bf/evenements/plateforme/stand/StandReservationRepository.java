@@ -19,6 +19,8 @@ public interface StandReservationRepository extends JpaRepository<StandReservati
 
     boolean existsByNumeroReservation(String numero);
 
+    boolean existsByEventId(UUID eventId);
+
     @Query("""
             select r from StandReservation r
             where r.stand.id = :standId

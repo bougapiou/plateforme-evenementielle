@@ -14,6 +14,8 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     long countByEventIdAndStatut(UUID eventId, TicketStatus statut);
 
+    boolean existsByEventId(UUID eventId);
+
     boolean existsByNumero(String numero);
 
     /** Free tickets (price 0) already held by a user for a given event. */

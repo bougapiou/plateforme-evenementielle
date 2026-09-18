@@ -16,6 +16,8 @@ public interface RegistrationRepository extends JpaRepository<Registration, UUID
 
     boolean existsByReference(String reference);
 
+    boolean existsByEventId(UUID eventId);
+
     boolean existsByEventIdAndUserIdAndStatutIn(UUID eventId, UUID userId,
                                                 java.util.Collection<RegistrationStatus> statuts);
 }
