@@ -2,7 +2,13 @@
 # native on its own VM (see docs/DEPLOIEMENT — DB_URL points to it), it is
 # not containerized here.
 #
-# Usage: from infra/, `docker compose -f docker-compose.prod.yml up -d --build`
+# Usage: from infra/,
+#   STORAGE_HOST_PATH=/opt/plateforme/storage \
+#     docker compose -f docker-compose.prod.yml up -d --build
+# STORAGE_HOST_PATH is a shell variable read by `docker compose` itself
+# (unrelated to .env.prod, which only supplies the container's own
+# environment) — point it at an existing storage folder to keep previously
+# uploaded files, or omit it to default to ./data/storage.
 # Needs a `.env.prod` file next to this one (see backend/.env.prod.example).
 services:
   backend:
@@ -15,7 +21,10 @@ services:
     expose:
       - "8080"
     volumes:
-      - backend_storage:/app/storage
+      # Bind-mounted (not a named volume) so it survives independently of
+      # the container and can be pointed at an existing storage directory
+      # from a prior deployment, preserving already-uploaded files.
+      - ${STORAGE_HOST_PATH:-./data/storage}:/app/storage
 
   frontend:
     build:
@@ -26,6 +35,3 @@ services:
       - "80:80"
     depends_on:
       - backend
-
-volumes:
-  backend_storage:
