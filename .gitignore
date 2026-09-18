@@ -26,6 +26,8 @@ mobile/.flutter-plugins-dependencies
 
 # Env & data
 .env
+.env.prod
+infra/.env.prod
 *.local
 backend/data/
 /data/
