@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface CheckinRepository extends JpaRepository<Checkin, UUID> {
 
+    boolean existsByEventId(UUID eventId);
+
     /** Latest event-level check-in for a ticket — tells whether the holder is inside. */
     Optional<Checkin> findFirstByTicketIdAndActivityIdIsNullAndResultatOrderByScannedAtDesc(
             UUID ticketId, CheckinResult resultat);

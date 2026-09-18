@@ -15,6 +15,8 @@ public interface TicketOrderRepository extends JpaRepository<TicketOrder, UUID> 
 
     boolean existsByReference(String reference);
 
+    boolean existsByEventId(UUID eventId);
+
     List<TicketOrder> findByStatutAndExpireLeBefore(TicketOrderStatus statut, Instant cutoff);
 
     @org.springframework.data.jpa.repository.Query("""

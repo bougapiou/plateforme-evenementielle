@@ -12,6 +12,7 @@ import bf.evenements.plateforme.support.TestAuth;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -196,5 +197,42 @@ class EventWorkflowIT extends AbstractIntegrationTest {
         // an admin can fetch it too, but another organiser cannot
         as(admin).when().get("/api/events/" + eventId + "/qr.png").then().statusCode(200);
         as(other).when().get("/api/events/" + eventId + "/qr.png").then().statusCode(403);
+    }
+
+    @Test
+    void super_admin_can_delete_an_untouched_event_but_not_one_with_a_claimed_ticket() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("del-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+
+        // an untouched draft: the admin can delete it even without owning it
+        String emptyId = as(orga).body(Map.of("nom", "Brouillon à jeter " + n,
+                        "dateDebut", "2027-05-01T08:00:00Z", "dateFin", "2027-05-02T18:00:00Z",
+                        "ville", "Ouagadougou"))
+                .when().post("/api/events").then().statusCode(201).extract().path("id");
+        as(admin).when().delete("/api/events/" + emptyId).then().statusCode(204);
+        as(orga).when().get("/api/events/" + emptyId).then().statusCode(404);
+
+        // a published event with a claimed (free) ticket: deletion is refused, even for the admin
+        String eventId = as(orga).body(Map.of("nom", "Salon avec billets " + n,
+                        "dateDebut", "2027-05-01T08:00:00Z", "dateFin", "2027-05-02T18:00:00Z",
+                        "ville", "Ouagadougou"))
+                .when().post("/api/events").then().statusCode(201).extract().path("id");
+        as(orga).when().post("/api/events/" + eventId + "/submit").then().statusCode(200);
+        as(admin).when().post("/api/events/" + eventId + "/validate").then().statusCode(200);
+        as(orga).when().post("/api/events/" + eventId + "/publish").then().statusCode(200);
+        as(orga).when().post("/api/events/" + eventId + "/open-registrations").then().statusCode(200);
+
+        String freeId = as(orga).body(Map.of("nom", "Invitation", "prixMontant", 0,
+                        "portee", "EVENEMENT", "quantiteTotale", 50))
+                .when().post("/api/events/" + eventId + "/tickets")
+                .then().statusCode(201).extract().path("id");
+        String buyer = TestAuth.registerAndToken("del-buyer-" + n + "@example.bf", "PARTICULIER");
+        as(buyer).body(Map.of("eventId", eventId,
+                        "lignes", List.of(Map.of("eventTicketId", freeId, "quantite", 1))))
+                .when().post("/api/ticket-orders").then().statusCode(201);
+
+        as(admin).when().delete("/api/events/" + eventId)
+                .then().statusCode(422).body("code", equalTo("EVENT_HAS_DEPENDENT_DATA"));
     }
 }

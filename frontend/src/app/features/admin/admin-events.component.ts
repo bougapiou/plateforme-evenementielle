@@ -56,6 +56,7 @@ import { formatDateRange } from '../../shared/format';
             @if (e.statut !== 'ANNULE' && e.statut !== 'TERMINE') {
               <button class="btn-ghost text-red-700" (click)="confirmCancel(e)">Annuler</button>
             }
+            <button class="btn-ghost text-red-700" (click)="confirmDelete(e)">Supprimer</button>
           </div>
         </div>
       } @empty {
@@ -101,5 +102,18 @@ export class AdminEventsComponent {
 
   confirmCancel(e: EventSummary): void {
     if (confirm(`Annuler définitivement « ${e.nom} » ?`)) this.act(e, 'cancel');
+  }
+
+  confirmDelete(e: EventSummary): void {
+    if (!confirm(`Supprimer définitivement « ${e.nom} » ? Cette action est irréversible.`)) return;
+    this.service.remove(e.id).subscribe({
+      next: () => this.reload(),
+      error: (err) =>
+        alert(
+          err?.error?.code === 'EVENT_HAS_DEPENDENT_DATA'
+            ? err.error.message
+            : (err?.error?.message ?? 'Suppression impossible.'),
+        ),
+    });
   }
 }

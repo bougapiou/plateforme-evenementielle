@@ -13,7 +13,14 @@ import bf.evenements.plateforme.event.dto.EventResponse;
 import bf.evenements.plateforme.event.dto.EventSummary;
 import bf.evenements.plateforme.organizer.Organizer;
 import bf.evenements.plateforme.organizer.OrganizerService;
+import bf.evenements.plateforme.checkin.CheckinRepository;
+import bf.evenements.plateforme.invoice.InvoiceRepository;
+import bf.evenements.plateforme.payment.PaymentRepository;
 import bf.evenements.plateforme.rbac.Permissions;
+import bf.evenements.plateforme.registration.RegistrationRepository;
+import bf.evenements.plateforme.stand.StandReservationRepository;
+import bf.evenements.plateforme.ticket.TicketOrderRepository;
+import bf.evenements.plateforme.ticket.TicketRepository;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Set;
@@ -38,6 +45,13 @@ public class EventService {
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
     private final AppProperties appProperties;
+    private final TicketOrderRepository ticketOrderRepository;
+    private final StandReservationRepository standReservationRepository;
+    private final RegistrationRepository registrationRepository;
+    private final PaymentRepository paymentRepository;
+    private final CheckinRepository checkinRepository;
+    private final TicketRepository ticketRepository;
+    private final InvoiceRepository invoiceRepository;
 
     // ---------------------------------------------------------------- CRUD
 
@@ -103,8 +117,25 @@ public class EventService {
             throw new BusinessException("EVENT_DELETE_FORBIDDEN",
                     "Seuls les brouillons peuvent être supprimés ; utilisez l'annulation.");
         }
+        if (hasDependentData(id)) {
+            throw new BusinessException("EVENT_HAS_DEPENDENT_DATA",
+                    "Cet événement a des billets, inscriptions, paiements ou entrées "
+                            + "enregistrées ; utilisez l'annulation plutôt que la suppression, "
+                            + "pour conserver cet historique.");
+        }
         audit("EVENT_DELETED", event);
         eventRepository.delete(event);
+    }
+
+    /** Anything a super admin's hard delete must never silently wipe. */
+    private boolean hasDependentData(UUID eventId) {
+        return ticketOrderRepository.existsByEventId(eventId)
+                || ticketRepository.existsByEventId(eventId)
+                || standReservationRepository.existsByEventId(eventId)
+                || registrationRepository.existsByEventId(eventId)
+                || paymentRepository.existsByEventId(eventId)
+                || invoiceRepository.existsByEventId(eventId)
+                || checkinRepository.existsByEventId(eventId);
     }
 
     // ------------------------------------------------------------- workflow

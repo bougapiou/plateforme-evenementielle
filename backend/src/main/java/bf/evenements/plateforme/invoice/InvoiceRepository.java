@@ -12,6 +12,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     boolean existsByPaymentId(UUID paymentId);
 
+    boolean existsByEventId(UUID eventId);
+
     boolean existsByNumero(String numero);
 
     long countByType(Invoice.InvoiceType type);
