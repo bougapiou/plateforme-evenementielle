@@ -3,6 +3,7 @@ package bf.evenements.plateforme.auth;
 import bf.evenements.plateforme.auth.dto.AuthResponse;
 import bf.evenements.plateforme.auth.dto.CompleteRegistrationRequest;
 import bf.evenements.plateforme.auth.dto.ForgotPasswordRequest;
+import bf.evenements.plateforme.auth.dto.GuestQuickSessionRequest;
 import bf.evenements.plateforme.auth.dto.GuestSessionRequest;
 import bf.evenements.plateforme.auth.dto.LoginRequest;
 import bf.evenements.plateforme.auth.dto.RefreshRequest;
@@ -44,6 +45,14 @@ public class AuthController {
     public AuthResponse guest(@Valid @RequestBody GuestSessionRequest request,
                               HttpServletRequest http) {
         return authService.guestSession(request, HttpUtils.clientIp(http));
+    }
+
+    @PostMapping("/guest-quick")
+    @Operation(summary = "Ouvrir une session invité avec seulement un téléphone "
+            + "(billet gratuit sans formulaire)")
+    public AuthResponse guestQuick(@Valid @RequestBody GuestQuickSessionRequest request,
+                                   HttpServletRequest http) {
+        return authService.guestSessionQuick(request.phone(), HttpUtils.clientIp(http));
     }
 
     @PostMapping("/complete")

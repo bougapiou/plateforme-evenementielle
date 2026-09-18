@@ -66,6 +66,13 @@ export class AuthService {
       .pipe(tap((res) => this.persist(res)));
   }
 
+  /** Same, but for a "no form" free ticket: just a phone number, no name. */
+  guestSessionQuick(phone: string): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.base}/auth/guest-quick`, { phone })
+      .pipe(tap((res) => this.persist(res)));
+  }
+
   /** Turns the current guest session into a full account by choosing a password. */
   completeRegistration(payload: CompleteRegistrationPayload): Observable<AuthResponse> {
     return this.http

@@ -344,6 +344,18 @@ type Tab =
             <option value="ACTIVITE">Accès à des activités précises</option>
           </select>
           <input class="form-input" placeholder="Description" formControlName="description" />
+          @if (!ticketForm.value.prixMontant) {
+            <label class="sm:col-span-2 flex items-center gap-2 text-sm text-slate-600">
+              <input type="checkbox" formControlName="formulaireRequis" />
+              Demander un formulaire (nom, téléphone) pour obtenir ce billet gratuit
+            </label>
+            @if (!ticketForm.value.formulaireRequis) {
+              <p class="sm:col-span-2 -mt-1 text-xs text-slate-400">
+                Sans formulaire : un visiteur qui scanne le QR de l'événement obtient son billet
+                immédiatement (juste son téléphone si c'est un tout premier visiteur).
+              </p>
+            }
+          }
           @if (ticketForm.value.portee === 'ACTIVITE') {
             <div class="sm:col-span-2 rounded-lg border border-slate-200 p-2 text-sm">
               <p class="mb-1 font-medium text-slate-600">Activités couvertes par ce ticket</p>
@@ -668,6 +680,7 @@ export class EventEditorComponent implements OnDestroy {
     limiteParUtilisateur: [10, [Validators.min(1)]],
     portee: ['EVENEMENT' as 'EVENEMENT' | 'ACTIVITE'],
     description: [''],
+    formulaireRequis: [true],
   });
   standForm = this.fb.nonNullable.group({
     nom: ['', Validators.required],
@@ -871,13 +884,17 @@ export class EventEditorComponent implements OnDestroy {
       limiteParUtilisateur: Number(v.limiteParUtilisateur),
       portee: v.portee,
       description: v.description || undefined,
+      formulaireRequis: v.formulaireRequis,
       activityIds: v.portee === 'ACTIVITE' ? this.selectedActivityIds() : undefined,
     };
     this.ticketsService.save(this.id(), body, this.editingTicketId() ?? undefined).subscribe({
       next: () => {
         this.editingTicketId.set(null);
         this.selectedActivityIds.set([]);
-        this.ticketForm.reset({ prixMontant: 0, quantiteTotale: 100, limiteParUtilisateur: 10, portee: 'EVENEMENT' });
+        this.ticketForm.reset({
+          prixMontant: 0, quantiteTotale: 100, limiteParUtilisateur: 10,
+          portee: 'EVENEMENT', formulaireRequis: true,
+        });
         this.ticketsService.forEvent(this.id()).subscribe((t) => this.tickets.set(t));
       },
       error: (err: HttpErrorResponse) =>
@@ -890,6 +907,7 @@ export class EventEditorComponent implements OnDestroy {
     this.ticketForm.reset({
       nom: t.nom, prixMontant: t.prixMontant, quantiteTotale: t.quantiteTotale,
       limiteParUtilisateur: t.limiteParUtilisateur, portee: t.portee, description: t.description ?? '',
+      formulaireRequis: t.formulaireRequis,
     });
   }
   removeTicket(t: EventTicket): void {

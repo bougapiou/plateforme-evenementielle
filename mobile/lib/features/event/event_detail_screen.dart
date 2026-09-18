@@ -5,6 +5,7 @@ import '../../core/documents.dart';
 import '../../core/format.dart';
 import '../../core/media.dart';
 import '../../core/models.dart';
+import '../../core/phone_field.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -458,19 +459,63 @@ class _TicketPurchaseSectionState
 
   int get _count => _qty.values.fold(0, (a, b) => a + b);
 
+  /// The organizer opted out of a form for this free category: only a phone
+  /// prompt (or nothing at all if already signed in) stands between a scan
+  /// and the ticket.
+  bool get _noForm => _singleFree && !widget.tickets.first.formulaireRequis;
+
+  Future<String?> _promptPhone() {
+    String phone = '';
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Votre téléphone'),
+        content: PhoneField(
+          required: true,
+          onChanged: (v) => phone = v,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          FilledButton(
+            onPressed: () {
+              if (phone.trim().isEmpty) return;
+              Navigator.pop(ctx, phone.trim());
+            },
+            child: const Text('Continuer'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     final lignes = {
       for (final e in _qty.entries)
         if (e.value > 0) e.key: e.value,
     };
     if (lignes.isEmpty) return;
-    if (!await GuestGate.ensureSession(context, ref)) return;
+
+    final signedIn = ref.read(authControllerProvider).valueOrNull != null;
+    String? quickPhone;
+    if (!signedIn) {
+      if (_noForm) {
+        quickPhone = await _promptPhone();
+        if (quickPhone == null) return; // cancelled
+      } else if (!await GuestGate.ensureSession(context, ref)) {
+        return;
+      }
+    }
     if (!mounted) return;
+
     setState(() {
       _submitting = true;
       _error = null;
     });
     try {
+      if (quickPhone != null) {
+        await ref.read(authControllerProvider.notifier).guestSessionQuick(quickPhone);
+      }
       final order = await ref
           .read(ticketsRepositoryProvider)
           .createOrder(eventId: widget.event.id, lignes: lignes);
@@ -563,6 +608,14 @@ class _TicketPurchaseSectionState
                       style: const TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   const Text('Gratuit'),
+                  if (_noForm) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Juste votre téléphone suffit — pas de compte, pas '
+                      'd\'autre champ à remplir.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ],
               ),
             ),

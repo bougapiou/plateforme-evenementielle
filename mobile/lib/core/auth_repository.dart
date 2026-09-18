@@ -44,6 +44,11 @@ class AuthRepository {
         if (email != null && email.isNotEmpty) 'email': email,
       });
 
+  /// Same as [guestSession], but for a "no form" free ticket: just a phone
+  /// number, no name collected.
+  Future<AuthResponse> guestSessionQuick(String phone) =>
+      _post('/auth/guest-quick', {'phone': phone});
+
   /// Turns the current guest session into a full account (chooses a password).
   /// [email] is required only for a phone-only guest.
   Future<AuthResponse> completeRegistration({

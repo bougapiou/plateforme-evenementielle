@@ -148,6 +148,16 @@ public class AuthService {
         return issueTokens(user);
     }
 
+    /**
+     * Same as {@link #guestSession}, but for a visitor claiming a "no form
+     * needed" free ticket: only the phone number is real, the name is a
+     * placeholder (the organizer explicitly opted out of collecting one).
+     */
+    @Transactional
+    public AuthResponse guestSessionQuick(String phone, String ip) {
+        return guestSession(new GuestSessionRequest(null, "Visiteur", "", phone), ip);
+    }
+
     /** Turns the current guest account into a full one by choosing a password. */
     @Transactional
     public AuthResponse completeRegistration(CompleteRegistrationRequest request) {

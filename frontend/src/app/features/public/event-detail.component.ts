@@ -112,33 +112,44 @@ import { ApiError } from '../../core/models';
         } @else {
           <div class="mt-3 space-y-3">
             @if (!auth.isAuthenticated()) {
-              <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-                Pas besoin de compte pour vous inscrire. Renseignez vos coordonnées ;
-                vous pourrez créer un compte après le paiement pour retrouver vos billets.
-                <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
-                   class="font-semibold text-brand-700">J'ai déjà un compte</a>
-              </div>
-              <div class="grid max-w-lg gap-3 sm:grid-cols-2">
-                <div>
-                  <label class="form-label">Prénom</label>
-                  <input class="form-input" [(ngModel)]="guestFirstName" />
+              @if (noFormTicket()) {
+                <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+                  Entrez votre téléphone pour obtenir votre billet immédiatement — pas de compte,
+                  pas d'autre champ à remplir.
                 </div>
-                <div>
-                  <label class="form-label">Nom</label>
-                  <input class="form-input" [(ngModel)]="guestLastName" />
-                </div>
-              </div>
-              <div class="grid max-w-lg gap-3 sm:grid-cols-2">
-                <div>
+                <div class="max-w-sm">
                   <label class="form-label">Téléphone *</label>
                   <app-phone-input [(ngModel)]="guestPhone" />
                 </div>
-                <div>
-                  <label class="form-label">Adresse e-mail (facultatif)</label>
-                  <input class="form-input" type="email" [(ngModel)]="guestEmail" />
-                  <p class="mt-1 text-xs text-slate-400">Pour recevoir vos billets et créer un compte.</p>
+              } @else {
+                <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+                  Pas besoin de compte pour vous inscrire. Renseignez vos coordonnées ;
+                  vous pourrez créer un compte après le paiement pour retrouver vos billets.
+                  <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
+                     class="font-semibold text-brand-700">J'ai déjà un compte</a>
                 </div>
-              </div>
+                <div class="grid max-w-lg gap-3 sm:grid-cols-2">
+                  <div>
+                    <label class="form-label">Prénom</label>
+                    <input class="form-input" [(ngModel)]="guestFirstName" />
+                  </div>
+                  <div>
+                    <label class="form-label">Nom</label>
+                    <input class="form-input" [(ngModel)]="guestLastName" />
+                  </div>
+                </div>
+                <div class="grid max-w-lg gap-3 sm:grid-cols-2">
+                  <div>
+                    <label class="form-label">Téléphone *</label>
+                    <app-phone-input [(ngModel)]="guestPhone" />
+                  </div>
+                  <div>
+                    <label class="form-label">Adresse e-mail (facultatif)</label>
+                    <input class="form-input" type="email" [(ngModel)]="guestEmail" />
+                    <p class="mt-1 text-xs text-slate-400">Pour recevoir vos billets et créer un compte.</p>
+                  </div>
+                </div>
+              }
             } @else {
               <div>
                 <label class="form-label">Nom du participant</label>
@@ -412,6 +423,11 @@ export class EventDetailComponent implements OnDestroy {
   singleFreeTicket = computed(() =>
     this.tickets().length === 1 && !this.tickets()[0].prixMontant ? this.tickets()[0] : null,
   );
+  /** That free category also skips the identity form — phone only (or nothing, if signed in). */
+  noFormTicket = computed(() => {
+    const t = this.singleFreeTicket();
+    return t && !t.formulaireRequis ? t : null;
+  });
   registration = signal<Registration | null>(null);
   participantNom = '';
 
@@ -497,6 +513,28 @@ export class EventDetailComponent implements OnDestroy {
     this.error.set(null);
 
     if (!this.auth.isAuthenticated()) {
+      if (this.noFormTicket()) {
+        const phone = this.guestPhone.trim();
+        if (!/^\+?[0-9 ]{6,20}$/.test(phone)) {
+          this.error.set('Renseignez un numéro de téléphone valide.');
+          return;
+        }
+        this.submitting.set(true);
+        this.auth.guestSessionQuick(phone).subscribe({
+          next: () => this.doRegister('Visiteur'),
+          error: (err: HttpErrorResponse) => {
+            this.submitting.set(false);
+            const body = err.error as ApiError | undefined;
+            this.error.set(
+              body?.code === 'ACCOUNT_EXISTS'
+                ? `${body.message} Utilisez « J'ai déjà un compte » pour vous connecter.`
+                : (body?.message ?? 'Impossible de créer la session.'),
+            );
+          },
+        });
+        return;
+      }
+
       const first = this.guestFirstName.trim();
       const last = this.guestLastName.trim();
       const email = this.guestEmail.trim();

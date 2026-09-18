@@ -174,6 +174,8 @@ export interface EventTicket {
   actif: boolean;
   enVente: boolean;
   ordre: number;
+  /** Free categories only: false means claiming it needs no name/e-mail form. */
+  formulaireRequis: boolean;
   activites: { id: string; titre: string }[];
 }
 
@@ -188,6 +190,7 @@ export interface EventTicketPayload {
   venteDebut?: string;
   venteFin?: string;
   actif?: boolean;
+  formulaireRequis?: boolean;
   activityIds?: string[];
 }
 
