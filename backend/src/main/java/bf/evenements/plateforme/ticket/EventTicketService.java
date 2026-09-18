@@ -102,6 +102,9 @@ public class EventTicketService {
         }
         if (t.getPrixMontant().signum() == 0) {
             t.setLimiteParUtilisateur(1); // one free ticket per person
+            t.setFormulaireRequis(r.formulaireRequis() == null || r.formulaireRequis());
+        } else {
+            t.setFormulaireRequis(true); // a payment always needs an identity
         }
         t.setVenteDebut(r.venteDebut());
         t.setVenteFin(r.venteFin());

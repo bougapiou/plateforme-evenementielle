@@ -194,4 +194,24 @@ class TicketingIT extends AbstractIntegrationTest {
                         "lignes", List.of(Map.of("eventTicketId", tId, "quantite", 1))))
                 .when().post("/api/ticket-orders").then().statusCode(201);
     }
+
+    @Test
+    void formulaire_requis_is_settable_when_free_but_forced_true_when_paid() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("form-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+        String eventId = publishedEvent(orga, admin)[0];
+
+        // free + no form
+        as(orga).body(Map.of("nom", "Entrée libre", "prixMontant", 0,
+                        "portee", "EVENEMENT", "quantiteTotale", 100, "formulaireRequis", false))
+                .when().post("/api/events/" + eventId + "/tickets")
+                .then().statusCode(201).body("formulaireRequis", equalTo(false));
+
+        // paid: formulaireRequis is forced true even if the request says false
+        as(orga).body(Map.of("nom", "VIP", "prixMontant", 5000,
+                        "portee", "EVENEMENT", "quantiteTotale", 10, "formulaireRequis", false))
+                .when().post("/api/events/" + eventId + "/tickets")
+                .then().statusCode(201).body("formulaireRequis", equalTo(true));
+    }
 }

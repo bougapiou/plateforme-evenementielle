@@ -115,6 +115,7 @@ class _TicketSheetState extends ConsumerState<_TicketSheet> {
   final _limite = TextEditingController(text: '10');
   String _portee = 'EVENEMENT';
   bool _actif = true;
+  bool _formulaireRequis = true;
   bool _saving = false;
   List<Activity> _activities = const [];
   final Set<String> _activityIds = {};
@@ -131,6 +132,7 @@ class _TicketSheetState extends ConsumerState<_TicketSheet> {
       _limite.text = t.limiteParUtilisateur.toString();
       _portee = t.portee;
       _actif = t.actif;
+      _formulaireRequis = t.formulaireRequis;
       _activityIds.addAll(t.activiteIds);
     }
     ref
@@ -167,6 +169,7 @@ class _TicketSheetState extends ConsumerState<_TicketSheet> {
       'quantiteTotale': int.tryParse(_quantite.text.trim()) ?? 1,
       'limiteParUtilisateur': int.tryParse(_limite.text.trim()) ?? 1,
       'actif': _actif,
+      'formulaireRequis': _formulaireRequis,
       if (_portee == 'ACTIVITE') 'activityIds': _activityIds.toList(),
     };
     try {
@@ -208,6 +211,7 @@ class _TicketSheetState extends ConsumerState<_TicketSheet> {
                   controller: _prix,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'Prix (FCFA)'),
+                  onChanged: (_) => setState(() {}),
                 ),
               ),
               const SizedBox(width: 10),
@@ -263,6 +267,18 @@ class _TicketSheetState extends ConsumerState<_TicketSheet> {
               value: _actif,
               onChanged: (v) => setState(() => _actif = v),
             ),
+            if ((num.tryParse(_prix.text.trim()) ?? 0) == 0)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Demander un formulaire pour obtenir ce billet'),
+                subtitle: _formulaireRequis
+                    ? null
+                    : const Text(
+                        'Sans formulaire : juste le téléphone suffit (rien du '
+                        'tout si déjà connecté).'),
+                value: _formulaireRequis,
+                onChanged: (v) => setState(() => _formulaireRequis = v),
+              ),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: _saving ? null : _save,

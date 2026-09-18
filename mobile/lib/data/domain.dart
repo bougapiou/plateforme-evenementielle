@@ -419,6 +419,7 @@ class EventTicketType {
   final int limiteParUtilisateur;
   final bool actif;
   final bool enVente;
+  final bool formulaireRequis;
   final List<String> activites;
   final List<String> activiteIds;
 
@@ -435,6 +436,7 @@ class EventTicketType {
     required this.limiteParUtilisateur,
     this.actif = true,
     required this.enVente,
+    this.formulaireRequis = true,
     this.activites = const [],
     this.activiteIds = const [],
   });
@@ -458,6 +460,7 @@ class EventTicketType {
       limiteParUtilisateur: j['limiteParUtilisateur'] as int? ?? 0,
       actif: j['actif'] as bool? ?? true,
       enVente: j['enVente'] as bool? ?? false,
+      formulaireRequis: j['formulaireRequis'] as bool? ?? true,
       activites: acts
           .map((a) => a['titre'] as String? ?? '')
           .where((s) => s.isNotEmpty)

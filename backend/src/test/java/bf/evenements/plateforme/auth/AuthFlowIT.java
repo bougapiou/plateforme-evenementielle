@@ -285,4 +285,32 @@ class AuthFlowIT extends AbstractIntegrationTest {
                 .then().statusCode(200)
                 .body("content", notNullValue());
     }
+
+    @Test
+    void guest_quick_session_needs_only_a_phone_and_reuses_the_same_account() {
+        String phone = "+226 70" + (System.nanoTime() % 1_000_000);
+
+        var first = given().contentType(ContentType.JSON)
+                .body(Map.of("phone", phone))
+                .when().post("/api/auth/guest-quick")
+                .then().statusCode(200)
+                .body("accessToken", notNullValue())
+                .body("user.guest", equalTo(true))
+                .extract().response();
+        String userId = first.path("user.id");
+
+        // scanning again with the same phone returns the same guest account
+        var second = given().contentType(ContentType.JSON)
+                .body(Map.of("phone", phone))
+                .when().post("/api/auth/guest-quick")
+                .then().statusCode(200)
+                .extract().response();
+        assertThat(second.path("user.id").toString()).isEqualTo(userId);
+
+        // an invalid phone is rejected
+        given().contentType(ContentType.JSON)
+                .body(Map.of("phone", "abc"))
+                .when().post("/api/auth/guest-quick")
+                .then().statusCode(400).body("code", equalTo("VALIDATION_ERROR"));
+    }
 }

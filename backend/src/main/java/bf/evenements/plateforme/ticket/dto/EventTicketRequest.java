@@ -23,6 +23,8 @@ public record EventTicketRequest(
         Instant venteFin,
         Boolean actif,
         Integer ordre,
+        /** Free categories only: false skips the identity form on claim. Ignored if paid. */
+        Boolean formulaireRequis,
         /** Required when {@code portee == ACTIVITE}: activities this ticket grants access to. */
         Set<UUID> activityIds) {
 }

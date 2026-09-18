@@ -74,6 +74,14 @@ public class EventTicket extends BaseEntity {
     @Column(nullable = false)
     private boolean actif = true;
 
+    /**
+     * Free categories only: when false, claiming a ticket needs no name/e-mail
+     * form — just a phone number (or nothing, if the visitor already has a
+     * session). Ignored for paid categories, which always require an identity.
+     */
+    @Column(name = "formulaire_requis", nullable = false)
+    private boolean formulaireRequis = true;
+
     @Column(nullable = false)
     private int ordre = 0;
 

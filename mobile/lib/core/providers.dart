@@ -137,6 +137,12 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
     state = AsyncValue.data(res.user);
   }
 
+  /// Same as [guestSession], but for a "no form" free ticket: phone only.
+  Future<void> guestSessionQuick(String phone) async {
+    final res = await _repo.guestSessionQuick(phone);
+    state = AsyncValue.data(res.user);
+  }
+
   /// Turns the current guest session into a full account.
   Future<void> completeRegistration({
     required String password,

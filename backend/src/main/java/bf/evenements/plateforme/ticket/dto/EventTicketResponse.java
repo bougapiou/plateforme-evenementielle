@@ -27,6 +27,7 @@ public record EventTicketResponse(
         boolean actif,
         boolean enVente,
         int ordre,
+        boolean formulaireRequis,
         List<Map<String, String>> activites) {
 
     public static EventTicketResponse from(EventTicket t) {
@@ -39,7 +40,7 @@ public record EventTicketResponse(
                 t.getPrixMontant(), t.getDevise(), t.price().formatted(), t.getPortee(),
                 t.getQuantiteTotale(), t.getQuantiteVendue(), t.getQuantiteReservee(),
                 t.quantiteRestante(), t.getLimiteParUtilisateur(), t.getVenteDebut(), t.getVenteFin(),
-                t.isActif(), t.onSale(Instant.now()), t.getOrdre(), acts);
+                t.isActif(), t.onSale(Instant.now()), t.getOrdre(), t.isFormulaireRequis(), acts);
     }
 
     /** Reduced view for the public site (no internal reservation counters). */
@@ -49,6 +50,6 @@ public record EventTicketResponse(
                 full.prixMontant(), full.devise(), full.prixFormatte(), full.portee(),
                 full.quantiteTotale(), 0, 0, full.quantiteRestante(), full.limiteParUtilisateur(),
                 full.venteDebut(), full.venteFin(), full.actif(), full.enVente(), full.ordre(),
-                full.activites());
+                full.formulaireRequis(), full.activites());
     }
 }
