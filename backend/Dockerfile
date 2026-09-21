@@ -8,7 +8,9 @@ RUN mvn -q -B clean package -DskipTests
 
 # --- runtime ---
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S plateforme && adduser -S plateforme -G plateforme
+# UID/GID fixes : le dossier de stockage monté depuis l'hôte doit leur appartenir
+# (chown -R 10001:10001, voir infra/README-HEBERGEMENT.md).
+RUN addgroup -S -g 10001 plateforme && adduser -S -u 10001 -G plateforme plateforme
 WORKDIR /app
 COPY --from=build /app/target/plateforme.jar app.jar
 RUN mkdir -p /app/storage && chown -R plateforme:plateforme /app

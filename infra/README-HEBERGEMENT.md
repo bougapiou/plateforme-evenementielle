@@ -57,6 +57,20 @@ Ouvrir `.env.prod` et renseigner :
 **Toutes** les variables de la liste ci-dessus doivent avoir une valeur : une
 variable laissée vide écrase la valeur par défaut avec une chaîne vide.
 
+### 1 bis. Préparer le dossier des fichiers téléversés
+
+Le backend s'exécute dans le conteneur sous l'utilisateur non-root `10001`.
+Le dossier de stockage sur le serveur doit lui appartenir, sinon les envois
+d'images et la génération des billets PDF échouent (erreur d'écriture) :
+
+```bash
+mkdir -p data/storage            # ou le dossier choisi via STORAGE_HOST_PATH
+chown -R 10001:10001 data/storage
+```
+
+Pour reprendre des fichiers existants, copier leur contenu dans ce dossier
+avant le `chown`.
+
 ### 2. Choisir le mode réseau
 
 **Mode 1 — le domaine est servi en HTTP par une passerelle qui gère déjà le
