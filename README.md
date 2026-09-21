@@ -23,7 +23,7 @@ tableaux de bord et statistiques.
 backend/    API REST (bf.evenements.plateforme, package-by-feature)
 frontend/   Application Angular (site public + 4 espaces)
 mobile/     Application Flutter
-infra/      docker-compose (postgres, mailpit, minio)
+infra/      docker-compose de dev (postgres, mailpit, minio) + hébergement Docker : infra/README-HEBERGEMENT.md
 ```
 
 ## Démarrage (3 terminaux)

@@ -1,37 +1,75 @@
-# Production hosting: backend + frontend, on the App VM. The database stays
-# native on its own VM (see docs/DEPLOIEMENT — DB_URL points to it), it is
-# not containerized here.
+# Hébergement de production : PostgreSQL (optionnel) + backend + frontend.
+# Mode d'emploi complet : infra/README-HEBERGEMENT.md
 #
-# Usage: from infra/,
-#   STORAGE_HOST_PATH=/opt/plateforme/storage \
-#     docker compose -f docker-compose.prod.yml up -d --build
-# STORAGE_HOST_PATH is a shell variable read by `docker compose` itself
-# (unrelated to .env.prod, which only supplies the container's own
-# environment) — point it at an existing storage folder to keep previously
-# uploaded files, or omit it to default to ./data/storage.
-# Needs a `.env.prod` file next to this one (see backend/.env.prod.example).
+# Depuis ce dossier (infra/), après avoir créé .env.prod à partir de
+# .env.prod.example :
+#
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml --profile db up -d --build
+#
+# --profile db  : démarre aussi PostgreSQL dans Docker. Le retirer si la base
+#                 est hébergée ailleurs (DB_URL dans .env.prod pointe alors
+#                 vers elle).
+# --env-file    : sert à la fois aux ${VARIABLES} de ce fichier et, via
+#                 env_file ci-dessous, à l'environnement du backend.
+name: plateforme
+
 services:
+  postgres:
+    profiles: ["db"]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: plateforme
+      POSTGRES_USER: ${DB_USERNAME:-plateforme}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD doit être défini dans .env.prod}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d plateforme"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ../backend
-    container_name: plateforme-backend
     restart: unless-stopped
     env_file:
       - .env.prod
+    environment:
+      # Pas de serveur SMTP par défaut : sans ceci, /actuator/health répond
+      # 503 en permanence à cause du contrôle mail. À retirer une fois
+      # MAIL_HOST configuré vers un vrai serveur.
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
     expose:
       - "8080"
     volumes:
-      # Bind-mounted (not a named volume) so it survives independently of
-      # the container and can be pointed at an existing storage directory
-      # from a prior deployment, preserving already-uploaded files.
+      # Fichiers téléversés (images, PDF de billets). Bind mount plutôt que
+      # volume nommé : facile à sauvegarder et à réutiliser d'un
+      # déploiement à l'autre.
       - ${STORAGE_HOST_PATH:-./data/storage}:/app/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/api/public/events || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
 
   frontend:
     build:
       context: ../frontend
-    container_name: plateforme-frontend
     restart: unless-stopped
-    ports:
-      - "80:80"
     depends_on:
       - backend
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      # Par défaut : HTTP seul (../frontend/nginx.conf, aussi intégré à l'image).
+      # Pour HTTPS : NGINX_CONF=../frontend/nginx.tls.conf dans .env.prod et
+      # certificats dans CERTS_DIR (fullchain.pem + privkey.pem).
+      - ${NGINX_CONF:-../frontend/nginx.conf}:/etc/nginx/conf.d/default.conf:ro
+      - ${CERTS_DIR:-./certs}:/etc/nginx/certs:ro
+
+volumes:
+  pgdata:
