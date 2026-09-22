@@ -320,6 +320,27 @@ public class CheckinService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Événement", eventId));
         requireControl(event, currentUser.requireId());
+        return buildAttendanceView(event);
+    }
+
+    /**
+     * Same view as {@link #attendance}, but for anyone — no login, no control
+     * permission. Only reachable for events already visible on the public site
+     * (see {@link bf.evenements.plateforme.event.EventStatus#isPubliclyVisible()}),
+     * so a draft or unvalidated event's live counts stay private. Meant for a
+     * dedicated link (e.g. a screen at the venue entrance), one event at a time —
+     * there is no public listing of "controllable" events.
+     */
+    @Transactional(readOnly = true)
+    public AttendanceView publicAttendance(String slug) {
+        Event event = eventRepository.findBySlug(slug)
+                .filter(e -> e.getStatut().isPubliclyVisible())
+                .orElseThrow(() -> new ResourceNotFoundException("Événement introuvable : " + slug));
+        return buildAttendanceView(event);
+    }
+
+    private AttendanceView buildAttendanceView(Event event) {
+        UUID eventId = event.getId();
         List<ActivityFlow> activites = activityRepository
                 .findByEventIdOrderByDateDebutAscOrdreAsc(eventId).stream()
                 .map(a -> new ActivityFlow(a.getId(), a.getTitre(), a.getDateDebut(),

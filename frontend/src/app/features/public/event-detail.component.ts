@@ -41,6 +41,10 @@ import { ApiError } from '../../core/models';
         <h1 class="mt-2 text-2xl font-extrabold text-slate-900">{{ e.nom }}</h1>
         <p class="mt-1 text-slate-500">{{ range(e) }} · {{ e.lieu || '' }}{{ e.ville ? ', ' + e.ville : '' }}</p>
         <p class="text-sm text-slate-400">Organisé par {{ e.organizerNom }}</p>
+        <a [routerLink]="['/evenements', slug(), 'flux']"
+           class="mt-1 inline-block text-sm text-brand-700 hover:underline">
+          Présence en direct →
+        </a>
       </div>
 
       @if (e.descriptionDetaillee || e.descriptionCourte) {

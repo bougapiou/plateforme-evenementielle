@@ -54,9 +54,6 @@ import { IconComponent } from '../shared/icon.component';
               <a routerLink="/connexion" class="hover:text-brand-700">Connexion</a>
               <a routerLink="/inscription" class="hover:text-brand-700">Créer un compte</a>
             }
-            <!-- Visible même déconnecté : redirige vers la connexion puis revient
-                 ici (voir authGuard), pratique pour le personnel de contrôle. -->
-            <a routerLink="/tableau-de-bord/admin/flux" class="hover:text-brand-700">Présence / Flux</a>
           </nav>
         </div>
       </footer>

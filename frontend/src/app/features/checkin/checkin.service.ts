@@ -102,6 +102,10 @@ export class CheckinService extends ApiBase {
   attendance(eventId: string): Observable<AttendanceView> {
     return this.get<AttendanceView>(`/events/${eventId}/attendance`);
   }
+  /** Same, but public — no login, one event at a time, found by its slug. */
+  publicAttendance(slug: string): Observable<AttendanceView> {
+    return this.get<AttendanceView>(`/public/events/${slug}/attendance`);
+  }
   /** Full per-ticket entry/exit/re-entry history for the event or one activity. */
   ticketDetails(eventId: string, activityId?: string): Observable<TicketFlowView[]> {
     return this.get<TicketFlowView[]>(`/events/${eventId}/checkin-details`, { activityId });

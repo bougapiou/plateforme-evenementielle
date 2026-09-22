@@ -1,5 +1,6 @@
 package bf.evenements.plateforme.event;
 
+import bf.evenements.plateforme.checkin.CheckinService;
 import bf.evenements.plateforme.common.web.PageResponse;
 import bf.evenements.plateforme.event.dto.EventCategoryResponse;
 import bf.evenements.plateforme.event.dto.EventPublicResponse;
@@ -28,6 +29,7 @@ public class PublicEventController {
 
     private final PublicEventService publicEventService;
     private final EventCategoryService categoryService;
+    private final CheckinService checkinService;
 
     @GetMapping("/events")
     @Operation(summary = "Rechercher les événements publiés (filtres : catégorie, ville, dates)")
@@ -52,5 +54,11 @@ public class PublicEventController {
     @Operation(summary = "Catégories d'événements actives")
     public List<EventCategoryResponse> categories() {
         return categoryService.listActive();
+    }
+
+    @GetMapping("/events/{slug}/attendance")
+    @Operation(summary = "Présence temps réel d'un événement — public, sans connexion")
+    public CheckinService.AttendanceView attendance(@PathVariable String slug) {
+        return checkinService.publicAttendance(slug);
     }
 }

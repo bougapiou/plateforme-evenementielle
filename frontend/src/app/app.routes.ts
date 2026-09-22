@@ -22,6 +22,16 @@ export const routes: Routes = [
         title: 'Événement',
       },
       {
+        // Présence en direct, sans connexion — un lien dédié par événement
+        // (pas de sélecteur), pour un écran à l'entrée ou un partage public.
+        path: 'evenements/:slug/flux',
+        loadComponent: () =>
+          import('./features/public/public-attendance.component').then(
+            (m) => m.PublicAttendanceComponent,
+          ),
+        title: 'Présence en direct',
+      },
+      {
         path: 'connexion',
         loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent),
         title: 'Connexion',
