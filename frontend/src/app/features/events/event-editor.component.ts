@@ -563,6 +563,8 @@ type Tab =
           </div>
         }
       }
+    } @else if (loadError()) {
+      <p class="mt-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ loadError() }}</p>
     } @else {
       <p class="mt-6 text-sm text-slate-500">Chargement…</p>
     }
@@ -581,6 +583,7 @@ export class EventEditorComponent implements OnDestroy {
 
   id = input.required<string>();
   event = signal<EventDetail | null>(null);
+  loadError = signal<string | null>(null);
   qrUrl = signal<SafeUrl | null>(null);
   private qrObjectUrl?: string;
   categories = signal<EventCategory[]>([]);
@@ -749,7 +752,9 @@ export class EventEditorComponent implements OnDestroy {
       },
       error: () => this.qrUrl.set(null),
     });
-    this.service.byId(id).subscribe((e) => {
+    this.loadError.set(null);
+    this.service.byId(id).subscribe({
+      next: (e) => {
       this.event.set(e);
       this.form.reset({
         nom: e.nom, sigle: e.sigle ?? '', categoryId: e.categoryId ?? '',
@@ -766,6 +771,9 @@ export class EventEditorComponent implements OnDestroy {
       });
       const editable = ['BROUILLON', 'REFUSE', 'VALIDE'].includes(e.statut) || this.isAdmin();
       editable ? this.form.enable() : this.form.disable();
+      },
+      error: (err: HttpErrorResponse) =>
+        this.loadError.set((err.error as ApiError)?.message ?? 'Impossible de charger cet événement.'),
     });
     this.service.activities(id).subscribe((a) => this.activities.set(a));
     this.service.speakers(id).subscribe((s) => this.speakers.set(s));
