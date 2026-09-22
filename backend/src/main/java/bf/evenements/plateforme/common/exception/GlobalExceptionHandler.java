@@ -9,6 +9,8 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationTrustResolver;
+import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
@@ -23,6 +25,7 @@ public class GlobalExceptionHandler {
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final AuthenticationTrustResolver TRUST_RESOLVER = new AuthenticationTrustResolverImpl();
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiError> handleApi(ApiException ex, HttpServletRequest request) {
@@ -54,6 +57,19 @@ public class GlobalExceptionHandler {
         log.warn("Accès refusé sur {} pour {} : {}",
                 request != null ? request.getRequestURI() : "?",
                 auth != null ? auth.getName() : "anonyme", ex.getMessage());
+
+        // A missing/expired/invalid bearer token leaves the request "anonyme"
+        // (JwtAuthenticationFilter clears the context rather than rejecting
+        // outright, so that public endpoints keep working). @PreAuthorize then
+        // fails with this same AccessDeniedException regardless of the reason —
+        // but for an anonymous caller the real problem is "not logged in", not
+        // "logged in without the right". Answering 401 here (instead of 403)
+        // lets the frontend's interceptor refresh the token and retry
+        // transparently; it only listens for 401.
+        if (auth == null || TRUST_RESOLVER.isAnonymous(auth)) {
+            return build(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED",
+                    "Authentification requise ou invalide.", request, List.of());
+        }
         String message = StringUtils.hasText(ex.getMessage())
                 ? ex.getMessage() : "Vous n'avez pas les droits pour cette action.";
         return build(HttpStatus.FORBIDDEN, "ACCESS_DENIED", message, request, List.of());
