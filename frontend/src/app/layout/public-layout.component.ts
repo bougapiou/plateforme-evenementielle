@@ -37,9 +37,6 @@ import { IconComponent } from '../shared/icon.component';
             } @else if (auth.isAuthenticated()) {
               <a routerLink="/tableau-de-bord" class="btn-ghost">Tableau de bord</a>
               <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
-            } @else {
-              <a routerLink="/connexion" class="btn-ghost">Connexion</a>
-              <a routerLink="/inscription" class="btn-primary">Créer un compte</a>
             }
           </nav>
         </div>
@@ -50,8 +47,17 @@ import { IconComponent } from '../shared/icon.component';
       </main>
 
       <footer class="border-t border-slate-200 bg-white">
-        <div class="mx-auto max-w-6xl px-4 py-6 text-sm text-slate-500">
-          © {{ year }} — Plateforme Nationale de Gestion des Événements · Burkina Faso
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-slate-500">
+          <span>© {{ year }} — Plateforme Nationale de Gestion des Événements · Burkina Faso</span>
+          <nav class="flex flex-wrap items-center gap-4">
+            @if (!auth.isAuthenticated()) {
+              <a routerLink="/connexion" class="hover:text-brand-700">Connexion</a>
+              <a routerLink="/inscription" class="hover:text-brand-700">Créer un compte</a>
+            }
+            <!-- Visible même déconnecté : redirige vers la connexion puis revient
+                 ici (voir authGuard), pratique pour le personnel de contrôle. -->
+            <a routerLink="/tableau-de-bord/admin/flux" class="hover:text-brand-700">Présence / Flux</a>
+          </nav>
         </div>
       </footer>
     </div>
