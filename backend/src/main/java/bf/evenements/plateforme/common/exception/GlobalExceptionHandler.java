@@ -14,6 +14,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -49,6 +50,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         return build(HttpStatus.FORBIDDEN, "ACCESS_DENIED",
                 "Vous n'avez pas les droits pour cette action.", request, List.of());
+    }
+
+    /**
+     * Missing file under /files/** (or any other static resource) — a normal
+     * 404, not a server error. Without this, the catch-all below turned every
+     * missing upload into a 500, masking the real problem.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND",
+                "Fichier introuvable.", request, List.of());
     }
 
     @ExceptionHandler(Exception.class)
