@@ -231,6 +231,16 @@ export const routes: Routes = [
     title: 'Présence — écran',
   },
   {
+    // Même écran plein format, mais public (sans connexion) — pour un
+    // événement déjà visible sur le site (voir /api/public/events/{slug}/attendance).
+    path: 'presence-publique/:slug',
+    loadComponent: () =>
+      import('./features/public/public-presence-kiosk.component').then(
+        (m) => m.PublicPresenceKioskComponent,
+      ),
+    title: 'Présence — écran',
+  },
+  {
     path: '**',
     loadComponent: () => import('./pages/not-found.component').then((m) => m.NotFoundComponent),
     title: 'Page introuvable',

@@ -1,4 +1,5 @@
 import { Component, OnDestroy, effect, inject, input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { AttendanceView, CheckinService } from '../checkin/checkin.service';
 import { IconComponent } from '../../shared/icon.component';
@@ -16,14 +17,19 @@ const REFRESH_MS = 8000;
 @Component({
   selector: 'app-public-attendance',
   standalone: true,
-  imports: [IconComponent],
+  imports: [RouterLink, IconComponent],
   template: `
     @if (data(); as d) {
       <div class="flex items-center justify-between">
         <h1 class="text-xl font-bold text-slate-800">{{ d.eventNom }}</h1>
-        <span class="text-xs text-slate-400">Mise à jour automatique toutes les {{ refreshSeconds }} s</span>
+        <a [routerLink]="['/presence-publique', slug()]" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1 text-sm text-brand-700 hover:underline">
+          <app-icon name="expand" class="h-4 w-4" /> Plein écran
+        </a>
       </div>
-      <p class="mt-1 text-sm text-slate-500">Présence en direct</p>
+      <p class="mt-1 text-sm text-slate-500">
+        Présence en direct · mise à jour automatique toutes les {{ refreshSeconds }} s
+      </p>
 
       <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div class="rounded-lg bg-green-50 p-3 text-center">
