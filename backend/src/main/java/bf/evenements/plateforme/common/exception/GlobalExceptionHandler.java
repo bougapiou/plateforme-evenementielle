@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -48,8 +50,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        return build(HttpStatus.FORBIDDEN, "ACCESS_DENIED",
-                "Vous n'avez pas les droits pour cette action.", request, List.of());
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        log.warn("Accès refusé sur {} pour {} : {}",
+                request != null ? request.getRequestURI() : "?",
+                auth != null ? auth.getName() : "anonyme", ex.getMessage());
+        String message = StringUtils.hasText(ex.getMessage())
+                ? ex.getMessage() : "Vous n'avez pas les droits pour cette action.";
+        return build(HttpStatus.FORBIDDEN, "ACCESS_DENIED", message, request, List.of());
     }
 
     /**
