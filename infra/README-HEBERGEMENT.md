@@ -190,3 +190,4 @@ démarrage du backend. Les données existantes sont conservées ; une mise à jo
 | Erreur CORS dans le navigateur | `CORS_ORIGINS` ne correspond pas exactement à l'URL du site (schéma + domaine, sans `/` final) |
 | Images cassées | `STORAGE_LOCAL_URL` incorrect (doit finir par `/files`) |
 | `docker compose` : `DB_PASSWORD doit être défini` | Oubli de `--env-file .env.prod` ou variable vide |
+| `ERR_TOO_MANY_REDIRECTS` dans le navigateur | Mode 2 actif (`NGINX_CONF=../frontend/nginx.tls.conf`) alors que la passerelle devant vous relaie en HTTP simple (elle gère déjà le HTTPS) : le conteneur redirige vers HTTPS, la passerelle redemande en HTTP, boucle infinie. Commenter cette ligne dans `.env.prod` pour repasser en Mode 1, puis `… up -d` |
