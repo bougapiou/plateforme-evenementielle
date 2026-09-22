@@ -8,14 +8,16 @@ import { IconComponent } from '../shared/icon.component';
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent],
   template: `
-    <div class="flex min-h-full flex-col">
+    <div class="flex min-h-full flex-col overflow-x-hidden">
       <header class="border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <a routerLink="/" class="flex items-center">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <a routerLink="/" class="flex shrink-0 items-center">
             <img src="assets/logo.png" alt="Plateforme Nationale des Événements"
                  class="h-10 w-auto" />
           </a>
-          <nav class="flex items-center gap-1 text-sm font-medium">
+          <!-- overflow-x-auto : sur un écran étroit, cette barre défile elle-même
+               horizontalement au lieu de forcer toute la page à déborder. -->
+          <nav class="flex min-w-0 items-center gap-1 overflow-x-auto whitespace-nowrap text-sm font-medium">
             <a routerLink="/" routerLinkActive="text-brand-700"
                [routerLinkActiveOptions]="{ exact: true }" class="btn-ghost">Événements</a>
             <a routerLink="/scanner" routerLinkActive="text-brand-700"
