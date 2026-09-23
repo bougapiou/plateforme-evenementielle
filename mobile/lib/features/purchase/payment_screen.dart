@@ -30,17 +30,13 @@ class PaymentScreen extends ConsumerStatefulWidget {
   ConsumerState<PaymentScreen> createState() => _PaymentScreenState();
 }
 
-const _methods = <String, String>{
-  'MOBILE_MONEY_ORANGE': 'Orange Money',
-  'MOBILE_MONEY_MOOV': 'Moov Money',
-  'MOBILE_MONEY_TELECEL': 'Telecel Money',
-  'FASO_ARZEKA': 'FasoArzeka',
-  'CARTE_BANCAIRE': 'Carte bancaire',
-};
+/// FasoArzeka gère lui-même le choix du moyen (Mobile Money, carte,
+/// virement, portemonnaie Arzeka) sur sa propre page hébergée — proposer
+/// un second choix ici avant d'y arriver serait redondant.
+const _method = 'FASO_ARZEKA';
 
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   late Future<_Target> _future;
-  String _method = 'MOBILE_MONEY_ORANGE';
   bool _processing = false;
   String? _error;
 
@@ -291,19 +287,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Moyen de paiement',
-                  style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 4),
-              ..._methods.entries.map((e) => RadioListTile<String>(
-                    value: e.key,
-                    groupValue: _method,
-                    onChanged: _processing
-                        ? null
-                        : (v) => setState(() => _method = v!),
-                    title: Text(e.value),
-                    contentPadding: EdgeInsets.zero,
-                  )),
-              const SizedBox(height: 8),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
