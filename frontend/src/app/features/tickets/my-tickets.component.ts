@@ -16,7 +16,11 @@ import { formatDate, formatDateTime } from '../../shared/format';
 
     <div class="mt-4 grid gap-3 sm:grid-cols-2">
       @for (t of tickets(); track t.id) {
-        <div class="card p-4">
+        <div class="card overflow-hidden p-0">
+          @if (t.eventCoverUrl) {
+            <img [src]="t.eventCoverUrl" alt="" class="h-28 w-full object-cover" />
+          }
+          <div class="p-4">
           <div class="flex items-start justify-between">
             <div>
               <p class="font-semibold text-slate-800">{{ t.eventNom }}</p>
@@ -25,6 +29,7 @@ import { formatDate, formatDateTime } from '../../shared/format';
             </div>
             <app-status-badge [value]="t.statut" />
           </div>
+          <!-- Le QR reste toujours visible, quelle que soit la présence d'une image de couverture. -->
           <div class="mt-3 flex items-center gap-4">
             @if (qr()[t.id]; as src) {
               <img [src]="src" alt="QR code" class="h-28 w-28 rounded border border-slate-200" />
@@ -36,6 +41,7 @@ import { formatDate, formatDateTime } from '../../shared/format';
             <button class="btn-ghost border border-slate-300" (click)="downloadPdf(t)">
               Télécharger le PDF
             </button>
+          </div>
           </div>
         </div>
       } @empty {

@@ -12,6 +12,7 @@ public record TicketResponse(
         String eventNom,
         Instant eventDateDebut,
         String lieu,
+        String eventCoverUrl,
         String categorieNom,
         String participantNom,
         TicketStatus statut,
@@ -22,7 +23,7 @@ public record TicketResponse(
     public static TicketResponse from(Ticket t) {
         return new TicketResponse(
                 t.getId(), t.getNumero(), t.getEvent().getId(), t.getEvent().getNom(),
-                t.getEvent().getDateDebut(), t.getEvent().getLieu(),
+                t.getEvent().getDateDebut(), t.getEvent().getLieu(), t.getEvent().getCoverUrl(),
                 t.getEventTicket().getNom(), t.getParticipantNom(), t.getStatut(),
                 t.getOrder().getReference(),
                 "/api/tickets/" + t.getId() + "/qr.png",

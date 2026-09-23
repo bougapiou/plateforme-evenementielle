@@ -227,6 +227,7 @@ export interface MyTicket {
   eventNom: string;
   eventDateDebut: string;
   lieu?: string;
+  eventCoverUrl?: string;
   categorieNom: string;
   participantNom?: string;
   statut: 'EMISE' | 'UTILISE' | 'ANNULE';

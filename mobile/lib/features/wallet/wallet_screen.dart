@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
+import '../../core/media.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -65,9 +66,18 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
                     onTap: () => context.push('/billets/${t.id}'),
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.qr_code_2),
-                    ),
+                    leading: t.eventCoverUrl != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: RemoteImage(
+                              url: t.eventCoverUrl,
+                              width: 44,
+                              height: 44,
+                            ),
+                          )
+                        : const CircleAvatar(
+                            child: Icon(Icons.qr_code_2),
+                          ),
                     title: Text(t.eventNom,
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                     subtitle: Text([

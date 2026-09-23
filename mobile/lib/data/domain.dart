@@ -607,6 +607,7 @@ class Ticket {
   final String eventNom;
   final DateTime? eventDateDebut;
   final String? lieu;
+  final String? eventCoverUrl;
   final String? categorieNom;
   final String? participantNom;
   final String statut; // EMISE / UTILISE / ANNULE
@@ -621,6 +622,7 @@ class Ticket {
     required this.eventNom,
     this.eventDateDebut,
     this.lieu,
+    this.eventCoverUrl,
     this.categorieNom,
     this.participantNom,
     required this.statut,
@@ -639,6 +641,7 @@ class Ticket {
         eventNom: j['eventNom'] as String? ?? '',
         eventDateDebut: parseDate(j['eventDateDebut']),
         lieu: j['lieu'] as String?,
+        eventCoverUrl: j['eventCoverUrl'] as String?,
         categorieNom: j['categorieNom'] as String?,
         participantNom: j['participantNom'] as String?,
         statut: j['statut'] as String? ?? '',
