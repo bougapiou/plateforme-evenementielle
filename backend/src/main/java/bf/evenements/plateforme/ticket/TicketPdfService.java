@@ -1,5 +1,6 @@
 package bf.evenements.plateforme.ticket;
 
+import bf.evenements.plateforme.common.storage.FileStorageService;
 import bf.evenements.plateforme.common.web.QrImages;
 import java.io.ByteArrayOutputStream;
 import java.time.ZoneId;
@@ -15,7 +16,11 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.stereotype.Service;
 
-/** Renders an e-ticket as a one-page PDF with its QR code. */
+/**
+ * Renders an e-ticket as a one-page PDF with its QR code. The event's cover
+ * image, when available, is drawn as a banner above the text — the QR stays
+ * at a fixed position near the bottom and is never covered by it.
+ */
 @Service
 @RequiredArgsConstructor
 public class TicketPdfService {
@@ -23,6 +28,8 @@ public class TicketPdfService {
     private static final DateTimeFormatter DATE = DateTimeFormatter
             .ofPattern("EEEE d MMMM yyyy 'à' HH'h'mm", Locale.FRENCH)
             .withZone(ZoneId.of("Africa/Ouagadougou"));
+
+    private final FileStorageService fileStorage;
 
     public byte[] render(Ticket ticket, String qrToken) {
         try (PDDocument doc = new PDDocument()) {
@@ -36,9 +43,16 @@ public class TicketPdfService {
             PDImageXObject qrImage = PDImageXObject.createFromByteArray(doc, qr, "qr");
 
             var event = ticket.getEvent();
+            PDImageXObject coverImage = loadCover(doc, event.getCoverUrl());
+
             try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
                 float w = PDRectangle.A5.getWidth();
-                float top = PDRectangle.A5.getHeight() - 40;
+                float h = PDRectangle.A5.getHeight();
+                float bannerHeight = coverImage != null ? 130f : 0f;
+                if (coverImage != null) {
+                    drawCoverBanner(cs, coverImage, w, h, bannerHeight);
+                }
+                float top = h - bannerHeight - 40;
 
                 line(cs, bold, 18, 40, top, "BILLET ÉLECTRONIQUE");
                 line(cs, bold, 15, 40, top - 34, safe(event.getNom()));
@@ -63,6 +77,37 @@ public class TicketPdfService {
         } catch (Exception e) {
             throw new IllegalStateException("Génération du billet PDF impossible", e);
         }
+    }
+
+    /** Best-effort: a missing/unreadable/corrupt cover image never breaks the PDF. */
+    private PDImageXObject loadCover(PDDocument doc, String coverUrl) {
+        byte[] bytes = fileStorage.readIfLocal(coverUrl);
+        if (bytes == null) {
+            return null;
+        }
+        try {
+            return PDImageXObject.createFromByteArray(doc, bytes, "cover");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Crops the cover image to fill the banner width/height (like CSS object-fit: cover). */
+    private static void drawCoverBanner(PDPageContentStream cs, PDImageXObject cover,
+                                         float pageWidth, float pageHeight, float bannerHeight)
+            throws java.io.IOException {
+        float bannerY = pageHeight - bannerHeight;
+        float scale = Math.max(pageWidth / cover.getWidth(), bannerHeight / cover.getHeight());
+        float drawW = cover.getWidth() * scale;
+        float drawH = cover.getHeight() * scale;
+        float x = (pageWidth - drawW) / 2;
+        float y = bannerY - (drawH - bannerHeight) / 2;
+
+        cs.saveGraphicsState();
+        cs.addRect(0, bannerY, pageWidth, bannerHeight);
+        cs.clip();
+        cs.drawImage(cover, x, y, drawW, drawH);
+        cs.restoreGraphicsState();
     }
 
     private static void line(PDPageContentStream cs, PDType1Font font, float sizePt, float x, float y,

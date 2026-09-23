@@ -110,4 +110,23 @@ public class FileStorageService {
     public Path basePath() {
         return basePath;
     }
+
+    /**
+     * Reads the bytes of a file previously stored here, given the public URL
+     * returned by {@link #store}/{@link #storeBytes}. Returns {@code null} if
+     * the URL is absent, points elsewhere, or the file can no longer be read
+     * (never throws — callers use this for best-effort, cosmetic embedding).
+     */
+    public byte[] readIfLocal(String url) {
+        if (url == null || !url.startsWith(baseUrl + "/")) {
+            return null;
+        }
+        try {
+            Path p = resolve(url.substring(baseUrl.length() + 1));
+            return Files.exists(p) ? Files.readAllBytes(p) : null;
+        } catch (Exception e) {
+            log.warn("Impossible de lire le fichier local pour {}", url, e);
+            return null;
+        }
+    }
 }
