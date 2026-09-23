@@ -13,7 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Lets a real POST stand in for PUT/PATCH/DELETE, via an
- * {@code X-HTTP-Method-Override} header. Added because a network appliance
+ * {@code X-App-Verb} header. Added because a network appliance
  * in front of production (ANPTIC's gateway) silently drops PUT/PATCH/DELETE
  * with a bare 403 before the request ever reaches this server — confirmed by
  * comparing an identical GET (reaches us, 401) against a PUT (never logged
@@ -26,7 +26,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class MethodOverrideFilter extends OncePerRequestFilter {
 
-    private static final String HEADER = "X-HTTP-Method-Override";
+    private static final String HEADER = "X-App-Verb";
     private static final Set<String> ALLOWED = Set.of("PUT", "PATCH", "DELETE");
 
     @Override

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
  * A network appliance in front of production blocks PUT/PATCH/DELETE outright
  * (confirmed: an identical GET reaches the app and gets 401, a PUT never
  * reaches it at all). {@link MethodOverrideFilter} lets a POST carrying
- * {@code X-HTTP-Method-Override} stand in for the real verb.
+ * {@code X-App-Verb} stand in for the real verb.
  */
 class MethodOverrideIT extends AbstractIntegrationTest {
 
@@ -53,7 +53,7 @@ class MethodOverrideIT extends AbstractIntegrationTest {
         // same URL — this is the path a client behind the blocking gateway
         // must use instead of a real PUT.
         update.put("nom", "Après (encore, via override)");
-        as(orga).header("X-HTTP-Method-Override", "PUT")
+        as(orga).header("X-App-Verb", "PUT")
                 .body(update).when().post("/api/events/" + eventId)
                 .then().statusCode(200)
                 .body("nom", equalTo("Après (encore, via override)"));
@@ -69,7 +69,7 @@ class MethodOverrideIT extends AbstractIntegrationTest {
         // Only PUT/PATCH/DELETE are recognised; anything else must not let a
         // POST masquerade as some other verb.
         as(TestAuth.adminToken())
-                .header("X-HTTP-Method-Override", "TRACE")
+                .header("X-App-Verb", "TRACE")
                 .when().post("/api/events/00000000-0000-0000-0000-000000000000")
                 .then().statusCode(405);
     }
@@ -92,7 +92,7 @@ class MethodOverrideIT extends AbstractIntegrationTest {
         String eventId = as(orga).body(create).when().post("/api/events")
                 .then().statusCode(201).extract().path("id");
 
-        as(orga).header("X-HTTP-Method-Override", "DELETE")
+        as(orga).header("X-App-Verb", "DELETE")
                 .when().post("/api/events/" + eventId)
                 .then().statusCode(204);
 
