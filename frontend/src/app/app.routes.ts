@@ -135,7 +135,7 @@ export const routes: Routes = [
         data: { permission: 'CHECKIN_SCAN' },
         loadComponent: () =>
           import('./features/checkin/scanner.component').then((m) => m.ScannerComponent),
-        title: "Contrôle à l'entrée",
+        title: "Contrôle à la porte",
       },
       {
         path: 'structures',

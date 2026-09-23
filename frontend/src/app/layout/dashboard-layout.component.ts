@@ -78,7 +78,7 @@ export class DashboardLayoutComponent {
   private readonly nav: NavItem[] = [
     { label: 'Vue d’ensemble', path: '/tableau-de-bord', icon: 'home', exact: true },
     { label: 'Mes événements', path: '/tableau-de-bord/evenements', icon: 'calendar', permission: 'EVENT_CREATE' },
-    { label: 'Contrôle à l’entrée', path: '/tableau-de-bord/controle', icon: 'scan', permission: 'CHECKIN_SCAN' },
+    { label: 'Contrôle à la porte', path: '/tableau-de-bord/controle', icon: 'scan', permission: 'CHECKIN_SCAN' },
     { label: 'Présence / Flux', path: '/tableau-de-bord/presence', icon: 'present', permission: 'CHECKIN_SCAN', exact: true },
     { label: 'Détail des billets', path: '/tableau-de-bord/presence/billets', icon: 'qr', permission: 'CHECKIN_SCAN' },
     { label: 'Mes inscriptions', path: '/tableau-de-bord/inscriptions', icon: 'check' },

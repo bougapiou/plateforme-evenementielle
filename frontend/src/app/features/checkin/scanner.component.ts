@@ -12,7 +12,7 @@ declare const window: Window & { BarcodeDetector?: any };
   standalone: true,
   imports: [FormsModule, IconComponent],
   template: `
-    <h1 class="text-xl font-bold text-slate-800">Contrôle à l'entrée</h1>
+    <h1 class="text-xl font-bold text-slate-800">Contrôle à la porte</h1>
 
     <div class="mt-4 card p-4">
       <label class="form-label">Événement</label>
@@ -48,7 +48,7 @@ declare const window: Window & { BarcodeDetector?: any };
                   [class.border-brand-600]="sens === 'ENTREE'" [class.bg-brand-600]="sens === 'ENTREE'"
                   [class.text-white]="sens === 'ENTREE'" [class.border-slate-200]="sens !== 'ENTREE'"
                   (click)="setSens('ENTREE')">
-            <app-icon name="login" class="h-5 w-5" /> Contrôle à l'entrée
+            <app-icon name="login" class="h-5 w-5" /> Contrôle à la porte
           </button>
           <button type="button"
                   class="flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-3 font-semibold"
