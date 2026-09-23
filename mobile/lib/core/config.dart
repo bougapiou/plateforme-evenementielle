@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 
 /// Runtime configuration.
 ///
@@ -8,13 +8,22 @@ class AppConfig {
   static const String _override =
       String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
+  /// The real, public API — what an APK built with `flutter build apk
+  /// --release` (no `--dart-define`) points to, since that's the build
+  /// meant to run on an actual phone, off the dev machine's network.
+  static const String _productionApiBaseUrl =
+      'https://evenements-19.mtdpce-test.gov.bf/api';
+
   /// Base URL of the REST API.
-  /// - `--dart-define=API_BASE_URL=...` wins if provided.
-  /// - Flutter **web** (run in a browser) → `localhost` (same machine).
-  /// - Android **emulator** → `10.0.2.2` (the emulator's alias for the host).
-  /// - A physical device needs `--dart-define` with the host's LAN IP.
+  /// - `--dart-define=API_BASE_URL=...` wins if provided (dev on an
+  ///   emulator or a physical device pointed at a local backend).
+  /// - A release build (`--release`), with no override, targets the real
+  ///   production domain.
+  /// - Otherwise (debug/profile — `flutter run`) : Flutter **web** → `localhost`
+  ///   (same machine) ; Android **emulator** → `10.0.2.2` (its alias for the host).
   static String get apiBaseUrl {
     if (_override.isNotEmpty) return _override;
+    if (kReleaseMode) return _productionApiBaseUrl;
     return kIsWeb
         ? 'http://localhost:8080/api'
         : 'http://10.0.2.2:8080/api';
