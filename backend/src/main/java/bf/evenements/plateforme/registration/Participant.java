@@ -22,7 +22,13 @@ public class Participant extends BaseEntity {
     @JoinColumn(name = "registration_id", nullable = false)
     private Registration registration;
 
-    @Column(nullable = false, length = 120)
+    /**
+     * Nullable since V22: a free ticket category can ask for the first name
+     * only (see {@code IdentiteRequise.PRENOM_SEUL}). {@link
+     * bf.evenements.plateforme.registration.RegistrationService} still
+     * requires at least one of {@code nom}/{@code prenom} to be filled.
+     */
+    @Column(length = 120)
     private String nom;
 
     @Column(length = 120)

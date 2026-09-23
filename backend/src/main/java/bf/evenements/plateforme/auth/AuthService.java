@@ -108,6 +108,15 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse guestSession(GuestSessionRequest request, String ip) {
+        if (!StringUtils.hasText(request.firstName()) && !StringUtils.hasText(request.lastName())) {
+            throw new BusinessException("IDENTITY_REQUIRED",
+                    "Renseignez au moins votre nom ou votre prénom.");
+        }
+        // Neither is @NotBlank on the DTO (one alone is allowed) — but the
+        // entity column is NOT NULL, so a missing one becomes "" rather than null.
+        String firstName = StringUtils.hasText(request.firstName()) ? request.firstName() : "";
+        String lastName = StringUtils.hasText(request.lastName()) ? request.lastName() : "";
+
         var existing = StringUtils.hasText(request.email())
                 ? userRepository.findByEmailIgnoreCase(request.email())
                 : userRepository.findFirstByPhoneAndGuestTrueOrderByCreatedAtDesc(request.phone());
@@ -119,10 +128,10 @@ public class AuthService {
                                 + "vos billets et vos inscriptions.");
             }
             if (!StringUtils.hasText(u.getFirstName())) {
-                u.setFirstName(request.firstName());
+                u.setFirstName(firstName);
             }
             if (!StringUtils.hasText(u.getLastName())) {
-                u.setLastName(request.lastName());
+                u.setLastName(lastName);
             }
             u.setPhone(request.phone());
             return issueTokens(u);
@@ -134,8 +143,8 @@ public class AuthService {
                 : "tel-" + digitsOnly(request.phone()) + PLACEHOLDER_EMAIL_DOMAIN);
         // Unusable placeholder — a real password is set when the account is claimed.
         user.setPasswordHash(passwordEncoder.encode("guest-" + UUID.randomUUID()));
-        user.setFirstName(request.firstName());
-        user.setLastName(request.lastName());
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
         user.setPhone(request.phone());
         user.setType(UserType.PARTICULIER);
         user.setStatus(UserStatus.ACTIF);

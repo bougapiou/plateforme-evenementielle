@@ -41,7 +41,8 @@ export interface RegisterPayload {
   contactTelephone?: string;
   informations?: string;
   participants?: {
-    nom: string;
+    /** L'un des deux au moins doit être renseigné (voir IdentiteRequise). */
+    nom?: string;
     prenom?: string;
     email?: string;
     telephone?: string;

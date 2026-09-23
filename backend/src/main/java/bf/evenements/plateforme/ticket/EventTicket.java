@@ -82,6 +82,11 @@ public class EventTicket extends BaseEntity {
     @Column(name = "formulaire_requis", nullable = false)
     private boolean formulaireRequis = true;
 
+    /** Which field(s) the form asks for — only meaningful when {@link #formulaireRequis} is true. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "identite_requise", nullable = false, length = 20)
+    private IdentiteRequise identiteRequise = IdentiteRequise.NOM_ET_PRENOM;
+
     @Column(nullable = false)
     private int ordre = 0;
 

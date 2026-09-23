@@ -20,8 +20,14 @@ public record RegisterParticipationRequest(
         @Valid List<ParticipantInput> participants,
         @Valid List<TicketLine> tickets) {
 
+    /**
+     * {@code nom} isn't {@code @NotBlank} here: a free ticket category can
+     * ask for only the first name (see {@code IdentiteRequise.PRENOM_SEUL}).
+     * {@link bf.evenements.plateforme.registration.RegistrationService}
+     * checks that at least one of the two is filled.
+     */
     public record ParticipantInput(
-            @NotBlank @Size(max = 120) String nom,
+            @Size(max = 120) String nom,
             @Size(max = 120) String prenom,
             @Email @Size(max = 180) String email,
             @Size(max = 30) String telephone,

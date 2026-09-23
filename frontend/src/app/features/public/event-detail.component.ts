@@ -13,7 +13,7 @@ import { Registration } from '../registrations/registration.models';
 import { PaymentsService } from '../payments/payments.service';
 import { PhoneInputComponent } from '../../shared/phone-input.component';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
-import { EventPublic, EventTicket, MyTicket } from '../events/event.models';
+import { EventPublic, EventTicket, IdentiteRequise, MyTicket } from '../events/event.models';
 import {
   formatDateRange,
   formatDateTime,
@@ -46,6 +46,37 @@ import { ApiError } from '../../core/models';
           Présence en direct →
         </a>
       </div>
+
+      <!-- Raccourci "en un clic" : uniquement le cas le plus simple (billet
+           gratuit unique, sans formulaire, sans compte). Tout le reste passe
+           par la section « Participer à l'événement » plus bas. -->
+      @if (quickTicket(); as t) {
+        <section class="card mt-4 p-4">
+          <p class="text-sm text-slate-600">
+            Billet : <span class="font-medium">{{ t.nom }}</span>
+            <span class="text-slate-400">— Gratuit</span>
+          </p>
+          @if (ticketReceipts().length) {
+            <p class="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+              Billet téléchargé. Pas besoin de l'imprimer : la version numérique,
+              affichée sur votre téléphone, suffit pour l'entrée.
+            </p>
+            <button type="button" class="btn-ghost mt-2 text-brand-700"
+                    (click)="downloadTicket(ticketReceipts()[0])">
+              Télécharger à nouveau
+            </button>
+          } @else {
+            <div class="mt-2 max-w-sm">
+              <label class="form-label">Téléphone *</label>
+              <app-phone-input [(ngModel)]="guestPhone" />
+            </div>
+            @if (error()) { <p class="mt-2 text-sm text-red-700">{{ error() }}</p> }
+            <button type="button" class="btn-primary mt-3" [disabled]="submitting()" (click)="submit()">
+              {{ submitting() ? 'Un instant…' : 'Obtenir mon billet' }}
+            </button>
+          }
+        </section>
+      }
 
       @if (e.descriptionDetaillee || e.descriptionCourte) {
         <section class="card mt-6 p-5">
@@ -113,47 +144,44 @@ import { ApiError } from '../../core/models';
               </a>
             }
           </div>
+        } @else if (quickTicket()) {
+          <p class="mt-3 text-sm text-slate-500">
+            Utilisez le bouton en haut de la page pour obtenir votre billet.
+          </p>
         } @else {
           <div class="mt-3 space-y-3">
             @if (!auth.isAuthenticated()) {
-              @if (noFormTicket()) {
-                <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-                  Entrez votre téléphone pour obtenir votre billet immédiatement — pas de compte,
-                  pas d'autre champ à remplir.
-                </div>
-                <div class="max-w-sm">
+              <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+                Pas besoin de compte pour vous inscrire. Renseignez vos coordonnées ;
+                vous pourrez créer un compte après le paiement pour retrouver vos billets.
+                <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
+                   class="font-semibold text-brand-700">J'ai déjà un compte</a>
+              </div>
+              <div class="grid max-w-lg gap-3 sm:grid-cols-2">
+                @if (identiteRequise() !== 'NOM_SEUL') {
+                  <div>
+                    <label class="form-label">Prénom{{ identiteRequise() === 'PRENOM_SEUL' ? ' *' : '' }}</label>
+                    <input class="form-input" [(ngModel)]="guestFirstName" />
+                  </div>
+                }
+                @if (identiteRequise() !== 'PRENOM_SEUL') {
+                  <div>
+                    <label class="form-label">Nom{{ identiteRequise() === 'NOM_SEUL' ? ' *' : '' }}</label>
+                    <input class="form-input" [(ngModel)]="guestLastName" />
+                  </div>
+                }
+              </div>
+              <div class="grid max-w-lg gap-3 sm:grid-cols-2">
+                <div>
                   <label class="form-label">Téléphone *</label>
                   <app-phone-input [(ngModel)]="guestPhone" />
                 </div>
-              } @else {
-                <div class="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
-                  Pas besoin de compte pour vous inscrire. Renseignez vos coordonnées ;
-                  vous pourrez créer un compte après le paiement pour retrouver vos billets.
-                  <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
-                     class="font-semibold text-brand-700">J'ai déjà un compte</a>
+                <div>
+                  <label class="form-label">Adresse e-mail (facultatif)</label>
+                  <input class="form-input" type="email" [(ngModel)]="guestEmail" />
+                  <p class="mt-1 text-xs text-slate-400">Pour recevoir vos billets et créer un compte.</p>
                 </div>
-                <div class="grid max-w-lg gap-3 sm:grid-cols-2">
-                  <div>
-                    <label class="form-label">Prénom</label>
-                    <input class="form-input" [(ngModel)]="guestFirstName" />
-                  </div>
-                  <div>
-                    <label class="form-label">Nom</label>
-                    <input class="form-input" [(ngModel)]="guestLastName" />
-                  </div>
-                </div>
-                <div class="grid max-w-lg gap-3 sm:grid-cols-2">
-                  <div>
-                    <label class="form-label">Téléphone *</label>
-                    <app-phone-input [(ngModel)]="guestPhone" />
-                  </div>
-                  <div>
-                    <label class="form-label">Adresse e-mail (facultatif)</label>
-                    <input class="form-input" type="email" [(ngModel)]="guestEmail" />
-                    <p class="mt-1 text-xs text-slate-400">Pour recevoir vos billets et créer un compte.</p>
-                  </div>
-                </div>
-              }
+              </div>
             } @else {
               <div>
                 <label class="form-label">Nom du participant</label>
@@ -432,6 +460,20 @@ export class EventDetailComponent implements OnDestroy {
     const t = this.singleFreeTicket();
     return t && !t.formulaireRequis ? t : null;
   });
+  /** The "click, phone, done" shortcut shown right under the title — only
+   * for the simplest case (free, no form, no account). Everything else
+   * (paid, multi-billet, un formulaire complet) reste dans la section
+   * « Participer à l'événement » plus bas. */
+  quickTicket = computed(() =>
+    !this.auth.isAuthenticated() && !this.registration() ? this.noFormTicket() : null,
+  );
+  /** Which identity field(s) the guest form asks for — driven by the single
+   * free category's setting when there is one and it has a form ; both
+   * (nom + prénom) otherwise (multi-billet, payant : pas configurable). */
+  identiteRequise = computed<IdentiteRequise>(() => {
+    const t = this.singleFreeTicket();
+    return t && t.formulaireRequis ? t.identiteRequise : 'NOM_ET_PRENOM';
+  });
   registration = signal<Registration | null>(null);
   participantNom = '';
 
@@ -525,7 +567,7 @@ export class EventDetailComponent implements OnDestroy {
         }
         this.submitting.set(true);
         this.auth.guestSessionQuick(phone).subscribe({
-          next: () => this.doRegister('Visiteur'),
+          next: () => this.doRegister({ nom: 'Visiteur' }),
           error: (err: HttpErrorResponse) => {
             this.submitting.set(false);
             const body = err.error as ApiError | undefined;
@@ -543,8 +585,14 @@ export class EventDetailComponent implements OnDestroy {
       const last = this.guestLastName.trim();
       const email = this.guestEmail.trim();
       const phone = this.guestPhone.trim();
-      if (!first || !last || !/^\+?[0-9 ]{6,20}$/.test(phone)) {
-        this.error.set('Renseignez votre prénom, votre nom et un numéro de téléphone.');
+      const needFirst = this.identiteRequise() !== 'NOM_SEUL';
+      const needLast = this.identiteRequise() !== 'PRENOM_SEUL';
+      if ((needFirst && !first) || (needLast && !last) || !/^\+?[0-9 ]{6,20}$/.test(phone)) {
+        this.error.set(
+          this.identiteRequise() === 'NOM_SEUL' ? 'Renseignez votre nom et un numéro de téléphone.'
+            : this.identiteRequise() === 'PRENOM_SEUL' ? 'Renseignez votre prénom et un numéro de téléphone.'
+            : 'Renseignez votre prénom, votre nom et un numéro de téléphone.',
+        );
         return;
       }
       if (email && !email.includes('@')) {
@@ -560,7 +608,7 @@ export class EventDetailComponent implements OnDestroy {
           phone,
         })
         .subscribe({
-          next: () => this.doRegister(`${first} ${last}`.trim()),
+          next: () => this.doRegister({ prenom: first || undefined, nom: last || undefined }),
           error: (err: HttpErrorResponse) => {
             this.submitting.set(false);
             const body = err.error as ApiError | undefined;
@@ -575,17 +623,20 @@ export class EventDetailComponent implements OnDestroy {
     }
 
     this.submitting.set(true);
-    this.doRegister(this.participantNom || this.auth.user()?.fullName || 'Participant');
+    this.doRegister({ nom: this.participantNom || this.auth.user()?.fullName || 'Participant' });
   }
 
-  private doRegister(participantNom: string): void {
+  private doRegister(participant: { nom?: string; prenom?: string }): void {
     const tickets = Object.entries(this.qty())
       .filter(([, q]) => q > 0)
       .map(([eventTicketId, quantite]) => ({ eventTicketId, quantite }));
     this.registrationsService
       .register(this.event()!.id, {
         type: 'PARTICULIER',
-        participants: [{ nom: participantNom || 'Participant' }],
+        participants: [{
+          nom: participant.nom || undefined,
+          prenom: participant.prenom || undefined,
+        }],
         tickets: tickets.length ? tickets : undefined,
       })
       .subscribe({

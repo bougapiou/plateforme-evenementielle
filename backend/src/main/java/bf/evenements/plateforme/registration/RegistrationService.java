@@ -96,9 +96,15 @@ public class RegistrationService {
                                 me.getLastName(), me.getFirstName(), me.getEmail(), me.getPhone(), null))
                         : request.participants();
         for (var in : inputs) {
+            boolean hasNom = StringUtils.hasText(in.nom());
+            boolean hasPrenom = StringUtils.hasText(in.prenom());
+            if (!hasNom && !hasPrenom) {
+                throw new BusinessException("IDENTITY_REQUIRED",
+                        "Renseignez au moins le nom ou le prénom du participant.");
+            }
             Participant p = new Participant();
-            p.setNom(in.nom().trim());
-            p.setPrenom(in.prenom());
+            p.setNom(hasNom ? in.nom().trim() : null);
+            p.setPrenom(hasPrenom ? in.prenom().trim() : null);
             p.setEmail(in.email());
             p.setTelephone(in.telephone());
             p.setFonction(in.fonction());

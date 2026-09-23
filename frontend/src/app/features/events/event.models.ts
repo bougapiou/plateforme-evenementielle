@@ -155,6 +155,11 @@ export interface EventPublic extends Omit<EventDetail, 'statut'> {
 
 export type TicketScope = 'EVENEMENT' | 'ACTIVITE';
 
+/** Which identity field(s) the public form asks for — only meaningful when
+ * `formulaireRequis` is true. Le téléphone reste toujours obligatoire, quel
+ * que soit ce choix. */
+export type IdentiteRequise = 'NOM_ET_PRENOM' | 'NOM_SEUL' | 'PRENOM_SEUL';
+
 export interface EventTicket {
   id: string;
   eventId: string;
@@ -176,6 +181,7 @@ export interface EventTicket {
   ordre: number;
   /** Free categories only: false means claiming it needs no name/e-mail form. */
   formulaireRequis: boolean;
+  identiteRequise: IdentiteRequise;
   activites: { id: string; titre: string }[];
 }
 
@@ -191,6 +197,7 @@ export interface EventTicketPayload {
   venteFin?: string;
   actif?: boolean;
   formulaireRequis?: boolean;
+  identiteRequise?: IdentiteRequise;
   activityIds?: string[];
 }
 

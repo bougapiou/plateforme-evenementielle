@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { EventsService } from './events.service';
-import { Activity, EventCategory, EventDetail, EventTicket, Partner, Speaker } from './event.models';
+import { Activity, EventCategory, EventDetail, EventTicket, IdentiteRequise, Partner, Speaker } from './event.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { formatDateTime, formatFcfa, priceLabel } from '../../shared/format';
 import { ApiError } from '../../core/models';
@@ -347,9 +347,22 @@ type Tab =
           @if (!ticketForm.value.prixMontant) {
             <label class="sm:col-span-2 flex items-center gap-2 text-sm text-slate-600">
               <input type="checkbox" formControlName="formulaireRequis" />
-              Demander un formulaire (nom, téléphone) pour obtenir ce billet gratuit
+              Demander un formulaire (identité, téléphone) pour obtenir ce billet gratuit
             </label>
-            @if (!ticketForm.value.formulaireRequis) {
+            @if (ticketForm.value.formulaireRequis) {
+              <div class="sm:col-span-2 -mt-1 rounded-lg bg-slate-50 p-3">
+                <label class="form-label">Que doit remplir le visiteur ?</label>
+                <select class="form-input max-w-xs" formControlName="identiteRequise">
+                  <option value="NOM_ET_PRENOM">Nom et prénom</option>
+                  <option value="NOM_SEUL">Nom seulement</option>
+                  <option value="PRENOM_SEUL">Prénom seulement</option>
+                </select>
+                <p class="mt-1 text-xs text-slate-400">
+                  Dans tous les cas, le numéro de téléphone est obligatoire — c'est ce qui
+                  permet de retrouver ses billets.
+                </p>
+              </div>
+            } @else {
               <p class="sm:col-span-2 -mt-1 text-xs text-slate-400">
                 Sans formulaire : un visiteur qui scanne le QR de l'événement obtient son billet
                 immédiatement (juste son téléphone si c'est un tout premier visiteur).
@@ -511,7 +524,7 @@ type Tab =
               } @empty { <li class="py-2 text-slate-400">Aucun personnel.</li> }
             </ul>
             <p class="mt-2 text-xs text-slate-400">
-              Le personnel accède au scanner via « Contrôle à l'entrée » et peut
+              Le personnel accède au scanner via « Contrôle à la porte » et peut
               suivre les compteurs de cet événement dans « Présence / Flux ».
             </p>
           </div>
@@ -684,6 +697,7 @@ export class EventEditorComponent implements OnDestroy {
     portee: ['EVENEMENT' as 'EVENEMENT' | 'ACTIVITE'],
     description: [''],
     formulaireRequis: [true],
+    identiteRequise: ['NOM_ET_PRENOM' as IdentiteRequise],
   });
   standForm = this.fb.nonNullable.group({
     nom: ['', Validators.required],
@@ -893,6 +907,7 @@ export class EventEditorComponent implements OnDestroy {
       portee: v.portee,
       description: v.description || undefined,
       formulaireRequis: v.formulaireRequis,
+      identiteRequise: v.identiteRequise,
       activityIds: v.portee === 'ACTIVITE' ? this.selectedActivityIds() : undefined,
     };
     this.ticketsService.save(this.id(), body, this.editingTicketId() ?? undefined).subscribe({
@@ -901,7 +916,7 @@ export class EventEditorComponent implements OnDestroy {
         this.selectedActivityIds.set([]);
         this.ticketForm.reset({
           prixMontant: 0, quantiteTotale: 100, limiteParUtilisateur: 10,
-          portee: 'EVENEMENT', formulaireRequis: true,
+          portee: 'EVENEMENT', formulaireRequis: true, identiteRequise: 'NOM_ET_PRENOM',
         });
         this.ticketsService.forEvent(this.id()).subscribe((t) => this.tickets.set(t));
       },
@@ -915,7 +930,7 @@ export class EventEditorComponent implements OnDestroy {
     this.ticketForm.reset({
       nom: t.nom, prixMontant: t.prixMontant, quantiteTotale: t.quantiteTotale,
       limiteParUtilisateur: t.limiteParUtilisateur, portee: t.portee, description: t.description ?? '',
-      formulaireRequis: t.formulaireRequis,
+      formulaireRequis: t.formulaireRequis, identiteRequise: t.identiteRequise ?? 'NOM_ET_PRENOM',
     });
   }
   removeTicket(t: EventTicket): void {

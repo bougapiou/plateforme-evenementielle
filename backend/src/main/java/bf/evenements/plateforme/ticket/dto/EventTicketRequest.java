@@ -1,5 +1,6 @@
 package bf.evenements.plateforme.ticket.dto;
 
+import bf.evenements.plateforme.ticket.IdentiteRequise;
 import bf.evenements.plateforme.ticket.TicketScope;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,6 +26,8 @@ public record EventTicketRequest(
         Integer ordre,
         /** Free categories only: false skips the identity form on claim. Ignored if paid. */
         Boolean formulaireRequis,
+        /** Which field(s) the form asks for; only used when {@code formulaireRequis} is true. */
+        IdentiteRequise identiteRequise,
         /** Required when {@code portee == ACTIVITE}: activities this ticket grants access to. */
         Set<UUID> activityIds) {
 }
