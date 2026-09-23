@@ -2,6 +2,7 @@ package bf.evenements.plateforme.ticket;
 
 import bf.evenements.plateforme.common.storage.FileStorageService;
 import bf.evenements.plateforme.common.web.QrImages;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -17,9 +18,11 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.stereotype.Service;
 
 /**
- * Renders an e-ticket as a one-page PDF with its QR code. The event's cover
- * image, when available, is drawn as a banner above the text — the QR stays
- * at a fixed position near the bottom and is never covered by it.
+ * Renders an e-ticket as a one-page PDF, dans le même ordre que l'écran
+ * « détail du billet » de l'application : couverture de l'événement (si
+ * disponible), QR code encadré, statut, nom de l'événement, puis les
+ * informations du billet. Le QR est toujours dessiné, jamais recouvert par
+ * la couverture.
  */
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,10 @@ public class TicketPdfService {
     private static final DateTimeFormatter DATE = DateTimeFormatter
             .ofPattern("EEEE d MMMM yyyy 'à' HH'h'mm", Locale.FRENCH)
             .withZone(ZoneId.of("Africa/Ouagadougou"));
+
+    private static final float MARGIN = 40f;
+    private static final Color LABEL_COLOR = new Color(0x64, 0x74, 0x8B);
+    private static final Color BORDER_COLOR = new Color(0xE2, 0xE8, 0xF0);
 
     private final FileStorageService fileStorage;
 
@@ -48,27 +55,49 @@ public class TicketPdfService {
             try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
                 float w = PDRectangle.A5.getWidth();
                 float h = PDRectangle.A5.getHeight();
-                float bannerHeight = coverImage != null ? 130f : 0f;
+                float y = h - MARGIN;
+
                 if (coverImage != null) {
+                    float bannerHeight = 130f;
                     drawCoverBanner(cs, coverImage, w, h, bannerHeight);
+                    y = h - bannerHeight - 24;
                 }
-                float top = h - bannerHeight - 40;
 
-                line(cs, bold, 18, 40, top, "BILLET ÉLECTRONIQUE");
-                line(cs, bold, 15, 40, top - 34, safe(event.getNom()));
-                line(cs, regular, 10, 40, top - 54, DATE.format(event.getDateDebut()));
-                line(cs, regular, 10, 40, top - 70,
-                        safe(event.getLieu()) + (event.getVille() != null ? " · " + event.getVille() : ""));
-
-                line(cs, regular, 11, 40, top - 110, "Participant : " + safe(ticket.getParticipantNom()));
-                line(cs, regular, 11, 40, top - 128, "Catégorie : " + safe(ticket.getEventTicket().getNom()));
-                line(cs, regular, 11, 40, top - 146, "N° billet : " + ticket.getNumero());
-                line(cs, regular, 11, 40, top - 164, "Statut : " + ticket.getStatut());
-
+                // QR encadré, centré — comme sur l'écran de détail.
+                float qrBoxSize = 170;
                 float qrSize = 150;
-                cs.drawImage(qrImage, (w - qrSize) / 2, 40, qrSize, qrSize);
-                line(cs, regular, 8, 40, 26,
-                        "Presentez ce QR code a l'entree - ref " + qrToken.substring(0, 12));
+                float qrBoxY = y - qrBoxSize;
+                cs.setStrokingColor(BORDER_COLOR);
+                cs.addRect((w - qrBoxSize) / 2, qrBoxY, qrBoxSize, qrBoxSize);
+                cs.stroke();
+                cs.drawImage(qrImage, (w - qrSize) / 2, qrBoxY + (qrBoxSize - qrSize) / 2, qrSize, qrSize);
+                y = qrBoxY - 22;
+
+                // Statut, centré.
+                centeredLine(cs, regular, 10, w, y, ticket.getStatut().toString());
+                y -= 26;
+
+                // Nom de l'événement.
+                line(cs, bold, 16, MARGIN, y, safe(event.getNom()));
+                y -= 26;
+
+                // Informations du billet, dans le même ordre que l'écran mobile.
+                y = row(cs, bold, regular, y, "Billet n°", ticket.getNumero());
+                if (ticket.getEventTicket().getNom() != null) {
+                    y = row(cs, bold, regular, y, "Catégorie", ticket.getEventTicket().getNom());
+                }
+                if (ticket.getParticipantNom() != null && !ticket.getParticipantNom().isBlank()) {
+                    y = row(cs, bold, regular, y, "Participant", ticket.getParticipantNom());
+                }
+                y = row(cs, bold, regular, y, "Date", DATE.format(event.getDateDebut()));
+                if (event.getLieu() != null && !event.getLieu().isBlank()) {
+                    y = row(cs, bold, regular, y, "Lieu", event.getLieu());
+                }
+                if (ticket.getOrder().getReference() != null) {
+                    row(cs, bold, regular, y, "Commande", ticket.getOrder().getReference());
+                }
+
+                line(cs, regular, 8, MARGIN, 26, "Presentez ce QR code a l'entree de l'evenement.");
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -117,6 +146,23 @@ public class TicketPdfService {
         cs.newLineAtOffset(x, y);
         cs.showText(winAnsi(text));
         cs.endText();
+    }
+
+    private static void centeredLine(PDPageContentStream cs, PDType1Font font, float sizePt,
+                                       float pageWidth, float y, String text) throws java.io.IOException {
+        String safeText = winAnsi(text);
+        float width = font.getStringWidth(safeText) / 1000 * sizePt;
+        line(cs, font, sizePt, (pageWidth - width) / 2, y, text);
+    }
+
+    /** Draws one "label / value" row (label in gray, value in bold black) and returns the next y. */
+    private static float row(PDPageContentStream cs, PDType1Font bold, PDType1Font regular, float y,
+                              String label, String value) throws java.io.IOException {
+        cs.setNonStrokingColor(LABEL_COLOR);
+        line(cs, regular, 10, MARGIN, y, label);
+        cs.setNonStrokingColor(Color.BLACK);
+        line(cs, bold, 10, MARGIN + 100, y, value);
+        return y - 18;
     }
 
     private static String safe(String s) {
