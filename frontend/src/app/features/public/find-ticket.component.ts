@@ -1,16 +1,27 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { ApiError } from '../../core/models';
 import { PhoneInputComponent } from '../../shared/phone-input.component';
+import { TicketsService } from '../tickets/tickets.service';
+import { MyTicket } from '../events/event.models';
+import { formatDateTime } from '../../shared/format';
+
+interface EventGroup {
+  eventId: string;
+  eventNom: string;
+  eventDateDebut: string;
+  lieu?: string;
+  tickets: MyTicket[];
+}
 
 /**
- * Lets a guest visitor get back the session tied to a phone number they used
- * at checkout, without an account or a password — same lookup the guest
- * checkout form already does when it recognises a returning phone number,
- * just exposed as its own entry point next to the public QR scanner.
+ * Lets a guest visitor get their tickets back with just their phone number —
+ * no name, no password. Enter the phone → pick the event (if they have
+ * tickets for more than one) → the ticket(s) for that event download right
+ * away.
  */
 @Component({
   selector: 'app-find-ticket',
@@ -27,23 +38,36 @@ import { PhoneInputComponent } from '../../shared/phone-input.component';
             Voir mes billets
           </a>
         </div>
+      } @else if (events()) {
+        <p class="mt-1 text-sm text-slate-500">Choisissez l'événement pour télécharger votre billet.</p>
+        <div class="mt-4 space-y-3">
+          @for (e of events()!; track e.eventId) {
+            <button type="button" class="card flex w-full items-center justify-between p-4 text-left"
+                    [disabled]="downloadingEventId() === e.eventId"
+                    (click)="chooseEvent(e)">
+              <span>
+                <span class="block font-medium text-slate-800">{{ e.eventNom }}</span>
+                <span class="block text-xs text-slate-400">
+                  {{ dt(e.eventDateDebut) }}{{ e.lieu ? ' · ' + e.lieu : '' }}
+                  · {{ e.tickets.length }} billet{{ e.tickets.length > 1 ? 's' : '' }}
+                </span>
+              </span>
+              <span class="text-sm font-semibold text-brand-700">
+                {{ downloadingEventId() === e.eventId ? 'Téléchargement…' : 'Télécharger →' }}
+              </span>
+            </button>
+          }
+        </div>
+        <button type="button" class="btn-ghost mt-4 text-sm" (click)="restart()">
+          ← Utiliser un autre numéro
+        </button>
       } @else {
         <p class="mt-1 text-sm text-slate-500">
-          Indiquez le nom et le numéro de téléphone utilisés lors de votre achat ou
-          inscription : vous retrouvez directement vos billets, sans mot de passe.
+          Indiquez le numéro de téléphone utilisé lors de votre achat ou inscription :
+          vous retrouvez directement vos billets, sans mot de passe.
         </p>
 
         <form class="card mt-4 space-y-4 p-5" (ngSubmit)="submit()">
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label class="form-label">Prénom</label>
-              <input class="form-input" name="prenom" [(ngModel)]="firstName" required />
-            </div>
-            <div>
-              <label class="form-label">Nom</label>
-              <input class="form-input" name="nom" [(ngModel)]="lastName" required />
-            </div>
-          </div>
           <div>
             <label class="form-label">Téléphone *</label>
             <app-phone-input [(ngModel)]="phone" name="telephone" />
@@ -54,7 +78,7 @@ import { PhoneInputComponent } from '../../shared/phone-input.component';
           }
 
           <button type="submit" class="btn-primary" [disabled]="submitting()">
-            {{ submitting() ? 'Recherche…' : 'Retrouver mon billet' }}
+            {{ submitting() ? 'Recherche…' : 'Retrouver mes billets' }}
           </button>
           <p class="text-xs text-slate-400">
             Déjà un compte avec mot de passe ?
@@ -67,26 +91,53 @@ import { PhoneInputComponent } from '../../shared/phone-input.component';
 })
 export class FindTicketComponent {
   auth = inject(AuthService);
-  private router = inject(Router);
+  private ticketsService = inject(TicketsService);
 
-  firstName = '';
-  lastName = '';
   phone = '';
   submitting = signal(false);
   error = signal<string | null>(null);
+  events = signal<EventGroup[] | null>(null);
+  downloadingEventId = signal<string | null>(null);
+
+  dt = (iso: string) => formatDateTime(iso);
 
   submit(): void {
-    const firstName = this.firstName.trim();
-    const lastName = this.lastName.trim();
     const phone = this.phone.trim();
-    if (!firstName || !lastName || !/^\+?[0-9 ]{6,20}$/.test(phone)) {
-      this.error.set('Renseignez votre prénom, votre nom et un numéro de téléphone valide.');
+    if (!/^\+?[0-9 ]{6,20}$/.test(phone)) {
+      this.error.set('Renseignez un numéro de téléphone valide.');
       return;
     }
     this.submitting.set(true);
     this.error.set(null);
-    this.auth.guestSession({ firstName, lastName, phone }).subscribe({
-      next: () => this.router.navigateByUrl('/tableau-de-bord/billets'),
+    this.auth.guestSessionQuick(phone).subscribe({
+      next: () => {
+        this.ticketsService.myTickets().subscribe({
+          next: (tickets) => {
+            this.submitting.set(false);
+            const groups = new Map<string, EventGroup>();
+            for (const t of tickets) {
+              const g = groups.get(t.eventId);
+              if (g) {
+                g.tickets.push(t);
+              } else {
+                groups.set(t.eventId, {
+                  eventId: t.eventId, eventNom: t.eventNom,
+                  eventDateDebut: t.eventDateDebut, lieu: t.lieu, tickets: [t],
+                });
+              }
+            }
+            if (groups.size === 0) {
+              this.error.set('Aucun billet trouvé pour ce numéro.');
+              return;
+            }
+            this.events.set([...groups.values()]);
+          },
+          error: () => {
+            this.submitting.set(false);
+            this.error.set('Aucun billet trouvé pour ce numéro.');
+          },
+        });
+      },
       error: (err: HttpErrorResponse) => {
         this.submitting.set(false);
         const body = err.error as ApiError | undefined;
@@ -97,5 +148,29 @@ export class FindTicketComponent {
         );
       },
     });
+  }
+
+  chooseEvent(e: EventGroup): void {
+    this.downloadingEventId.set(e.eventId);
+    for (const t of e.tickets) {
+      this.ticketsService.pdfBlob(t.id).subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `billet-${t.numero}.pdf`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+          this.downloadingEventId.set(null);
+        },
+        error: () => this.downloadingEventId.set(null),
+      });
+    }
+  }
+
+  restart(): void {
+    this.events.set(null);
+    this.phone = '';
+    this.error.set(null);
   }
 }

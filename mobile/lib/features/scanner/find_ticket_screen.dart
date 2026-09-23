@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/documents.dart';
 import '../../core/models.dart';
 import '../../core/phone_field.dart';
 import '../../core/providers.dart';
+import '../../data/domain.dart';
 
-/// Lets a guest visitor get back the session tied to a phone number they used
-/// at checkout, without an account or a password — same lookup the guest
-/// checkout sheet already does when it recognises a returning phone number,
-/// just exposed as its own entry point next to the public QR scanner.
+class _EventGroup {
+  final String eventId;
+  final String eventNom;
+  final DateTime? eventDateDebut;
+  final String? lieu;
+  final List<Ticket> tickets;
+  _EventGroup(this.eventId, this.eventNom, this.eventDateDebut, this.lieu,
+      this.tickets);
+}
+
+/// Lets a guest visitor get their tickets back with just their phone number —
+/// no name, no password. Enter the phone → pick the event (if they have
+/// tickets for more than one) → the ticket(s) for that event download right
+/// away.
 class FindTicketScreen extends ConsumerStatefulWidget {
   const FindTicketScreen({super.key});
 
@@ -18,18 +30,11 @@ class FindTicketScreen extends ConsumerStatefulWidget {
 
 class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _prenom = TextEditingController();
-  final _nom = TextEditingController();
   String _tel = '';
   bool _busy = false;
   String? _error;
-
-  @override
-  void dispose() {
-    _prenom.dispose();
-    _nom.dispose();
-    super.dispose();
-  }
+  List<_EventGroup>? _events;
+  String? _downloadingEventId;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -38,12 +43,32 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).guestSession(
-            firstName: _prenom.text.trim(),
-            lastName: _nom.text.trim(),
-            phone: _tel.trim(),
-          );
-      if (mounted) context.go('/billets');
+      await ref
+          .read(authControllerProvider.notifier)
+          .guestSessionQuick(_tel.trim());
+      final tickets = await ref.read(ticketsRepositoryProvider).myTickets();
+      final byEvent = <String, _EventGroup>{};
+      for (final t in tickets) {
+        final g = byEvent[t.eventId];
+        if (g != null) {
+          g.tickets.add(t);
+        } else {
+          byEvent[t.eventId] =
+              _EventGroup(t.eventId, t.eventNom, t.eventDateDebut, t.lieu, [t]);
+        }
+      }
+      if (!mounted) return;
+      if (byEvent.isEmpty) {
+        setState(() {
+          _busy = false;
+          _error = 'Aucun billet trouvé pour ce numéro.';
+        });
+        return;
+      }
+      setState(() {
+        _busy = false;
+        _events = byEvent.values.toList();
+      });
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
@@ -61,6 +86,28 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
         });
       }
     }
+  }
+
+  Future<void> _chooseEvent(_EventGroup e) async {
+    setState(() => _downloadingEventId = e.eventId);
+    final api = ref.read(apiClientProvider);
+    for (final t in e.tickets) {
+      try {
+        await fetchAndPresentDocument(api,
+            path: '/api/tickets/${t.id}/pdf', filename: 'billet-${t.numero}.pdf');
+      } catch (_) {
+        // best-effort — l'utilisateur peut retrouver ses billets via /billets
+      }
+    }
+    if (mounted) setState(() => _downloadingEventId = null);
+  }
+
+  void _restart() {
+    setState(() {
+      _events = null;
+      _error = null;
+      _tel = '';
+    });
   }
 
   void _promptLogin() {
@@ -109,61 +156,82 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
                 ),
               ),
             )
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    'Indiquez le nom et le numéro de téléphone utilisés lors '
-                    'de votre achat ou inscription : vous retrouvez '
-                    'directement vos billets, sans mot de passe.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _prenom,
-                        decoration: const InputDecoration(labelText: 'Prénom'),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _nom,
-                        decoration: const InputDecoration(labelText: 'Nom'),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  PhoneField(
-                    required: true,
-                    onChanged: (v) => _tel = v,
-                  ),
-                  const SizedBox(height: 16),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(_error!,
-                          style: const TextStyle(color: Colors.red)),
-                    ),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: Text(_busy ? 'Recherche…' : 'Retrouver mon billet'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => context.push('/connexion'),
-                    child: const Text('J\'ai déjà un compte avec mot de passe'),
-                  ),
-                ],
-              ),
+          : _events != null
+              ? _buildEventList(_events!)
+              : _buildPhoneForm(),
+    );
+  }
+
+  Widget _buildEventList(List<_EventGroup> events) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          "Choisissez l'événement pour télécharger votre billet.",
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        for (final e in events)
+          Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              title: Text(e.eventNom),
+              subtitle: Text(
+                  '${e.tickets.length} billet${e.tickets.length > 1 ? 's' : ''}'
+                  '${e.lieu != null ? ' · ${e.lieu}' : ''}'),
+              trailing: _downloadingEventId == e.eventId
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.download_outlined),
+              onTap: _downloadingEventId != null ? null : () => _chooseEvent(e),
             ),
+          ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: _restart,
+          child: const Text('← Utiliser un autre numéro'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneForm() {
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            'Indiquez le numéro de téléphone utilisé lors de votre achat ou '
+            'inscription : vous retrouvez directement vos billets, sans mot '
+            'de passe.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+          PhoneField(
+            required: true,
+            onChanged: (v) => _tel = v,
+          ),
+          const SizedBox(height: 16),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child:
+                  Text(_error!, style: const TextStyle(color: Colors.red)),
+            ),
+          FilledButton(
+            onPressed: _busy ? null : _submit,
+            child: Text(_busy ? 'Recherche…' : 'Retrouver mes billets'),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => context.push('/connexion'),
+            child: const Text('J\'ai déjà un compte avec mot de passe'),
+          ),
+        ],
+      ),
     );
   }
 }
