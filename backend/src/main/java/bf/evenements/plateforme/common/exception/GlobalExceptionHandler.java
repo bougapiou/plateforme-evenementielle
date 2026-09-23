@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -84,6 +85,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND",
                 "Fichier introuvable.", request, List.of());
+    }
+
+    /**
+     * A path that exists but not for this HTTP method (e.g. a plain POST to
+     * an update endpoint that only maps PUT) — a normal 405, not a server
+     * error. Same class of bug as {@link #handleNoResource}: without this,
+     * the catch-all below turned it into a 500.
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiError> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        return build(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED",
+                "Méthode non autorisée pour cette ressource.", request, List.of());
     }
 
     @ExceptionHandler(Exception.class)
