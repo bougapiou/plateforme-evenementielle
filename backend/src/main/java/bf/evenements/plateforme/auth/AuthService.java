@@ -100,7 +100,7 @@ public class AuthService {
     }
 
     /** Non-routable domain for guests who checked out with a phone but no e-mail. */
-    private static final String PLACEHOLDER_EMAIL_DOMAIN = "@guest.plateforme.local";
+    public static final String PLACEHOLDER_EMAIL_DOMAIN = "@guest.plateforme.local";
 
     /**
      * Opens a session for a visitor who checks out without creating an account.

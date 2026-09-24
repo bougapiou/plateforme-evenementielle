@@ -22,6 +22,10 @@ public class EmailSender {
         if (to == null || to.isBlank()) {
             return false;
         }
+        // Phone-only guests get a non-routable placeholder address: never try to mail it.
+        if (to.toLowerCase().endsWith(bf.evenements.plateforme.auth.AuthService.PLACEHOLDER_EMAIL_DOMAIN)) {
+            return false;
+        }
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(to);

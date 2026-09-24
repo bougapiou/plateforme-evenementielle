@@ -79,12 +79,19 @@ public class UserController {
         return userService.adminUpdate(id, request);
     }
 
+    @GetMapping("/{id}/history")
+    @PreAuthorize("hasAuthority('" + Permissions.USER_MANAGE + "')")
+    @Operation(summary = "Historique d'un utilisateur : ce qu'une suppression effacerait (admin)")
+    public bf.evenements.plateforme.user.UserDeletionService.History history(@PathVariable UUID id) {
+        return userService.history(id);
+    }
+
     @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
     @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('" + Permissions.USER_MANAGE + "')")
-    @Operation(summary = "Supprimer un utilisateur sans historique (admin) — sinon 409, suspendre à la place")
-    public void delete(@PathVariable UUID id) {
-        userService.delete(id);
+    @Operation(summary = "Supprimer un utilisateur (admin) — 409 s'il a un historique, sauf force=true")
+    public void delete(@PathVariable UUID id, @RequestParam(defaultValue = "false") boolean force) {
+        userService.delete(id, force);
     }
 
     @PatchMapping("/{id}/status")

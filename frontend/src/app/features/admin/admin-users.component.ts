@@ -14,6 +14,17 @@ interface UserDetail {
   phone?: string;
 }
 
+interface UserHistory {
+  commandes: number;
+  billets: number;
+  inscriptions: number;
+  paiements: number;
+  factures: number;
+  reservationsStands: number;
+  structures: number;
+  evenementsOrganises: number;
+}
+
 @Component({
   selector: 'app-admin-users',
   standalone: true,
@@ -152,13 +163,49 @@ export class AdminUsersComponent extends ApiBase {
   }
 
   remove(u: UserSummary): void {
-    if (!confirm(`Supprimer définitivement ${u.fullName} (${u.email}) ?`)) return;
-    this.http.delete<void>(`${this.base}/users/${u.id}`).subscribe({
-      next: () => {
-        this.notify('Utilisateur supprimé.', false);
-        this.reload();
+    this.message.set(null);
+    this.get<UserHistory>(`/users/${u.id}/history`).subscribe({
+      next: (h) => {
+        const labels: [keyof UserHistory, string][] = [
+          ['commandes', 'commande(s)'],
+          ['billets', 'billet(s)'],
+          ['inscriptions', 'inscription(s)'],
+          ['paiements', 'paiement(s)'],
+          ['factures', 'facture(s)'],
+          ['reservationsStands', 'réservation(s) de stand'],
+          ['structures', 'structure(s)'],
+          ['evenementsOrganises', 'événement(s) organisé(s)'],
+        ];
+        const summary = labels
+          .filter(([k]) => h[k] > 0)
+          .map(([k, l]) => `${h[k]} ${l}`)
+          .join(', ');
+        if (h.evenementsOrganises > 0) {
+          this.notify(
+            `Ce compte organise ${h.evenementsOrganises} événement(s) : supprimez-les d'abord, ou suspendez le compte.`,
+            true,
+          );
+          return;
+        }
+        const text = summary
+          ? `⚠ ATTENTION — ce compte a un historique : ${summary}.\n\n` +
+            `Le supprimer effacera définitivement ces données (billets, paiements, factures…). ` +
+            `Pour conserver l'historique, utilisez plutôt « Suspendre ».\n\n` +
+            `Supprimer quand même ${u.fullName} ?`
+          : `Supprimer définitivement ${u.fullName} (${u.email}) ?`;
+        if (!confirm(text)) return;
+        this.http
+          .delete<void>(`${this.base}/users/${u.id}`, { params: summary ? { force: 'true' } : {} })
+          .subscribe({
+            next: () => {
+              this.notify('Utilisateur supprimé.', false);
+              this.reload();
+            },
+            error: (err: HttpErrorResponse) =>
+              this.notify(this.errorOf(err, 'Suppression impossible.'), true),
+          });
       },
-      error: (err: HttpErrorResponse) => this.notify(this.errorOf(err, 'Suppression impossible.'), true),
+      error: (err: HttpErrorResponse) => this.notify(this.errorOf(err, 'Action impossible.'), true),
     });
   }
 

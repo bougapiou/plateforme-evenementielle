@@ -4,7 +4,6 @@ import bf.evenements.plateforme.audit.AuditService;
 import bf.evenements.plateforme.common.exception.BusinessException;
 import bf.evenements.plateforme.common.exception.ConflictException;
 import bf.evenements.plateforme.user.dto.AdminUpdateUserRequest;
-import org.springframework.dao.DataIntegrityViolationException;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.common.web.PageResponse;
@@ -33,6 +32,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
+    private final UserDeletionService deletion;
 
     @Transactional(readOnly = true)
     public UserResponse me() {
@@ -103,29 +103,42 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+    @Transactional(readOnly = true)
+    public UserDeletionService.History history(UUID id) {
+        loadUser(id);
+        return deletion.history(id);
+    }
+
     /**
-     * Permanently deletes a user. Only possible while the account has no business
-     * history (orders, tickets, registrations, payments, invoices, organiser or
-     * structure ownership, scans…) — otherwise the caller is told to suspend it instead.
+     * Permanently deletes a user. When the account has business history
+     * (orders, tickets, registrations, payments…) the call is refused with
+     * USER_HAS_HISTORY unless {@code force} is set — the admin is first shown
+     * what would be lost. A user who organises events can never be deleted this
+     * way: the events (and other people's tickets) must be dealt with first.
      */
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, boolean force) {
         User user = loadUser(id);
         if (user.getId().equals(currentUser.requireId())) {
             throw new BusinessException("SELF_DELETE_FORBIDDEN",
                     "Vous ne pouvez pas supprimer votre propre compte.");
         }
-        String email = user.getEmail();
-        try {
-            userRepository.delete(user);
-            userRepository.flush();
-        } catch (DataIntegrityViolationException e) {
+        var history = deletion.history(id);
+        if (history.any() && !force) {
             throw new ConflictException("USER_HAS_HISTORY",
-                    "Cet utilisateur a un historique (commandes, billets, inscriptions, paiements, "
-                            + "événements…) et ne peut pas être supprimé. Suspendez-le à la place.");
+                    "Ce compte a un historique : " + history.summary()
+                            + ". Sa suppression effacera aussi ces données.");
         }
+        if (history.evenementsOrganises() > 0) {
+            throw new BusinessException("ORGANIZER_HAS_EVENTS",
+                    "Ce compte organise " + history.evenementsOrganises()
+                            + " événement(s) : supprimez-les d'abord (ou suspendez le compte).");
+        }
+        String email = user.getEmail();
+        deletion.purge(id);
         auditService.record(currentUser.requireId(), currentUser.require().email(),
-                "USER_DELETED", "User", id.toString(), null, "email=" + email);
+                "USER_DELETED", "User", id.toString(), null,
+                "email=" + email + (history.any() ? " ; historique supprimé : " + history.summary() : ""));
     }
 
     @Transactional
