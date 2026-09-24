@@ -4,11 +4,12 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../core/auth.service';
 import { ApiError } from '../core/models';
+import { PasswordInputComponent } from '../shared/password-input.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, PasswordInputComponent],
   template: `
     <div class="mx-auto max-w-md">
       <img src="assets/logo.png" alt="Plateforme Nationale des Événements"
@@ -24,8 +25,7 @@ import { ApiError } from '../core/models';
           </div>
           <div>
             <label class="form-label" for="password">Mot de passe</label>
-            <input id="password" type="password" class="form-input" formControlName="password"
-                   autocomplete="current-password" />
+            <app-password-input inputId="password" formControlName="password" autocomplete="current-password" />
           </div>
 
           @if (error()) {

@@ -1,6 +1,6 @@
 import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { EventsService } from '../events/events.service';
@@ -51,7 +51,7 @@ import { ApiError } from '../../core/models';
            gratuit unique, sans formulaire, sans compte). Tout le reste passe
            par la section « Participer à l'événement » plus bas. -->
       @if (quickTicket(); as t) {
-        <section class="card mt-4 p-4">
+        <section class="card mt-4 p-4" id="obtenir-billet">
           <p class="text-sm text-slate-600">
             Billet : <span class="font-medium">{{ t.nom }}</span>
             <span class="text-slate-400">— Gratuit</span>
@@ -505,6 +505,18 @@ export class EventDetailComponent implements OnDestroy {
   standMode = signal<'particulier' | 'structure'>('particulier');
   verifiedStructures = computed(() => this.structures().filter((s) => s.statut === 'VERIFIEE'));
 
+  private route = inject(ActivatedRoute);
+  private wantsToParticipate = this.route.snapshot.queryParamMap.has('participer');
+
+  /** Arrivée depuis « S'inscrire et prendre un billet » : on amène le visiteur au formulaire. */
+  private scrollToParticipation(): void {
+    if (!this.wantsToParticipate) return;
+    setTimeout(() => {
+      const el = document.getElementById('obtenir-billet') ?? document.getElementById('participer');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 250);
+  }
+
   constructor() {
     effect(() => {
       const slug = this.slug();
@@ -523,6 +535,7 @@ export class EventDetailComponent implements OnDestroy {
           // A single category — free or paid — defaults to quantity 1 so
           // there's nothing to fill in beyond the contact form.
           if (filtered.length === 1) this.qty.set({ [filtered[0].id]: 1 });
+          this.scrollToParticipation();
         },
         error: () => this.tickets.set([]),
       });

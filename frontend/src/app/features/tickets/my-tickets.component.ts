@@ -1,5 +1,6 @@
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { IconComponent } from '../../shared/icon.component';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { TicketsService } from './tickets.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -10,7 +11,7 @@ import { formatDate, formatDateTime } from '../../shared/format';
 @Component({
   selector: 'app-my-tickets',
   standalone: true,
-  imports: [RouterLink, StatusBadgeComponent],
+  imports: [RouterLink, StatusBadgeComponent, IconComponent],
   template: `
     <h1 class="text-xl font-bold text-slate-800">Mes billets</h1>
 
@@ -45,9 +46,13 @@ import { formatDate, formatDateTime } from '../../shared/format';
           </div>
         </div>
       } @empty {
-        <p class="card p-6 text-sm text-slate-500 sm:col-span-2">
-          Aucun billet. Parcourez les <a routerLink="/" class="text-brand-700">événements</a>.
-        </p>
+        <div class="card p-6 text-center sm:col-span-2">
+          <p class="text-slate-600">Vous n'avez encore aucun billet.</p>
+          <a routerLink="/" class="btn-primary mt-4 inline-flex items-center gap-2">
+            <app-icon name="calendar" class="h-4 w-4" /> Découvrir les événements
+            <app-icon name="arrow-right" class="h-4 w-4" />
+          </a>
+        </div>
       }
     </div>
 

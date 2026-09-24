@@ -4,12 +4,13 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../core/auth.service';
 import { ApiError, UserType } from '../core/models';
+import { PasswordInputComponent } from '../shared/password-input.component';
 import { PhoneInputComponent } from '../shared/phone-input.component';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, PhoneInputComponent],
+  imports: [ReactiveFormsModule, RouterLink, PhoneInputComponent, PasswordInputComponent],
   template: `
     <div class="mx-auto max-w-lg">
       <img src="assets/logo.png" alt="Plateforme Nationale des Événements"
@@ -50,9 +51,12 @@ import { PhoneInputComponent } from '../shared/phone-input.component';
           </div>
           <div>
             <label class="form-label" for="password">Mot de passe</label>
-            <input id="password" type="password" class="form-input" formControlName="password"
-                   autocomplete="new-password" />
+            <app-password-input inputId="password" formControlName="password" autocomplete="new-password" />
             <p class="mt-1 text-xs text-slate-400">8 caractères minimum.</p>
+          </div>
+          <div>
+            <label class="form-label" for="confirm">Confirmer le mot de passe</label>
+            <app-password-input inputId="confirm" formControlName="confirm" autocomplete="new-password" />
           </div>
 
           @if (error()) {
@@ -87,6 +91,7 @@ export class RegisterComponent {
     phone: ['', [Validators.required, Validators.pattern(/^\+?[0-9 ]{6,20}$/)]],
     type: ['PARTICULIER' as UserType],
     password: ['', [Validators.required, Validators.minLength(8)]],
+    confirm: ['', [Validators.required]],
   });
 
   submit(): void {
@@ -94,9 +99,14 @@ export class RegisterComponent {
       this.form.markAllAsTouched();
       return;
     }
+    const { confirm, ...payload } = this.form.getRawValue();
+    if (payload.password !== confirm) {
+      this.error.set('Les deux mots de passe ne sont pas identiques.');
+      return;
+    }
     this.loading.set(true);
     this.error.set(null);
-    this.auth.register(this.form.getRawValue()).subscribe({
+    this.auth.register(payload).subscribe({
       next: () => this.router.navigateByUrl('/tableau-de-bord'),
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);

@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { IconComponent } from '../../shared/icon.component';
 import { StandsService } from './stands.service';
 import { StandReservation } from './stand.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
@@ -10,7 +11,7 @@ import { downloadBlob } from '../invoices/invoices.service';
 @Component({
   selector: 'app-my-stands',
   standalone: true,
-  imports: [RouterLink, StatusBadgeComponent],
+  imports: [RouterLink, StatusBadgeComponent, IconComponent],
   template: `
     <h1 class="text-xl font-bold text-slate-800">Mes réservations de stands</h1>
 
@@ -38,10 +39,13 @@ import { downloadBlob } from '../invoices/invoices.service';
           </div>
         </div>
       } @empty {
-        <p class="card p-6 text-sm text-slate-500">
-          Aucune réservation. Parcourez les
-          <a routerLink="/" class="text-brand-700">événements</a> proposant des stands.
-        </p>
+        <div class="card p-6 text-center">
+          <p class="text-slate-600">Vous n'avez encore aucune réservation de stand.</p>
+          <a routerLink="/" class="btn-primary mt-4 inline-flex items-center gap-2">
+            <app-icon name="calendar" class="h-4 w-4" /> Découvrir les événements
+            <app-icon name="arrow-right" class="h-4 w-4" />
+          </a>
+        </div>
       }
     </div>
   `,

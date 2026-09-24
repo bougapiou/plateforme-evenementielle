@@ -28,7 +28,8 @@ export class IconComponent {
 export type IconName =
   | 'home' | 'calendar' | 'ticket' | 'qr' | 'users' | 'building' | 'chart'
   | 'login' | 'logout' | 'present' | 'check' | 'x' | 'badge' | 'card' | 'bell'
-  | 'key' | 'scan' | 'repeat' | 'dot' | 'expand';
+  | 'key' | 'scan' | 'repeat' | 'dot' | 'expand'
+  | 'menu' | 'eye' | 'eye-off' | 'arrow-right' | 'pin' | 'clock' | 'search';
 
 const ICONS: Record<string, string> = {
   home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>',
@@ -51,4 +52,11 @@ const ICONS: Record<string, string> = {
   repeat: '<path d="M4 9a5 5 0 0 1 5-5h9l-3-3M20 15a5 5 0 0 1-5 5H6l3 3"/>',
   dot: '<circle cx="12" cy="12" r="3"/>',
   expand: '<path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  'eye-off': '<path d="M3 3l18 18"/><path d="M10.6 5.1A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.7 8.5 2 12 2 12s3.6 7 10 7c1.7 0 3.2-.4 4.5-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  'arrow-right': '<path d="M4 12h16M14 6l6 6-6 6"/>',
+  pin: '<path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>',
 };
