@@ -100,9 +100,8 @@ class _CompleteAccountScreenState extends ConsumerState<CompleteAccountScreen> {
                 ),
               const SizedBox(height: 12),
             ],
-            TextFormField(
+            PasswordField(
               controller: _password,
-              obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Mot de passe',
                 helperText: '8 caractères minimum',
@@ -111,9 +110,8 @@ class _CompleteAccountScreenState extends ConsumerState<CompleteAccountScreen> {
                   (v == null || v.length < 8) ? '8 caractères minimum' : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            PasswordField(
               controller: _confirm,
-              obscureText: true,
               decoration:
                   const InputDecoration(labelText: 'Confirmer le mot de passe'),
               validator: (v) => v != _password.text

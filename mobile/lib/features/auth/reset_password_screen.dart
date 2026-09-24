@@ -91,20 +91,18 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     (v == null || v.trim().isEmpty) ? 'Code requis' : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              PasswordField(
                 controller: _password,
                 decoration: const InputDecoration(labelText: 'Mot de passe'),
-                obscureText: true,
                 validator: (v) => (v == null || v.length < 8)
                     ? '8 caractères minimum'
                     : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              PasswordField(
                 controller: _confirm,
                 decoration:
                     const InputDecoration(labelText: 'Confirmer le mot de passe'),
-                obscureText: true,
                 validator: (v) =>
                     (v == null || v.isEmpty) ? 'Confirmation requise' : null,
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../data/domain.dart';
 import 'brand.dart';
 import 'faso.dart';
@@ -171,4 +172,59 @@ void showSnack(BuildContext context, String message, {bool error = false}) {
       content: Text(message),
       backgroundColor: error ? const Color(0xFF991B1B) : null,
     ));
+}
+
+/// Password field with a show/hide (eye) toggle — same API as [TextFormField]
+/// for the parts the auth screens use.
+class PasswordField extends StatefulWidget {
+  final TextEditingController controller;
+  final InputDecoration decoration;
+  final FormFieldValidator<String>? validator;
+  final TextInputAction? textInputAction;
+
+  const PasswordField({
+    super.key,
+    required this.controller,
+    this.decoration = const InputDecoration(labelText: 'Mot de passe'),
+    this.validator,
+    this.textInputAction,
+  });
+
+  @override
+  State<PasswordField> createState() => _PasswordFieldState();
+}
+
+class _PasswordFieldState extends State<PasswordField> {
+  bool _visible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.controller,
+      obscureText: !_visible,
+      validator: widget.validator,
+      textInputAction: widget.textInputAction,
+      autocorrect: false,
+      enableSuggestions: false,
+      decoration: widget.decoration.copyWith(
+        suffixIcon: IconButton(
+          tooltip: _visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe',
+          icon: Icon(_visible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+          onPressed: () => setState(() => _visible = !_visible),
+        ),
+      ),
+    );
+  }
+}
+
+/// Clear call-to-action shown on empty lists ("Aucune inscription…").
+class DiscoverEventsButton extends StatelessWidget {
+  const DiscoverEventsButton({super.key});
+
+  @override
+  Widget build(BuildContext context) => FilledButton.icon(
+        onPressed: () => context.go('/evenements'),
+        icon: const Icon(Icons.event_outlined),
+        label: const Text('Découvrir les événements'),
+      );
 }

@@ -5,6 +5,7 @@ import '../../core/faso.dart';
 import '../../core/models.dart';
 import '../../core/phone_field.dart';
 import '../../core/providers.dart';
+import '../../core/widgets.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +21,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _email = TextEditingController();
   String _phone = '';
   final _password = TextEditingController();
+  final _confirm = TextEditingController();
   String _type = 'PARTICULIER';
   bool _loading = false;
   String? _error;
@@ -30,6 +32,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _lastName.dispose();
     _email.dispose();
     _password.dispose();
+    _confirm.dispose();
     super.dispose();
   }
 
@@ -106,12 +109,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 onChanged: (v) => setState(() => _type = v ?? 'PARTICULIER'),
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              PasswordField(
                 controller: _password,
                 decoration: const InputDecoration(labelText: 'Mot de passe'),
-                obscureText: true,
                 validator: (v) =>
                     (v == null || v.length < 8) ? '8 caractères minimum' : null,
+              ),
+              const SizedBox(height: 12),
+              PasswordField(
+                controller: _confirm,
+                decoration:
+                    const InputDecoration(labelText: 'Confirmer le mot de passe'),
+                validator: (v) => v != _password.text
+                    ? 'Les mots de passe ne correspondent pas'
+                    : null,
               ),
               const SizedBox(height: 16),
               if (_error != null)

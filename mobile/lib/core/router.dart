@@ -119,7 +119,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/evenements/:slug',
         parentNavigatorKey: _rootKey,
-        builder: (_, s) => EventDetailScreen(slug: s.pathParameters['slug']!),
+        builder: (_, s) => EventDetailScreen(
+          slug: s.pathParameters['slug']!,
+          participer: s.uri.queryParameters['participer'] == '1',
+        ),
       ),
       GoRoute(
         path: '/evenements/:slug/inscription',

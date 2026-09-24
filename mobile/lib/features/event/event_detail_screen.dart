@@ -21,7 +21,10 @@ class _Bundle {
 
 class EventDetailScreen extends ConsumerStatefulWidget {
   final String slug;
-  const EventDetailScreen({super.key, required this.slug});
+
+  /// Arrivée depuis « S'inscrire et prendre un billet » : on descend au formulaire.
+  final bool participer;
+  const EventDetailScreen({super.key, required this.slug, this.participer = false});
 
   @override
   ConsumerState<EventDetailScreen> createState() => _EventDetailScreenState();
@@ -29,11 +32,25 @@ class EventDetailScreen extends ConsumerStatefulWidget {
 
 class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   late Future<_Bundle> _future;
+  final _participateKey = GlobalKey();
+  bool _scrolled = false;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+  }
+
+  void _scrollToParticipation() {
+    if (!widget.participer || _scrolled) return;
+    _scrolled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _participateKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(ctx,
+            duration: const Duration(milliseconds: 450), curve: Curves.easeInOut);
+      }
+    });
   }
 
   Future<_Bundle> _load() async {
@@ -55,7 +72,11 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       body: FutureView<_Bundle>(
         future: _future,
         onRetry: _refresh,
-        builder: (b) => _Body(bundle: b, onChanged: _refresh),
+        builder: (b) {
+          _scrollToParticipation();
+          return _Body(
+              bundle: b, onChanged: _refresh, participateKey: _participateKey);
+        },
       ),
     );
   }
@@ -64,7 +85,11 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 class _Body extends ConsumerWidget {
   final _Bundle bundle;
   final VoidCallback onChanged;
-  const _Body({required this.bundle, required this.onChanged});
+  final GlobalKey participateKey;
+  const _Body(
+      {required this.bundle,
+      required this.onChanged,
+      required this.participateKey});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,6 +99,8 @@ class _Body extends ConsumerWidget {
 
     return ListView(
       padding: EdgeInsets.zero,
+      // Tout est construit d'avance pour que le défilement vers la billetterie fonctionne.
+      cacheExtent: 100000,
       children: [
         if (e.coverUrl != null)
           AspectRatio(aspectRatio: 16 / 8, child: RemoteImage(url: e.coverUrl)),
@@ -183,7 +210,7 @@ class _Body extends ConsumerWidget {
 
         // --- Billetterie ---
         if (payantTickets.isNotEmpty) ...[
-          const SizedBox(height: 20),
+          SizedBox(key: participateKey, height: 20),
           _Section('Billetterie'),
           if (canRegister)
             _TicketPurchaseSection(event: e, tickets: payantTickets)
@@ -220,7 +247,8 @@ class _Body extends ConsumerWidget {
               )),
         ],
 
-        const SizedBox(height: 24),
+        SizedBox(
+            key: payantTickets.isEmpty ? participateKey : null, height: 24),
 
         // --- Actions ---
         if (canRegister) ...[

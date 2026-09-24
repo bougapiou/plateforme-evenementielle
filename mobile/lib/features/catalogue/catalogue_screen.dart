@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/brand.dart';
@@ -190,68 +191,144 @@ class _EventCard extends StatelessWidget {
   final EventSummary event;
   const _EventCard({required this.event});
 
+  static final _month = DateFormat('MMM', 'fr');
+
+  void _openDetail(BuildContext context) =>
+      context.push('/evenements/${event.slug}');
+
+  /// Same day: opening hours; several days: the date range.
+  String _when() {
+    final d = event.dateDebut?.toLocal();
+    final f = event.dateFin?.toLocal();
+    if (d != null &&
+        f != null &&
+        d.year == f.year &&
+        d.month == f.month &&
+        d.day == f.day) {
+      return '${Fmt.time(d)} – ${Fmt.time(f)}';
+    }
+    return Fmt.range(event.dateDebut, event.dateFin);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final d = event.dateDebut?.toLocal();
+    final place = [event.ville, event.lieu]
+        .where((e) => e != null && e.isNotEmpty)
+        .join(' · ');
+
     return Card(
       clipBehavior: Clip.antiAlias,
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => context.push('/evenements/${event.slug}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
+      margin: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image : un appui ouvre le détail de l'événement.
+          InkWell(
+            onTap: () => _openDetail(context),
+            child: Stack(
               children: [
                 AspectRatio(
-                  aspectRatio: 16 / 7,
+                  aspectRatio: 16 / 8,
                   child: RemoteImage(url: event.coverUrl, fallbackIcon: Icons.event),
                 ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: StatusChip(event.statut),
-                ),
-              ],
-            ),
-            Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (event.categoryNom != null)
-                Text(
-                  event.categoryNom!.toUpperCase(),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        letterSpacing: .5,
+                if (d != null)
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 4)
+                        ],
                       ),
-                ),
-              const SizedBox(height: 4),
-              Text(event.nom,
-                  style: Theme.of(context).textTheme.titleMedium,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
-              if (event.descriptionCourte != null) ...[
-                const SizedBox(height: 4),
-                Text(event.descriptionCourte!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(d.day.toString().padLeft(2, '0'),
+                              style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.1)),
+                          Text(_month.format(d).replaceAll('.', '').toUpperCase(),
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Brand.b600)),
+                          Text('${d.year}',
+                              style: const TextStyle(
+                                  fontSize: 10, color: Brand.s500)),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (event.categoryNom != null)
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Brand.b600,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(event.categoryNom!,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
               ],
-              const SizedBox(height: 10),
-              _line(context, Icons.calendar_today,
-                  Fmt.range(event.dateDebut, event.dateFin)),
-              if ((event.ville ?? event.lieu) != null)
-                _line(context, Icons.place_outlined,
-                    [event.lieu, event.ville].where((e) => e != null).join(', ')),
-              if (event.standsActifs)
-                _line(context, Icons.storefront_outlined,
-                    'Réservation de stands ouverte'),
-            ],
-          ),
             ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InkWell(
+                  onTap: () => _openDetail(context),
+                  child: Text(event.nom,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ),
+                const SizedBox(height: 8),
+                if (place.isNotEmpty) _line(context, Icons.place_outlined, place),
+                _line(context, Icons.schedule, _when()),
+                // Description : un appui ouvre le détail de l'événement.
+                if (event.descriptionCourte != null) ...[
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () => _openDetail(context),
+                    child: Text(event.descriptionCourte!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => context
+                        .push('/evenements/${event.slug}?participer=1'),
+                    icon: const Icon(Icons.confirmation_number_outlined),
+                    label: const Text("S'inscrire et prendre un billet"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -260,7 +337,7 @@ class _EventCard extends StatelessWidget {
         padding: const EdgeInsets.only(top: 4),
         child: Row(
           children: [
-            Icon(icon, size: 15, color: Theme.of(context).colorScheme.outline),
+            Icon(icon, size: 16, color: Theme.of(context).colorScheme.outline),
             const SizedBox(width: 8),
             Expanded(
                 child: Text(text,

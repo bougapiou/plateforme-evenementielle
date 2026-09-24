@@ -56,16 +56,14 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            TextFormField(
+            PasswordField(
               controller: _current,
-              obscureText: true,
               decoration: const InputDecoration(labelText: 'Mot de passe actuel'),
               validator: (v) => (v == null || v.isEmpty) ? 'Requis' : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            PasswordField(
               controller: _next,
-              obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Nouveau mot de passe',
                 helperText: '8 caractères minimum',
@@ -74,9 +72,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   (v == null || v.length < 8) ? '8 caractères minimum' : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            PasswordField(
               controller: _confirm,
-              obscureText: true,
               decoration:
                   const InputDecoration(labelText: 'Confirmer le nouveau mot de passe'),
               validator: (v) =>

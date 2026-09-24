@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/faso.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
+import '../../core/widgets.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -68,10 +69,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     (v == null || !v.contains('@')) ? 'E-mail invalide' : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              PasswordField(
                 controller: _password,
                 decoration: const InputDecoration(labelText: 'Mot de passe'),
-                obscureText: true,
                 validator: (v) =>
                     (v == null || v.isEmpty) ? 'Mot de passe requis' : null,
               ),

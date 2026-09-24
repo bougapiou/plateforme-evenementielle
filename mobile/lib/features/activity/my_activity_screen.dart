@@ -367,5 +367,9 @@ class _PaymentsTabState extends ConsumerState<_PaymentsTab> {
 
 Widget _empty(String msg) => ListView(children: [
       const SizedBox(height: 100),
-      EmptyState(icon: Icons.inbox_outlined, title: msg),
+      EmptyState(
+        icon: Icons.inbox_outlined,
+        title: msg,
+        action: const DiscoverEventsButton(),
+      ),
     ]);

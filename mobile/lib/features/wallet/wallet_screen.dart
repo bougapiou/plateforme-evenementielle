@@ -53,6 +53,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   title: 'Aucun billet',
                   subtitle:
                       'Vos billets électroniques apparaîtront ici après un achat confirmé.',
+                  action: DiscoverEventsButton(),
                 ),
               ]);
             }
