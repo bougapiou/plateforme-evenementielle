@@ -1,7 +1,7 @@
 # Test de charge sur le vrai serveur — procédure
 
-Trois pièces : `k6-billet-gratuit.js` (le test), `cleanup-1-apercu.sql` et `cleanup-2-suppression.sql`
-(le nettoyage). Le SQL de nettoyage est vérifié par un test automatique
+Scripts k6 : `k6-billet-gratuit.js`, `k6-lecture-publique.js`, `k6-scan-entree.js`, `k6-capteurs.js`
+(+ `lib.js` commun, `export-tokens.sql`). Nettoyage : `cleanup-1-apercu.sql` et `cleanup-2-suppression.sql`. Le SQL de nettoyage est vérifié par un test automatique
 (`LoadTestCleanupIT`) sur un vrai PostgreSQL avec le vrai schéma : il ne supprime que les données de
 test et **refuse de rien supprimer** si de vrais utilisateurs ont pris part à l'événement de test.
 
@@ -41,8 +41,40 @@ k6 run -e BASE_URL=https://<domaine> -e EVENT_SLUG=<slug> -e PROFILE=pic    k6-b
 - **Sur PostgreSQL** : `select count(*) from pg_stat_activity;` — le pool de connexions est souvent le premier
   goulot.
 
-Objectifs de lecture (résumé k6) : `http_req_failed` < 1 %, `http_req_duration p(95)` < 1,5 s, et surtout
+Objectifs de lecture (résumé k6, tous scripts) : `http_req_failed` < 1 %, `http_req_duration p(95)` < 1,5 s, et surtout
 aucun temps de réponse qui s'aggrave régulièrement au fil du palier.
+
+## Les 4 scénarios
+
+| Script | Ce qu'il simule | Écrit en base ? | Prérequis |
+|---|---|---|---|
+| `k6-lecture-publique.js` | visiteurs qui naviguent : liste + filtres, fiche, billets, catégories, présence publique, page d'accueil, image | **non** | aucun (juste `BASE_URL`) |
+| `k6-billet-gratuit.js` | prise d'un billet gratuit (session invité, inscription, PDF) | oui | événement de test |
+| `k6-scan-entree.js` | agents qui scannent des billets à l'ouverture des portes (80 % valides, 15 % déjà utilisés, 5 % faux) | oui (scans) | billets + `tokens.csv` + compte organisateur |
+| `k6-capteurs.js` | boîtiers laser qui envoient leurs passages chaque seconde | oui (passages) | événement de test + compte organisateur |
+
+Ordre conseillé : **lecture publique** (sans risque) → **billet gratuit** → **scan** → **capteurs**, chacun d'abord en `fumee`,
+puis `palier`, puis `pic`. Tout ce qui est écrit rejoint l'événement de test : un seul nettoyage à la fin.
+
+```
+# 1) lecture publique (aucune donnée créée)
+k6 run -e BASE_URL=https://<domaine> -e PROFILE=palier k6-lecture-publique.js
+
+# 2) scan à l'entrée : d'abord créer des billets (k6-billet-gratuit.js), puis exporter leurs jetons QR
+psql -h <hote> -U <utilisateur> -d <base> -f export-tokens.sql        # crée tokens.csv (à côté du script)
+k6 run -e BASE_URL=https://<domaine> -e EVENT_SLUG=<slug> -e SCANNER_EMAIL=<organisateur>        -e SCANNER_PASSWORD=<mot de passe> -e PROFILE=palier k6-scan-entree.js
+
+# 3) capteurs laser (crée puis révoque N clés)
+k6 run -e BASE_URL=https://<domaine> -e EVENT_SLUG=<slug> -e ORGA_EMAIL=<organisateur>        -e ORGA_PASSWORD=<mot de passe> -e SENSORS=20 -e PROFILE=palier k6-capteurs.js
+```
+
+- **Scan** : il faut assez de jetons (le script avertit s'il en manque). 60 scans/s pendant 2 min = ~7 200 scans :
+  générer autant de billets avant (plusieurs passes de `k6-billet-gratuit.js`). Le « contrôle des sorties » ne doit
+  pas être activé sur l'événement de test. Métriques à lire : `scan_valide`, `scan_deja_utilise`, `scan_invalide`
+  et surtout `scan_resultat_inattendu` (doit rester < 2 %).
+- **Capteurs** : à la fin, comparer `passages_entree` / `passages_sortie` (récapitulatif k6) avec la ligne
+  « Totaux serveur » du journal : les deux doivent correspondre. Le limiteur de débit ne concerne pas les capteurs.
+- Le compte organisateur n'a pas besoin d'être un administrateur : celui qui a créé l'événement de test suffit.
 
 ## Après
 
@@ -53,6 +85,7 @@ aucun temps de réponse qui s'aggrave régulièrement au fil du palier.
    `psql -h <hote> -U <utilisateur> -d <base> -v ON_ERROR_STOP=1 -1 -f cleanup-2-suppression.sql`
 4. Relancer l'aperçu : tout doit être à 0.
 
+Le nettoyage supprime aussi les scans, les capteurs et leurs passages (ils appartiennent à l'événement de test).
 Restent après nettoyage, sans conséquence : les lignes du journal d'audit (`AUTH_GUEST`…) et les
 compteurs internes qui repartent de zéro. Si le nettoyage échoue avec « vrais utilisateurs sur
 l'événement de test », c'est qu'un visiteur réel s'est inscrit à l'événement de test : ne rien forcer,

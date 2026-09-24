@@ -50,3 +50,10 @@ select
 select id, email, phone, guest from users
 where phone like '+226 99999%'
   and not (guest = true and email like 'tel-%@guest.plateforme.local');
+
+\echo '--- Scans et capteurs de l''événement de test (supprimés avec lui) ---'
+select
+  (select count(*) from checkins where event_id in (select id from events where nom like 'ZZ-TEST-CHARGE%')) as scans,
+  (select count(*) from capteurs where event_id in (select id from events where nom like 'ZZ-TEST-CHARGE%')) as capteurs,
+  (select coalesce(sum(nombre), 0) from passages_capteur
+     where event_id in (select id from events where nom like 'ZZ-TEST-CHARGE%')) as passages_laser;

@@ -69,6 +69,23 @@ class LoadTestCleanupIT extends AbstractIntegrationTest {
         return session.path("user.id");
     }
 
+    /** Scans the guest's ticket QR as the organiser (a real check-in on the test event). */
+    private String scanGuestTicket(String phone, String orga, String eventId) throws Exception {
+        var session = given().contentType(ContentType.JSON).body(Map.of("phone", phone))
+                .when().post("/api/auth/guest-quick").then().statusCode(200).extract().response();
+        String token = session.path("accessToken");
+        String ticketId = as(token).when().get("/api/tickets/my").then().statusCode(200)
+                .extract().path("[0].id");
+        byte[] png = given().header("Authorization", "Bearer " + token)
+                .when().get("/api/tickets/" + ticketId + "/qr.png").then().statusCode(200)
+                .extract().asByteArray();
+        String qr = bf.evenements.plateforme.support.QrTestUtil.decode(png);
+        as(orga).body(Map.of("token", qr, "eventId", eventId, "sens", "ENTREE"))
+                .when().post("/api/checkins/scan").then().statusCode(200)
+                .body("resultat", org.hamcrest.Matchers.equalTo("VALIDE"));
+        return qr;
+    }
+
     private long count(String sql, Object... args) {
         return jdbc.queryForObject(sql, Long.class, args);
     }
@@ -115,6 +132,26 @@ class LoadTestCleanupIT extends AbstractIntegrationTest {
         String g3 = guestTakesTicket("+226 99999" + ((n + 2) % 10_000_000), testEvent2, cat2);
         assertThat(count("select count(*) from tickets where event_id = ?::uuid", testEvent2)).isEqualTo(2);
 
+        // a real check-in and a sensor with passages on the test event: removed with the event
+        String qr = scanGuestTicket("+226 99999" + ((n + 1) % 10_000_000), orga, testEvent2);
+        String sensorKey = as(orga).body(Map.of("nom", "Laser test"))
+                .when().post("/api/events/" + testEvent2 + "/sensors").then().statusCode(201)
+                .extract().path("cle");
+        given().header("X-Sensor-Key", sensorKey)
+                .when().post("/api/sensors/entry?count=3").then().statusCode(200);
+        assertThat(count("select count(*) from checkins where event_id = ?::uuid", testEvent2)).isEqualTo(1);
+        assertThat(count("select count(*) from passages_capteur where event_id = ?::uuid", testEvent2)).isEqualTo(1);
+
+        // export-tokens.sql gives the k6 scan script its input: the token decoded from the QR
+        POSTGRES.copyFileToContainer(MountableFile.forHostPath(
+                Path.of("..", "infra", "loadtest", "export-tokens.sql").toAbsolutePath().normalize()),
+                "/tmp/export-tokens.sql");
+        ExecResult export = POSTGRES.execInContainer("sh", "-c", "cd /tmp && psql -U "
+                + POSTGRES.getUsername() + " -d " + POSTGRES.getDatabaseName()
+                + " -v ON_ERROR_STOP=1 -f /tmp/export-tokens.sql && cat /tmp/tokens.csv");
+        assertThat(export.getExitCode()).as(export.getStderr()).isZero();
+        assertThat(export.getStdout()).contains(qr);
+
         ExecResult preview = psql("cleanup-1-apercu.sql");
         assertThat(preview.getExitCode()).as(preview.getStderr()).isZero();
 
@@ -127,6 +164,9 @@ class LoadTestCleanupIT extends AbstractIntegrationTest {
         }
         assertThat(count("select count(*) from events where id = ?::uuid", testEvent2)).isZero();
         assertThat(count("select count(*) from tickets where event_id = ?::uuid", testEvent2)).isZero();
+        assertThat(count("select count(*) from checkins where event_id = ?::uuid", testEvent2)).isZero();
+        assertThat(count("select count(*) from capteurs where event_id = ?::uuid", testEvent2)).isZero();
+        assertThat(count("select count(*) from passages_capteur where event_id = ?::uuid", testEvent2)).isZero();
         assertThat(count("select count(*) from users where phone like '+226 99999%'")).isZero();
         // ... real data untouched
         assertThat(count("select count(*) from users where id = ?::uuid", realUserId)).isEqualTo(1);
