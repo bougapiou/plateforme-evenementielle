@@ -53,6 +53,8 @@ public class SecurityConfig {
                                 "/api/payments/webhook").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
                                 "/api/payments/arzeka/callback").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST,
+                                "/api/sensors/entry", "/api/sensors/exit").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, PUBLIC_GET).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())

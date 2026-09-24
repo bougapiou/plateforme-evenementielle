@@ -14,7 +14,7 @@ import { StandsService } from '../stands/stands.service';
 import { StandType } from '../stands/stand.models';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
-import { CheckinService, CheckinView, StaffMember } from '../checkin/checkin.service';
+import { CheckinService, CheckinView, SensorView, StaffMember } from '../checkin/checkin.service';
 import { StatsService, StatMap, EventSeries } from '../stats/stats.service';
 import { BarChartComponent } from '../../shared/bar-chart.component';
 import { ImageUploadComponent } from '../../shared/image-upload.component';
@@ -529,6 +529,50 @@ type Tab =
             </p>
           </div>
 
+          <div class="card p-4 lg:col-span-2">
+            <h3 class="font-semibold text-slate-800">Capteurs de comptage (laser Arduino / Raspberry)</h3>
+            <p class="mt-1 text-xs text-slate-400">
+              Un capteur compte les passages sans billet. Il s'authentifie avec une clé secrète et
+              appelle un endpoint pour les entrées et un autre pour les sorties.
+            </p>
+            <form class="mt-3 flex gap-2" (ngSubmit)="addSensor()">
+              <input class="form-input" placeholder="Nom du capteur (ex. Porte principale)"
+                     [(ngModel)]="sensorName" name="sensorName" />
+              <button type="submit" class="btn-primary">Créer</button>
+            </form>
+            @if (sensorError()) { <p class="mt-2 text-sm text-red-700">{{ sensorError() }}</p> }
+            @if (newSensorKey(); as key) {
+              <div class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
+                <p class="font-medium text-amber-800">
+                  Clé du capteur — copiez-la maintenant, elle ne sera plus affichée :
+                </p>
+                <p class="mt-1 break-all font-mono text-xs text-slate-800">{{ key }}</p>
+                <p class="mt-2 text-xs text-slate-600">
+                  Entrée : <code>POST {{ apiOrigin }}/api/sensors/entry</code><br />
+                  Sortie : <code>POST {{ apiOrigin }}/api/sensors/exit</code><br />
+                  En-tête : <code>X-Sensor-Key: {{ key }}</code> — option : <code>?count=N</code>
+                </p>
+              </div>
+            }
+            <ul class="mt-3 divide-y divide-slate-100 text-sm">
+              @for (s of sensors(); track s.id) {
+                <li class="flex items-center justify-between py-2">
+                  <span>
+                    {{ s.nom }} <span class="font-mono text-xs text-slate-400">{{ s.clePrefixe }}</span>
+                    @if (!s.actif) { <span class="text-xs text-red-600"> · révoqué</span> }
+                    <span class="text-xs text-slate-500">
+                      · {{ s.entrees }} entrées · {{ s.sorties }} sorties
+                      @if (s.derniereActivite) { · dernier signal {{ dt(s.derniereActivite) }} }
+                    </span>
+                  </span>
+                  @if (s.actif) {
+                    <button class="text-xs text-red-600" (click)="revokeSensor(s)">Révoquer</button>
+                  }
+                </li>
+              } @empty { <li class="py-2 text-slate-400">Aucun capteur.</li> }
+            </ul>
+          </div>
+
           <div class="card p-4">
             <h3 class="font-semibold text-slate-800">Journal des contrôles</h3>
             <ul class="mt-3 divide-y divide-slate-100 text-sm">
@@ -612,6 +656,11 @@ export class EventEditorComponent implements OnDestroy {
   checkins = signal<CheckinView[]>([]);
   staffEmail = '';
   staffError = signal<string | null>(null);
+  sensors = signal<SensorView[]>([]);
+  sensorName = '';
+  sensorError = signal<string | null>(null);
+  newSensorKey = signal<string | null>(null);
+  apiOrigin = typeof location !== 'undefined' ? location.origin : '';
   broadcastTitre = '';
   broadcastContenu = '';
   broadcastInfo = signal<string | null>(null);
@@ -797,6 +846,7 @@ export class EventEditorComponent implements OnDestroy {
     this.standsService.reservationsForEvent(id).subscribe((p) => this.standReservations.set(p.content));
     this.registrationsService.forEvent(id).subscribe((p) => this.registrations.set(p.content));
     this.checkinService.staff(id).subscribe({ next: (s) => this.staff.set(s), error: () => {} });
+    this.checkinService.sensors(id).subscribe({ next: (s) => this.sensors.set(s), error: () => {} });
     this.checkinService.checkins(id).subscribe({ next: (p) => this.checkins.set(p.content), error: () => {} });
     this.statsService.eventStats(id).subscribe({ next: (s) => this.stats.set(s), error: () => {} });
     this.statsService.eventSeries(id).subscribe({ next: (s) => this.series.set(s), error: () => {} });
@@ -825,6 +875,25 @@ export class EventEditorComponent implements OnDestroy {
   removeStaff(s: StaffMember): void {
     this.checkinService.removeStaff(this.id(), s.userId).subscribe(() =>
       this.checkinService.staff(this.id()).subscribe((x) => this.staff.set(x)),
+    );
+  }
+
+  addSensor(): void {
+    if (!this.sensorName.trim()) return;
+    this.sensorError.set(null);
+    this.checkinService.createSensor(this.id(), this.sensorName.trim()).subscribe({
+      next: (res) => {
+        this.sensorName = '';
+        this.newSensorKey.set(res.cle);
+        this.checkinService.sensors(this.id()).subscribe((s) => this.sensors.set(s));
+      },
+      error: (err: HttpErrorResponse) =>
+        this.sensorError.set((err.error as ApiError)?.message ?? 'Création impossible.'),
+    });
+  }
+  revokeSensor(s: SensorView): void {
+    this.checkinService.revokeSensor(this.id(), s.id).subscribe(() =>
+      this.checkinService.sensors(this.id()).subscribe((x) => this.sensors.set(x)),
     );
   }
 

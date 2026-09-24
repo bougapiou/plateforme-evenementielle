@@ -74,6 +74,27 @@ const REFRESH_MS = 2000;
         </div>
       </div>
 
+      @if (d.comptagePhysique && (d.comptagePhysique['entrees'] || d.comptagePhysique['sorties'])) {
+        <h3 class="mt-6 font-semibold text-slate-800">Comptage physique (capteurs laser)</h3>
+        <p class="text-xs text-slate-400">
+          Passages comptés à la porte, avec ou sans billet — distinct des scans de billets ci-dessus.
+        </p>
+        <div class="mt-2 grid grid-cols-3 gap-3">
+          <div class="rounded-lg bg-green-50 p-3 text-center">
+            <p class="text-2xl font-bold text-green-700">{{ d.comptagePhysique['entrees'] || 0 }}</p>
+            <p class="text-xs text-green-600">entrées</p>
+          </div>
+          <div class="rounded-lg bg-slate-100 p-3 text-center">
+            <p class="text-2xl font-bold text-slate-700">{{ d.comptagePhysique['sorties'] || 0 }}</p>
+            <p class="text-xs text-slate-600">sorties</p>
+          </div>
+          <div class="rounded-lg bg-brand-50 p-3 text-center">
+            <p class="text-2xl font-bold text-brand-700">{{ d.comptagePhysique['presents'] || 0 }}</p>
+            <p class="text-xs text-brand-600">présents</p>
+          </div>
+        </div>
+      }
+
       @if (d.activites.length) {
         <h3 class="mt-6 font-semibold text-slate-800">Par activité</h3>
         <div class="mt-2 overflow-x-auto">

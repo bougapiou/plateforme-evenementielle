@@ -53,6 +53,7 @@ public class CheckinService {
     private final EventRepository eventRepository;
     private final EventActivityRepository activityRepository;
     private final AccreditationRepository accreditationRepository;
+    private final bf.evenements.plateforme.sensor.PassageCapteurRepository passageRepository;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
 
@@ -347,7 +348,12 @@ public class CheckinService {
                         a.getAcces() != null ? a.getAcces().name() : null,
                         activityFlow(eventId, a.getId())))
                 .toList();
-        return new AttendanceView(event.getId(), event.getNom(), eventFlow(eventId), activites);
+        long in = passageRepository.totalForEvent(eventId, CheckinDirection.ENTREE);
+        long out = passageRepository.totalForEvent(eventId, CheckinDirection.SORTIE);
+        Map<String, Long> physique = Map.of("entrees", in, "sorties", out,
+                "presents", Math.max(0, in - out));
+        return new AttendanceView(event.getId(), event.getNom(), eventFlow(eventId), activites,
+                physique);
     }
 
     private Map<String, Long> eventFlow(UUID eventId) {
@@ -388,8 +394,10 @@ public class CheckinService {
                 "reentrees", Math.max(0, entrees - distinctEntered));
     }
 
+    /** {@code comptagePhysique}: anonymous laser-sensor counts, kept apart from ticket scans. */
     public record AttendanceView(UUID eventId, String eventNom,
-                                 Map<String, Long> event, List<ActivityFlow> activites) {
+                                 Map<String, Long> event, List<ActivityFlow> activites,
+                                 Map<String, Long> comptagePhysique) {
     }
 
     public record ActivityFlow(UUID id, String titre, Instant dateDebut, String acces,

@@ -47,6 +47,24 @@ export interface AttendanceView {
   eventNom: string;
   event: FlowCounters;
   activites: ActivityFlow[];
+  /** Anonymous laser-sensor counts (entrees / sorties / presents), apart from ticket scans. */
+  comptagePhysique?: FlowCounters;
+}
+
+export interface SensorView {
+  id: string;
+  nom: string;
+  clePrefixe: string;
+  actif: boolean;
+  derniereActivite?: string;
+  entrees: number;
+  sorties: number;
+}
+
+export interface SensorCreated {
+  capteur: SensorView;
+  /** Shown only once, right after creation. */
+  cle: string;
 }
 
 /** One row per ticket number: its full entry / exit / re-entry history. */
@@ -118,5 +136,14 @@ export class CheckinService extends ApiBase {
   }
   removeStaff(eventId: string, userId: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/events/${eventId}/staff/${userId}`);
+  }
+  sensors(eventId: string): Observable<SensorView[]> {
+    return this.get<SensorView[]>(`/events/${eventId}/sensors`);
+  }
+  createSensor(eventId: string, nom: string): Observable<SensorCreated> {
+    return this.http.post<SensorCreated>(`${this.base}/events/${eventId}/sensors`, { nom });
+  }
+  revokeSensor(eventId: string, sensorId: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/events/${eventId}/sensors/${sensorId}`);
   }
 }
