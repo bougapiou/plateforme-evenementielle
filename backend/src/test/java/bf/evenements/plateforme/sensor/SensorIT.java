@@ -43,6 +43,18 @@ class SensorIT extends AbstractIntegrationTest {
         String key = created.path("cle");
         String sensorId = created.path("capteur.id");
 
+        // ping: checks the key and names the event, without counting anything
+        given().header("X-Sensor-Key", key)
+                .when().get("/api/sensors/ping")
+                .then().statusCode(200)
+                .body("capteur", equalTo("Porte principale"))
+                .body("evenement", equalTo("Laser " + n))
+                .body("accepte", equalTo(true))
+                .body("entrees", equalTo(0));
+        given().header("X-Sensor-Key", "pne_nope")
+                .when().get("/api/sensors/ping").then().statusCode(401);
+        given().when().get("/api/sensors/ping").then().statusCode(401);
+
         // no key / wrong key -> 401
         given().contentType(ContentType.JSON)
                 .when().post("/api/sensors/entry").then().statusCode(401);

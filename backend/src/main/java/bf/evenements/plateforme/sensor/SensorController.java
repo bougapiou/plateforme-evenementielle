@@ -53,6 +53,13 @@ public class SensorController {
         return capteurService.record(key, CheckinDirection.SORTIE, count);
     }
 
+    @GetMapping("/sensors/ping")
+    @Operation(summary = "Capteur : tester la clé (sans compter de passage) — renvoie l'événement lié")
+    public CapteurService.PingResponse ping(
+            @RequestHeader(value = "X-Sensor-Key", required = false) String key) {
+        return capteurService.ping(key);
+    }
+
     // --- management (organiser / admin) ---
 
     @GetMapping("/events/{eventId}/sensors")

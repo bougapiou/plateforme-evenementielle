@@ -72,12 +72,7 @@ public class CapteurService {
         if (count < 1 || count > 1000) {
             throw new BusinessException("INVALID_COUNT", "count doit être compris entre 1 et 1000.");
         }
-        Capteur c = key == null || key.isBlank()
-                ? null
-                : capteurRepository.findByCleHash(tokenHasher.sha256(key.trim())).orElse(null);
-        if (c == null || !c.isActif()) {
-            throw new BadCredentialsException("Clé de capteur invalide ou révoquée");
-        }
+        Capteur c = authenticate(key);
         Event event = c.getEvent();
         if (!event.getStatut().isPubliclyVisible()) {
             throw new BusinessException("EVENT_NOT_ACTIVE",
@@ -91,6 +86,27 @@ public class CapteurService {
         passageRepository.save(p);
         c.setDerniereActivite(Instant.now());
         return report(event.getId());
+    }
+
+    /** Side-effect-free connectivity check for the module's /config page: who am I, is my event open? */
+    @Transactional
+    public PingResponse ping(String key) {
+        Capteur c = authenticate(key);
+        c.setDerniereActivite(Instant.now());
+        Event event = c.getEvent();
+        SensorReport r = report(event.getId());
+        return new PingResponse(c.getNom(), event.getNom(), event.getStatut().name(),
+                event.getStatut().isPubliclyVisible(), r.entrees(), r.sorties(), r.presents());
+    }
+
+    private Capteur authenticate(String key) {
+        Capteur c = key == null || key.isBlank()
+                ? null
+                : capteurRepository.findByCleHash(tokenHasher.sha256(key.trim())).orElse(null);
+        if (c == null || !c.isActif()) {
+            throw new BadCredentialsException("Clé de capteur invalide ou révoquée");
+        }
+        return c;
     }
 
     /** Running totals for an event — also merged into the attendance view. */
@@ -114,6 +130,11 @@ public class CapteurService {
 
     /** {@code cle} is returned only once, at creation. */
     public record CapteurCreated(CapteurView capteur, String cle) {
+    }
+
+    /** {@code accepte}: whether passages are currently counted (event published / running). */
+    public record PingResponse(String capteur, String evenement, String statut, boolean accepte,
+                               long entrees, long sorties, long presents) {
     }
 
     public record SensorReport(long entrees, long sorties, long presents) {
