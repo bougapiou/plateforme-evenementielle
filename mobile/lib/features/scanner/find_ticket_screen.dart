@@ -35,6 +35,7 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
   String? _error;
   List<_EventGroup>? _events;
   String? _downloadingEventId;
+  String? _selectedEventId;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -105,6 +106,7 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
   void _restart() {
     setState(() {
       _events = null;
+      _selectedEventId = null;
       _error = null;
       _tel = '';
     });
@@ -171,22 +173,44 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
-        for (final e in events)
-          Card(
-            margin: const EdgeInsets.only(bottom: 10),
-            child: ListTile(
-              title: Text(e.eventNom),
-              subtitle: Text(
-                  '${e.tickets.length} billet${e.tickets.length > 1 ? 's' : ''}'
-                  '${e.lieu != null ? ' · ${e.lieu}' : ''}'),
-              trailing: _downloadingEventId == e.eventId
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.download_outlined),
-              onTap: _downloadingEventId != null ? null : () => _chooseEvent(e),
-            ),
+        DropdownButtonFormField<String>(
+          value: _selectedEventId,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Événement'),
+          hint: const Text('Choisir un événement'),
+          items: [
+            for (final e in events)
+              DropdownMenuItem(
+                value: e.eventId,
+                child: Text(
+                  '${e.eventNom} (${e.tickets.length} billet'
+                  '${e.tickets.length > 1 ? 's' : ''})',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: _downloadingEventId != null
+              ? null
+              : (id) {
+                  if (id == null) return;
+                  setState(() => _selectedEventId = id);
+                  _chooseEvent(events.firstWhere((e) => e.eventId == id));
+                },
+        ),
+        const SizedBox(height: 12),
+        if (_downloadingEventId != null)
+          const Row(children: [
+            SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(width: 8),
+            Text('Téléchargement en cours…'),
+          ])
+        else
+          Text(
+            'Votre billet se télécharge dès que vous choisissez l\'événement.',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         const SizedBox(height: 8),
         TextButton(

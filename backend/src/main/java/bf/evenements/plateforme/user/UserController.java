@@ -71,6 +71,22 @@ public class UserController {
         return userService.get(id);
     }
 
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('" + Permissions.USER_MANAGE + "')")
+    @Operation(summary = "Modifier l'identité d'un utilisateur (admin)")
+    public UserResponse adminUpdate(@PathVariable UUID id,
+                                    @Valid @RequestBody bf.evenements.plateforme.user.dto.AdminUpdateUserRequest request) {
+        return userService.adminUpdate(id, request);
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('" + Permissions.USER_MANAGE + "')")
+    @Operation(summary = "Supprimer un utilisateur sans historique (admin) — sinon 409, suspendre à la place")
+    public void delete(@PathVariable UUID id) {
+        userService.delete(id);
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAuthority('" + Permissions.USER_MANAGE + "')")
     @Operation(summary = "Activer / desactiver un utilisateur (admin)")

@@ -39,24 +39,27 @@ interface EventGroup {
           </a>
         </div>
       } @else if (events()) {
-        <p class="mt-1 text-sm text-slate-500">Choisissez l'événement pour télécharger votre billet.</p>
-        <div class="mt-4 space-y-3">
-          @for (e of events()!; track e.eventId) {
-            <button type="button" class="card flex w-full items-center justify-between p-4 text-left"
-                    [disabled]="downloadingEventId() === e.eventId"
-                    (click)="chooseEvent(e)">
-              <span>
-                <span class="block font-medium text-slate-800">{{ e.eventNom }}</span>
-                <span class="block text-xs text-slate-400">
-                  {{ dt(e.eventDateDebut) }}{{ e.lieu ? ' · ' + e.lieu : '' }}
-                  · {{ e.tickets.length }} billet{{ e.tickets.length > 1 ? 's' : '' }}
-                </span>
-              </span>
-              <span class="text-sm font-semibold text-brand-700">
-                {{ downloadingEventId() === e.eventId ? 'Téléchargement…' : 'Télécharger →' }}
-              </span>
-            </button>
-          }
+        <div class="card mt-4 p-5">
+          <label class="form-label">Événement</label>
+          <select class="form-input" [ngModel]="selectedEventId()" (ngModelChange)="onSelect($event)"
+                  [disabled]="downloadingEventId() !== null">
+            <option value="">— Choisir un événement —</option>
+            @for (e of events()!; track e.eventId) {
+              <option [value]="e.eventId">
+                {{ e.eventNom }} · {{ dt(e.eventDateDebut) }} ({{ e.tickets.length }}
+                billet{{ e.tickets.length > 1 ? 's' : '' }})
+              </option>
+            }
+          </select>
+          <p class="mt-2 text-sm text-slate-500">
+            @if (downloadingEventId()) {
+              Téléchargement en cours…
+            } @else if (downloaded()) {
+              Billet téléchargé. Vous pouvez en choisir un autre.
+            } @else {
+              Votre billet se télécharge dès que vous choisissez l'événement.
+            }
+          </p>
         </div>
         <button type="button" class="btn-ghost mt-4 text-sm" (click)="restart()">
           ← Utiliser un autre numéro
@@ -98,6 +101,8 @@ export class FindTicketComponent {
   error = signal<string | null>(null);
   events = signal<EventGroup[] | null>(null);
   downloadingEventId = signal<string | null>(null);
+  selectedEventId = signal('');
+  downloaded = signal(false);
 
   dt = (iso: string) => formatDateTime(iso);
 
@@ -150,8 +155,20 @@ export class FindTicketComponent {
     });
   }
 
+  onSelect(eventId: string): void {
+    this.selectedEventId.set(eventId);
+    const e = this.events()?.find((x) => x.eventId === eventId);
+    if (e) this.chooseEvent(e);
+  }
+
   chooseEvent(e: EventGroup): void {
     this.downloadingEventId.set(e.eventId);
+    this.downloaded.set(false);
+    let remaining = e.tickets.length;
+    const done = (ok: boolean) => {
+      if (ok) this.downloaded.set(true);
+      if (--remaining === 0) this.downloadingEventId.set(null);
+    };
     for (const t of e.tickets) {
       this.ticketsService.pdfBlob(t.id).subscribe({
         next: (blob) => {
@@ -161,14 +178,16 @@ export class FindTicketComponent {
           a.download = `billet-${t.numero}.pdf`;
           a.click();
           setTimeout(() => URL.revokeObjectURL(url), 2000);
-          this.downloadingEventId.set(null);
+          done(true);
         },
-        error: () => this.downloadingEventId.set(null),
+        error: () => done(false),
       });
     }
   }
 
   restart(): void {
+    this.selectedEventId.set('');
+    this.downloaded.set(false);
     this.events.set(null);
     this.phone = '';
     this.error.set(null);

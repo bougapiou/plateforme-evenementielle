@@ -2,6 +2,9 @@ package bf.evenements.plateforme.user;
 
 import bf.evenements.plateforme.audit.AuditService;
 import bf.evenements.plateforme.common.exception.BusinessException;
+import bf.evenements.plateforme.common.exception.ConflictException;
+import bf.evenements.plateforme.user.dto.AdminUpdateUserRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.common.web.PageResponse;
@@ -82,6 +85,47 @@ public class UserService {
         auditService.record(currentUser.requireId(), currentUser.require().email(),
                 "USER_STATUS_CHANGED", "User", id.toString(), null, "status=" + status);
         return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse adminUpdate(UUID id, AdminUpdateUserRequest request) {
+        User user = loadUser(id);
+        String email = request.email().trim().toLowerCase();
+        if (!email.equalsIgnoreCase(user.getEmail()) && userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ConflictException("EMAIL_ALREADY_USED", "Cet e-mail est déjà utilisé par un autre compte.");
+        }
+        user.setEmail(email);
+        user.setFirstName(request.firstName().trim());
+        user.setLastName(request.lastName().trim());
+        user.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone());
+        auditService.record(currentUser.requireId(), currentUser.require().email(),
+                "USER_UPDATED_BY_ADMIN", "User", id.toString(), null, "email=" + email);
+        return UserResponse.from(user);
+    }
+
+    /**
+     * Permanently deletes a user. Only possible while the account has no business
+     * history (orders, tickets, registrations, payments, invoices, organiser or
+     * structure ownership, scans…) — otherwise the caller is told to suspend it instead.
+     */
+    @Transactional
+    public void delete(UUID id) {
+        User user = loadUser(id);
+        if (user.getId().equals(currentUser.requireId())) {
+            throw new BusinessException("SELF_DELETE_FORBIDDEN",
+                    "Vous ne pouvez pas supprimer votre propre compte.");
+        }
+        String email = user.getEmail();
+        try {
+            userRepository.delete(user);
+            userRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("USER_HAS_HISTORY",
+                    "Cet utilisateur a un historique (commandes, billets, inscriptions, paiements, "
+                            + "événements…) et ne peut pas être supprimé. Suspendez-le à la place.");
+        }
+        auditService.record(currentUser.requireId(), currentUser.require().email(),
+                "USER_DELETED", "User", id.toString(), null, "email=" + email);
     }
 
     @Transactional
