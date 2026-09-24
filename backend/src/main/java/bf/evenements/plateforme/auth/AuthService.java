@@ -45,6 +45,7 @@ public class AuthService {
     private static final Duration RESET_TOKEN_TTL = Duration.ofHours(1);
 
     private final UserRepository userRepository;
+    private final bf.evenements.plateforme.ticket.TicketRepository ticketRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
@@ -165,6 +166,21 @@ public class AuthService {
     @Transactional
     public AuthResponse guestSessionQuick(String phone, String ip) {
         return guestSession(new GuestSessionRequest(null, "Visiteur", "", phone), ip);
+    }
+
+    /**
+     * "Retrouver mon billet": opens a session only for an EXISTING guest with
+     * this phone who actually holds tickets. Never creates an account.
+     */
+    @Transactional
+    public AuthResponse guestSessionForTickets(String phone, String ip) {
+        User user = userRepository.findFirstByPhoneAndGuestTrueOrderByCreatedAtDesc(phone)
+                .filter(u -> ticketRepository.existsByOrderUserId(u.getId()))
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Aucun billet n'est associé à ce numéro de téléphone."));
+        auditService.record(user.getId(), user.getEmail(), "AUTH_GUEST_LOOKUP", "User",
+                user.getId().toString(), ip, null);
+        return issueTokens(user);
     }
 
     /** Turns the current guest account into a full one by choosing a password. */

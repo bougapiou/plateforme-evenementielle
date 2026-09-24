@@ -109,7 +109,7 @@ export class FindTicketComponent {
     }
     this.submitting.set(true);
     this.error.set(null);
-    this.auth.guestSessionQuick(phone).subscribe({
+    this.auth.guestLookup(phone).subscribe({
       next: () => {
         this.ticketsService.myTickets().subscribe({
           next: (tickets) => {

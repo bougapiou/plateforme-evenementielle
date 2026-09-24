@@ -48,6 +48,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 && (uri.equals("/api/auth/login")
                         || uri.equals("/api/auth/register")
                         || uri.equals("/api/auth/guest-quick")
+                        || uri.equals("/api/auth/guest-lookup")
                         || uri.equals("/api/auth/password/forgot")
                         || uri.equals("/api/auth/password/reset")));
     }

@@ -73,6 +73,13 @@ export class AuthService {
       .pipe(tap((res) => this.persist(res)));
   }
 
+  /** "Retrouver mon billet": session only if this phone already has tickets — never creates an account. */
+  guestLookup(phone: string): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.base}/auth/guest-lookup`, { phone })
+      .pipe(tap((res) => this.persist(res)));
+  }
+
   /** Turns the current guest session into a full account by choosing a password. */
   completeRegistration(payload: CompleteRegistrationPayload): Observable<AuthResponse> {
     return this.http

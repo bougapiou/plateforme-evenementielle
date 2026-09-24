@@ -12,6 +12,8 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     List<Ticket> findByOrderUserIdOrderByCreatedAtDesc(UUID userId);
 
+    boolean existsByOrderUserId(UUID userId);
+
     long countByEventIdAndStatut(UUID eventId, TicketStatus statut);
 
     boolean existsByEventId(UUID eventId);

@@ -45,7 +45,7 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
     try {
       await ref
           .read(authControllerProvider.notifier)
-          .guestSessionQuick(_tel.trim());
+          .guestLookup(_tel.trim());
       final tickets = await ref.read(ticketsRepositoryProvider).myTickets();
       final byEvent = <String, _EventGroup>{};
       for (final t in tickets) {

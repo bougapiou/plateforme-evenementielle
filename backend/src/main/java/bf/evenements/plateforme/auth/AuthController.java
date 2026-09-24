@@ -55,6 +55,14 @@ public class AuthController {
         return authService.guestSessionQuick(request.phone(), HttpUtils.clientIp(http));
     }
 
+    @PostMapping("/guest-lookup")
+    @Operation(summary = "Retrouver mon billet : session invité seulement si ce numéro a des billets "
+            + "(ne crée jamais de compte)")
+    public AuthResponse guestLookup(@Valid @RequestBody GuestQuickSessionRequest request,
+                                    HttpServletRequest http) {
+        return authService.guestSessionForTickets(request.phone(), HttpUtils.clientIp(http));
+    }
+
     @PostMapping("/complete")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Transformer sa session invité en compte (choix d'un mot de passe)")

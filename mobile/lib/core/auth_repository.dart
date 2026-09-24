@@ -46,6 +46,9 @@ class AuthRepository {
 
   /// Same as [guestSession], but for a "no form" free ticket: just a phone
   /// number, no name collected.
+  Future<AuthResponse> guestLookup(String phone) =>
+      _post('/auth/guest-lookup', {'phone': phone});
+
   Future<AuthResponse> guestSessionQuick(String phone) =>
       _post('/auth/guest-quick', {'phone': phone});
 

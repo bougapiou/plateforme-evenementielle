@@ -313,4 +313,29 @@ class AuthFlowIT extends AbstractIntegrationTest {
                 .when().post("/api/auth/guest-quick")
                 .then().statusCode(400).body("code", equalTo("VALIDATION_ERROR"));
     }
+
+    @Test
+    void guest_lookup_never_creates_an_account_and_needs_existing_tickets() {
+        String phone = "+226 71" + (System.nanoTime() % 1_000_000);
+
+        // unknown phone -> 404, and nothing was created (guest-quick then makes a NEW account)
+        given().contentType(ContentType.JSON).body(Map.of("phone", phone))
+                .when().post("/api/auth/guest-lookup")
+                .then().statusCode(404);
+        given().contentType(ContentType.JSON).body(Map.of("phone", phone))
+                .when().post("/api/auth/guest-lookup")
+                .then().statusCode(404);
+
+        // a guest that exists but holds no ticket is not opened either
+        given().contentType(ContentType.JSON).body(Map.of("phone", phone))
+                .when().post("/api/auth/guest-quick").then().statusCode(200);
+        given().contentType(ContentType.JSON).body(Map.of("phone", phone))
+                .when().post("/api/auth/guest-lookup")
+                .then().statusCode(404);
+
+        // invalid phone still rejected by validation
+        given().contentType(ContentType.JSON).body(Map.of("phone", "abc"))
+                .when().post("/api/auth/guest-lookup")
+                .then().statusCode(400);
+    }
 }

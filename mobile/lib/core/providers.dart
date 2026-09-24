@@ -143,6 +143,12 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
     state = AsyncValue.data(res.user);
   }
 
+  /// "Retrouver mon billet": only succeeds if this phone already has tickets.
+  Future<void> guestLookup(String phone) async {
+    final res = await _repo.guestLookup(phone);
+    state = AsyncValue.data(res.user);
+  }
+
   /// Turns the current guest session into a full account.
   Future<void> completeRegistration({
     required String password,
