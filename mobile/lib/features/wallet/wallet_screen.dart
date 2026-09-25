@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/brand.dart';
 import '../../core/format.dart';
+import '../../core/manage_kit.dart';
 import '../../core/media.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
@@ -57,37 +59,68 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 ),
               ]);
             }
-            return ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: tickets.length,
-              itemBuilder: (_, i) {
-                final t = tickets[i];
-                return Card(
-                  clipBehavior: Clip.antiAlias,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: ListTile(
-                    onTap: () => context.push('/billets/${t.id}'),
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: EventCover(
-                        nom: t.eventNom,
-                        url: t.eventCoverUrl,
-                        width: 44,
-                        height: 44,
+            return MaxWidth(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: tickets.length,
+                itemBuilder: (_, i) {
+                  final t = tickets[i];
+                  return Card(
+                    clipBehavior: Clip.antiAlias,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: InkWell(
+                      onTap: () => context.push('/billets/${t.id}'),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: EventCover(
+                                  nom: t.eventNom,
+                                  url: t.eventCoverUrl,
+                                  width: 72,
+                                  height: 72,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      StatusChip(t.statut),
+                                      const SizedBox(height: 6),
+                                      Text(t.eventNom,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleSmall),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                          [
+                                            if (t.categorieNom != null &&
+                                                t.categorieNom!.isNotEmpty)
+                                              t.categorieNom!,
+                                            'N° ${t.numero}',
+                                          ].join(' · '),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall),
+                                      Text(Fmt.dateTime(t.eventDateDebut),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall),
+                                    ]),
+                              ),
+                              const Icon(Icons.qr_code_2, color: Brand.s400),
+                            ]),
                       ),
                     ),
-                    title: Text(t.eventNom,
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text([
-                      t.categorieNom ?? '',
-                      Fmt.dateTime(t.eventDateDebut),
-                      'N° ${t.numero}',
-                    ].where((s) => s.isNotEmpty).join('\n')),
-                    isThreeLine: true,
-                    trailing: StatusChip(t.statut),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             );
           },
         ),

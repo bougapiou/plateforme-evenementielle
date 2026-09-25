@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/brand.dart';
 import '../../core/format.dart';
+import '../../core/manage_kit.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -82,31 +84,72 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 ),
               ]);
             }
-            return ListView.separated(
-              itemCount: paged.content.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, i) {
-                final n = paged.content[i];
-                return ListTile(
-                  onTap: () => _tap(n),
-                  leading: Icon(
-                    n.lu
-                        ? Icons.mark_email_read_outlined
-                        : Icons.mark_email_unread,
-                    color: n.lu ? null : Theme.of(context).colorScheme.primary,
-                  ),
-                  title: Text(n.titre,
-                      style: TextStyle(
-                          fontWeight:
-                              n.lu ? FontWeight.normal : FontWeight.w600)),
-                  subtitle: Text(
-                    [n.contenu, Fmt.dateTime(n.createdAt)]
-                        .where((s) => s.isNotEmpty)
-                        .join('\n'),
-                  ),
-                  isThreeLine: n.contenu.isNotEmpty,
-                );
-              },
+            return MaxWidth(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: paged.content.length,
+                itemBuilder: (_, i) {
+                  final n = paged.content[i];
+                  return Card(
+                    // an unread notification is tinted, a read one is plain
+                    color: n.lu ? Colors.white : Brand.b50,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => _tap(n),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              IconBubble(
+                                n.lu
+                                    ? Icons.notifications_none
+                                    : Icons.notifications_active_outlined,
+                                tone: n.lu ? KitTone.slate : KitTone.green,
+                                size: 40,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(n.titre,
+                                          style: TextStyle(
+                                              fontSize: 15,
+                                              color: Brand.s800,
+                                              fontWeight: n.lu
+                                                  ? FontWeight.w500
+                                                  : FontWeight.w700)),
+                                      if (n.contenu.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 2),
+                                          child: Text(n.contenu,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium),
+                                        ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(Fmt.dateTime(n.createdAt),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall),
+                                      ),
+                                    ]),
+                              ),
+                              if (!n.lu)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 6, left: 6),
+                                  child: CircleAvatar(
+                                      radius: 5, backgroundColor: Brand.b600),
+                                ),
+                            ]),
+                      ),
+                    ),
+                  );
+                },
+              ),
             );
           },
         ),

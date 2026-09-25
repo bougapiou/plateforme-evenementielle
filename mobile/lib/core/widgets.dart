@@ -37,7 +37,12 @@ class StatusChip extends StatelessWidget {
       case 'INSCRIPTIONS_OUVERTES':
       case 'VERIFIEE':
       case 'APPROUVE':
+      case 'VALIDE':
         return (const Color(0xFFDCFCE7), const Color(0xFF166534));
+      case 'SOUMIS':
+        return (const Color(0xFFDBEAFE), const Color(0xFF1E40AF));
+      case 'EN_COURS':
+        return (const Color(0xFFCCFBF1), const Color(0xFF115E59));
       case 'EN_ATTENTE':
       case 'ATTENTE_PAIEMENT':
       case 'RESERVE_TEMP':
@@ -45,6 +50,7 @@ class StatusChip extends StatelessWidget {
       case 'ANNULEE':
       case 'ANNULE':
       case 'REFUSEE':
+      case 'REFUSE':
       case 'ECHOUE':
       case 'EXPIREE':
       case 'EXPIRE':

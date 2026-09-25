@@ -96,6 +96,13 @@ ThemeData _build() {
       labelStyle: const TextStyle(color: Brand.s500),
       hintStyle: const TextStyle(color: Brand.s400),
     ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: Brand.b600,
+      foregroundColor: Colors.white,
+      extendedTextStyle:
+          const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: Brand.b600,

@@ -259,6 +259,37 @@ const partnerLevels = [
   'PARTENAIRE', 'PARTENAIRE_MEDIA', 'PARTENAIRE_INSTITUTIONNEL',
 ];
 
+const _activityTypeLabels = <String, String>{
+  'CEREMONIE': 'Cérémonie',
+  'CONFERENCE': 'Conférence',
+  'PANEL': 'Panel',
+  'ATELIER': 'Atelier',
+  'FORMATION': 'Formation',
+  'TABLE_RONDE': 'Table ronde',
+  'NETWORKING': 'Networking',
+  'PAUSE': 'Pause',
+  'SPECTACLE': 'Spectacle',
+  'AUTRE': 'Autre',
+};
+
+const _partnerLevelLabels = <String, String>{
+  'PLATINE': 'Platine',
+  'OR': 'Or',
+  'ARGENT': 'Argent',
+  'BRONZE': 'Bronze',
+  'PARTENAIRE': 'Partenaire',
+  'PARTENAIRE_MEDIA': 'Partenaire média',
+  'PARTENAIRE_INSTITUTIONNEL': 'Partenaire institutionnel',
+};
+
+/// French label of an activity type code ("TABLE_RONDE" -> "Table ronde").
+String activityTypeLabel(String? code) =>
+    code == null ? '' : (_activityTypeLabels[code] ?? Fmt.humanize(code));
+
+/// French label of a partner level code ("PARTENAIRE_MEDIA" -> "Partenaire média").
+String partnerLevelLabel(String? code) =>
+    code == null ? '' : (_partnerLevelLabels[code] ?? Fmt.humanize(code));
+
 class Speaker {
   final String id;
   final String nom;
@@ -291,14 +322,22 @@ class Partner {
   final String nom;
   final String? niveau;
   final String? logoUrl;
+  final String? siteWeb;
 
-  Partner({required this.id, required this.nom, this.niveau, this.logoUrl});
+  Partner({
+    required this.id,
+    required this.nom,
+    this.niveau,
+    this.logoUrl,
+    this.siteWeb,
+  });
 
   factory Partner.fromJson(Map<String, dynamic> j) => Partner(
         id: j['id'] as String,
         nom: j['nom'] as String,
         niveau: j['niveau'] as String?,
         logoUrl: j['logoUrl'] as String?,
+        siteWeb: j['siteWeb'] as String?,
       );
 }
 
@@ -1215,6 +1254,43 @@ class ScanOutcome {
       );
 }
 
+/// Headline figures of one event (organiser dashboard): sales, stands, registrations, revenue, entries.
+class EventStats {
+  final int billetsTotal;
+  final int billetsVendus;
+  final double tauxRemplissage;
+  final int standsTotal;
+  final int standsReserves;
+  final int inscriptionsConfirmees;
+  final int inscriptionsEnAttente;
+  final int entreesValidees;
+  final num revenus;
+
+  EventStats({
+    this.billetsTotal = 0,
+    this.billetsVendus = 0,
+    this.tauxRemplissage = 0,
+    this.standsTotal = 0,
+    this.standsReserves = 0,
+    this.inscriptionsConfirmees = 0,
+    this.inscriptionsEnAttente = 0,
+    this.entreesValidees = 0,
+    this.revenus = 0,
+  });
+
+  factory EventStats.fromJson(Map<String, dynamic> j) => EventStats(
+        billetsTotal: (j['billetsTotal'] as num?)?.toInt() ?? 0,
+        billetsVendus: (j['billetsVendus'] as num?)?.toInt() ?? 0,
+        tauxRemplissage: (j['tauxRemplissage'] as num?)?.toDouble() ?? 0,
+        standsTotal: (j['standsTotal'] as num?)?.toInt() ?? 0,
+        standsReserves: (j['standsReserves'] as num?)?.toInt() ?? 0,
+        inscriptionsConfirmees: (j['inscriptionsConfirmees'] as num?)?.toInt() ?? 0,
+        inscriptionsEnAttente: (j['inscriptionsEnAttente'] as num?)?.toInt() ?? 0,
+        entreesValidees: (j['entreesValidees'] as num?)?.toInt() ?? 0,
+        revenus: (j['revenus'] as num?) ?? 0,
+      );
+}
+
 /// Live flow of one activity (ticket scans only: sensors count at the event's door).
 class ActivityFlow {
   final String id;
@@ -1279,8 +1355,17 @@ String statutLabel(String code) {
     case 'VERIFIEE':
       return 'Vérifiée';
     case 'SUSPENDUE':
-    case 'SUSPENDU':
       return 'Suspendue';
+    case 'SUSPENDU':
+      return 'Suspendu';
+    case 'BROUILLON':
+      return 'Brouillon';
+    case 'SOUMIS':
+      return 'Soumis';
+    case 'VALIDE':
+      return 'Validé';
+    case 'REFUSE':
+      return 'Refusé';
     case 'APPROUVE':
       return 'Approuvé';
     case 'PAYEE':

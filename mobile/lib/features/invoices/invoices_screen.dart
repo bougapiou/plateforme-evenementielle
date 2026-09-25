@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/documents.dart';
 import '../../core/format.dart';
+import '../../core/manage_kit.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -68,17 +69,21 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                 ),
               ]);
             }
-            return ListView.builder(
+            return MaxWidth(
+              child: ListView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: list.length,
               itemBuilder: (_, i) {
                 final inv = list[i];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
+                  clipBehavior: Clip.antiAlias,
                   child: ListTile(
-                    leading: Icon(inv.type == 'FACTURE'
-                        ? Icons.description_outlined
-                        : Icons.receipt_outlined),
+                    leading: IconBubble(
+                        inv.type == 'FACTURE'
+                            ? Icons.description_outlined
+                            : Icons.receipt_outlined,
+                        tone: inv.type == 'FACTURE' ? KitTone.blue : KitTone.green),
                     title: Text('${inv.type == 'FACTURE' ? 'Facture' : 'Reçu'} ${inv.numero}'),
                     subtitle: Text([
                       inv.montantFormatte ?? Fmt.money(inv.montant, inv.devise ?? 'XOF'),
@@ -94,6 +99,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                   ),
                 );
               },
+            ),
             );
           },
         ),

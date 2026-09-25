@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/format.dart';
+import '../../core/manage_kit.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
@@ -28,15 +29,22 @@ class _StandsEditorScreenState extends ConsumerState<StandsEditorScreen> {
       ref.read(organizerEventsRepositoryProvider).standTypes(widget.eventId));
 
   Future<void> _edit([StandType? t]) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _StandTypeSheet(eventId: widget.eventId, type: t),
+    final saved = await showEditorSheet<bool>(
+      context,
+      (_) => _StandTypeSheet(eventId: widget.eventId, type: t),
     );
     if (saved == true) _refresh();
   }
 
   Future<void> _delete(StandType t) async {
+    final ok = await confirmAction(
+      context,
+      title: 'Supprimer « ${t.nom} » ?',
+      message: 'Ce type de stand et ses emplacements non réservés seront supprimés.',
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    );
+    if (!ok) return;
     try {
       await ref
           .read(organizerEventsRepositoryProvider)
@@ -61,34 +69,53 @@ class _StandsEditorScreenState extends ConsumerState<StandsEditorScreen> {
         onRetry: _refresh,
         builder: (list) {
           if (list.isEmpty) {
-            return const EmptyState(
-                icon: Icons.storefront_outlined, title: 'Aucun type de stand');
+            return EmptyState(
+              icon: Icons.storefront_outlined,
+              title: 'Aucun type de stand',
+              subtitle:
+                  'Décrivez les emplacements que les exposants pourront réserver (taille, prix, quantité).',
+              action: FilledButton.icon(
+                onPressed: () => _edit(),
+                icon: const Icon(Icons.add),
+                label: const Text('Créer un type de stand'),
+              ),
+            );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: list.length,
-            itemBuilder: (_, i) {
-              final t = list[i];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  title: Text(t.nom),
-                  subtitle: Text([
-                    Fmt.price(t.prixMontant, t.devise),
-                    if (t.dimensions != null) t.dimensions!,
-                    '${t.quantiteTotale} stands',
-                  ].join(' · ')),
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                    IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _edit(t)),
-                    IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _delete(t)),
-                  ]),
-                ),
-              );
-            },
+          return MaxWidth(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              itemCount: list.length,
+              itemBuilder: (_, i) {
+                final t = list[i];
+                final taken =
+                    (t.quantiteTotale - t.quantiteRestante).clamp(0, t.quantiteTotale);
+                final gratuit = t.prixMontant <= 0;
+                return ItemCard(
+                  icon: Icons.storefront_outlined,
+                  tone: KitTone.violet,
+                  title: t.nom,
+                  subtitle: t.description,
+                  onTap: () => _edit(t),
+                  chips: [
+                    MiniChip(
+                      gratuit ? 'Gratuit' : Fmt.money(t.prixMontant, t.devise),
+                      tone: gratuit ? KitTone.green : KitTone.amber,
+                    ),
+                    if (t.dimensions != null && t.dimensions!.isNotEmpty)
+                      MiniChip(t.dimensions!, icon: Icons.straighten),
+                    MiniChip('${t.quantiteTotale} stands'),
+                  ],
+                  footer: t.quantiteTotale > 0
+                      ? QuotaBar(used: taken, total: t.quantiteTotale, label: 'réservés')
+                      : null,
+                  actions: [
+                    ItemAction('Modifier', Icons.edit_outlined, () => _edit(t)),
+                    ItemAction('Supprimer', Icons.delete_outline, () => _delete(t),
+                        destructive: true),
+                  ],
+                );
+              },
+            ),
           );
         },
       ),
@@ -167,71 +194,57 @@ class _StandTypeSheetState extends ConsumerState<_StandTypeSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+    return SheetScaffold(
+      title: widget.type == null ? 'Nouveau type de stand' : 'Modifier le type',
+      subtitle: 'Emplacement réservable par les exposants',
+      icon: Icons.storefront_outlined,
+      tone: KitTone.violet,
+      action: FilledButton(
+        onPressed: _saving ? null : _save,
+        child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.type == null ? 'Nouveau type de stand' : 'Modifier le type',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            TextField(controller: _nom, decoration: const InputDecoration(labelText: 'Nom *')),
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: _prix,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Prix (FCFA)'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _quantite,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Nombre de stands'),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _dimensions,
-              decoration: const InputDecoration(labelText: 'Dimensions (ex : 3m x 3m)'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _equipements,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Équipements inclus'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _description,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Modifier le nombre ajuste automatiquement les stands générés '
-              '(les stands déjà réservés sont conservés).',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
-            ),
-          ],
+      children: [
+        TextField(
+          controller: _nom,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(labelText: 'Nom *'),
         ),
-      ),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: TextField(
+              controller: _prix,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Prix (FCFA)'),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _quantite,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Nombre de stands'),
+            ),
+          ),
+        ]),
+        TextField(
+          controller: _dimensions,
+          decoration: const InputDecoration(labelText: 'Dimensions (ex : 3m x 3m)'),
+        ),
+        TextField(
+          controller: _equipements,
+          maxLines: 2,
+          decoration: const InputDecoration(labelText: 'Équipements inclus'),
+        ),
+        TextField(
+          controller: _description,
+          maxLines: 2,
+          decoration: const InputDecoration(labelText: 'Description'),
+        ),
+        const InfoBanner(
+          'Modifier le nombre ajuste automatiquement les stands générés '
+          '(les stands déjà réservés sont conservés).',
+        ),
+      ],
     );
   }
 }

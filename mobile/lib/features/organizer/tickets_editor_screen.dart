@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/brand.dart';
 import '../../core/format.dart';
+import '../../core/manage_kit.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
@@ -28,15 +30,22 @@ class _TicketsEditorScreenState extends ConsumerState<TicketsEditorScreen> {
       _future = ref.read(organizerEventsRepositoryProvider).tickets(widget.eventId));
 
   Future<void> _edit([EventTicketType? t]) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _TicketSheet(eventId: widget.eventId, ticket: t),
+    final saved = await showEditorSheet<bool>(
+      context,
+      (_) => _TicketSheet(eventId: widget.eventId, ticket: t),
     );
     if (saved == true) _refresh();
   }
 
   Future<void> _delete(EventTicketType t) async {
+    final ok = await confirmAction(
+      context,
+      title: 'Supprimer « ${t.nom} » ?',
+      message: 'Cette catégorie de billets disparaîtra de la billetterie.',
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    );
+    if (!ok) return;
     try {
       await ref
           .read(organizerEventsRepositoryProvider)
@@ -61,36 +70,61 @@ class _TicketsEditorScreenState extends ConsumerState<TicketsEditorScreen> {
         onRetry: _refresh,
         builder: (list) {
           if (list.isEmpty) {
-            return const EmptyState(
-                icon: Icons.confirmation_number_outlined,
-                title: 'Aucune catégorie de billet');
+            return EmptyState(
+              icon: Icons.confirmation_number_outlined,
+              title: 'Aucune catégorie de billet',
+              subtitle:
+                  'Créez au moins une catégorie (Standard, VIP…) pour vendre ou distribuer des billets.',
+              action: FilledButton.icon(
+                onPressed: () => _edit(),
+                icon: const Icon(Icons.add),
+                label: const Text('Créer une catégorie'),
+              ),
+            );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: list.length,
-            itemBuilder: (_, i) {
-              final t = list[i];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  title: Text(t.nom),
-                  subtitle: Text([
-                    t.prixMontant == 0 ? 'Gratuit' : Fmt.money(t.prixMontant, t.devise),
-                    '${t.quantiteTotale} places',
-                    if (t.portee == 'ACTIVITE') 'par activité',
-                    if (!t.actif) 'inactif',
-                  ].join(' · ')),
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                    IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _edit(t)),
-                    IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _delete(t)),
-                  ]),
-                ),
-              );
-            },
+          return MaxWidth(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              itemCount: list.length,
+              itemBuilder: (_, i) {
+                final t = list[i];
+                final sold = (t.quantiteTotale - t.quantiteRestante).clamp(0, t.quantiteTotale);
+                return ItemCard(
+                  icon: Icons.confirmation_number_outlined,
+                  tone: !t.actif
+                      ? KitTone.slate
+                      : t.gratuit
+                          ? KitTone.green
+                          : KitTone.amber,
+                  title: t.nom,
+                  subtitle: t.description,
+                  onTap: () => _edit(t),
+                  chips: [
+                    MiniChip(
+                      t.gratuit ? 'Gratuit' : Fmt.money(t.prixMontant, t.devise),
+                      tone: t.gratuit ? KitTone.green : KitTone.amber,
+                    ),
+                    MiniChip('${t.quantiteTotale} places', icon: Icons.event_seat_outlined),
+                    if (t.portee == 'ACTIVITE')
+                      MiniChip(
+                        t.activites.isEmpty
+                            ? 'Par activité'
+                            : 'Par activité (${t.activites.length})',
+                        tone: KitTone.blue,
+                      ),
+                    if (!t.actif) const MiniChip('Inactif', tone: KitTone.red),
+                  ],
+                  footer: t.quantiteTotale > 0
+                      ? QuotaBar(used: sold, total: t.quantiteTotale)
+                      : null,
+                  actions: [
+                    ItemAction('Modifier', Icons.edit_outlined, () => _edit(t)),
+                    ItemAction('Supprimer', Icons.delete_outline, () => _delete(t),
+                        destructive: true),
+                  ],
+                );
+              },
+            ),
           );
         },
       ),
@@ -188,105 +222,116 @@ class _TicketSheetState extends ConsumerState<_TicketSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+    final free = (num.tryParse(_prix.text.trim()) ?? 0) == 0;
+    return SheetScaffold(
+      title: widget.ticket == null ? 'Nouvelle catégorie' : 'Modifier la catégorie',
+      subtitle: 'Catégorie de billets',
+      icon: Icons.confirmation_number_outlined,
+      tone: KitTone.amber,
+      action: FilledButton(
+        onPressed: _saving ? null : _save,
+        child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.ticket == null ? 'Nouvelle catégorie' : 'Modifier la catégorie',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            TextField(controller: _nom, decoration: const InputDecoration(labelText: 'Nom * (ex : Standard, VIP…)')),
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: _prix,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Prix (FCFA)'),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _quantite,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Quantité'),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _limite,
+      children: [
+        TextField(
+          controller: _nom,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(labelText: 'Nom * (ex : Standard, VIP…)'),
+        ),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: TextField(
+              controller: _prix,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Limite par utilisateur'),
+              decoration: const InputDecoration(labelText: 'Prix (FCFA)'),
+              onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              value: _portee,
-              decoration: const InputDecoration(labelText: 'Portée'),
-              items: const [
-                DropdownMenuItem(value: 'EVENEMENT', child: Text('Tout l\'événement')),
-                DropdownMenuItem(value: 'ACTIVITE', child: Text('Activités précises')),
-              ],
-              onChanged: (v) => setState(() => _portee = v ?? 'EVENEMENT'),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _quantite,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Quantité'),
             ),
-            if (_portee == 'ACTIVITE') ...[
-              const SizedBox(height: 8),
-              ..._activities.map((a) => CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    value: _activityIds.contains(a.id),
-                    title: Text(a.titre),
-                    onChanged: (v) => setState(() {
-                      if (v == true) {
-                        _activityIds.add(a.id);
-                      } else {
-                        _activityIds.remove(a.id);
-                      }
-                    }),
-                  )),
-            ],
-            const SizedBox(height: 6),
-            TextField(
-              controller: _description,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Description'),
+          ),
+        ]),
+        TextField(
+          controller: _limite,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Limite par utilisateur'),
+        ),
+        DropdownButtonFormField<String>(
+          value: _portee,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Portée'),
+          items: const [
+            DropdownMenuItem(value: 'EVENEMENT', child: Text("Tout l'événement")),
+            DropdownMenuItem(value: 'ACTIVITE', child: Text('Activités précises')),
+          ],
+          onChanged: (v) => setState(() => _portee = v ?? 'EVENEMENT'),
+        ),
+        if (_portee == 'ACTIVITE')
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Brand.s200),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: _activities.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Text(
+                      "Aucune activité : ajoutez d'abord des activités au programme.",
+                      style: TextStyle(color: Brand.s500, fontSize: 13),
+                    ),
+                  )
+                : Column(children: [
+                    for (final a in _activities)
+                      CheckboxListTile(
+                        dense: true,
+                        value: _activityIds.contains(a.id),
+                        title: Text(a.titre),
+                        onChanged: (v) => setState(() {
+                          if (v == true) {
+                            _activityIds.add(a.id);
+                          } else {
+                            _activityIds.remove(a.id);
+                          }
+                        }),
+                      ),
+                  ]),
+          ),
+        TextField(
+          controller: _description,
+          maxLines: 2,
+          decoration: const InputDecoration(labelText: 'Description'),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Brand.s200),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(children: [
             SwitchListTile(
-              contentPadding: EdgeInsets.zero,
               title: const Text('Catégorie active (en vente)'),
               value: _actif,
               onChanged: (v) => setState(() => _actif = v),
             ),
-            if ((num.tryParse(_prix.text.trim()) ?? 0) == 0)
+            if (free) ...[
+              const Divider(height: 1),
               SwitchListTile(
-                contentPadding: EdgeInsets.zero,
                 title: const Text('Demander un formulaire pour obtenir ce billet'),
                 subtitle: _formulaireRequis
                     ? null
-                    : const Text(
-                        'Sans formulaire : juste le téléphone suffit (rien du '
-                        'tout si déjà connecté).'),
+                    : const Text('Sans formulaire : juste le téléphone suffit '
+                        '(rien du tout si déjà connecté).'),
                 value: _formulaireRequis,
                 onChanged: (v) => setState(() => _formulaireRequis = v),
               ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
-            ),
-          ],
+            ],
+          ]),
         ),
-      ),
+      ],
     );
   }
 }

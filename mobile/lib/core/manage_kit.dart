@@ -19,7 +19,8 @@ enum KitTone {
 }
 
 /// Centres the page content and caps its width, so forms and lists do not stretch edge to edge on
-/// tablets and in the browser.
+/// tablets and in the browser. It only takes the width: its height is its child's (a bottom bar must
+/// not swallow the whole screen), while a scrollable child still fills the room it is given.
 class MaxWidth extends StatelessWidget {
   final double width;
   final Widget child;
@@ -28,6 +29,7 @@ class MaxWidth extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Align(
     alignment: Alignment.topCenter,
+    heightFactor: 1,
     child: ConstrainedBox(
       constraints: BoxConstraints(maxWidth: width),
       child: child,
@@ -278,6 +280,9 @@ class KpiTile extends StatelessWidget {
   /// 0..1: draws a thin progress bar (e.g. tickets sold out of the total).
   final double? progress;
 
+  /// Small line under the figure (e.g. "+4 en attente").
+  final String? caption;
+
   const KpiTile({
     super.key,
     required this.icon,
@@ -285,6 +290,7 @@ class KpiTile extends StatelessWidget {
     required this.label,
     this.tone = KitTone.green,
     this.progress,
+    this.caption,
   });
 
   @override
@@ -326,6 +332,20 @@ class KpiTile extends StatelessWidget {
               ),
             ),
           ),
+          if (caption != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                caption!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: tone.fg,
+                ),
+              ),
+            ),
           if (progress != null) ...[
             const SizedBox(height: 8),
             ClipRRect(
@@ -344,7 +364,7 @@ class KpiTile extends StatelessWidget {
   }
 }
 
-/// Two tiles per row, whatever the width (a strip of [KpiTile]s).
+/// Two tiles per row (four on wide screens); the tiles of a row share the same height.
 class KpiGrid extends StatelessWidget {
   final List<Widget> tiles;
   const KpiGrid({super.key, required this.tiles});
@@ -354,11 +374,32 @@ class KpiGrid extends StatelessWidget {
     builder: (context, c) {
       const gap = 10.0;
       final cols = c.maxWidth >= 620 ? 4 : 2;
-      final w = (c.maxWidth - gap * (cols - 1)) / cols;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [for (final t in tiles) SizedBox(width: w, child: t)],
+      final rows = <Widget>[];
+      for (var i = 0; i < tiles.length; i += cols) {
+        final chunk = tiles.sublist(i, (i + cols).clamp(0, tiles.length));
+        rows.add(
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var k = 0; k < cols; k++) ...[
+                  if (k > 0) const SizedBox(width: gap),
+                  Expanded(
+                    child: k < chunk.length ? chunk[k] : const SizedBox(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }
+      return Column(
+        children: [
+          for (var r = 0; r < rows.length; r++) ...[
+            if (r > 0) const SizedBox(height: gap),
+            rows[r],
+          ],
+        ],
       );
     },
   );
@@ -504,6 +545,419 @@ class QuotaBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A titled group of form fields on a card: icon bubble, title, optional hint, then the fields.
+class FormSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final KitTone tone;
+  final String? hint;
+  final List<Widget> children;
+
+  const FormSection({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.tone = KitTone.green,
+    this.hint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                IconBubble(icon, tone: tone, size: 34),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: Theme.of(context).textTheme.titleSmall),
+                      if (hint != null)
+                        Text(
+                          hint!,
+                          style: const TextStyle(fontSize: 12.5, color: Brand.s500),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            for (int i = 0; i < children.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              children[i],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Date-and-time field that looks like the text fields: tap to pick, optional clear button.
+class DateField extends StatelessWidget {
+  final String label;
+  final DateTime? value;
+  final String Function(DateTime) format;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+  final String? errorText;
+
+  const DateField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.format,
+    required this.onTap,
+    this.onClear,
+    this.errorText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: InputDecorator(
+        isEmpty: value == null,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: 'Choisir la date et l\'heure',
+          errorText: errorText,
+          suffixIcon: onClear != null && value != null
+              ? IconButton(
+                  tooltip: 'Effacer',
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: onClear,
+                )
+              : const Icon(Icons.calendar_month_outlined, color: Brand.s500),
+        ),
+        child: value == null
+            ? const SizedBox.shrink()
+            : Text(format(value!), style: const TextStyle(fontSize: 16, color: Brand.s800)),
+      ),
+    );
+  }
+}
+
+/// Small coloured pill (price, quota, "inactif"…).
+class MiniChip extends StatelessWidget {
+  final String text;
+  final KitTone tone;
+  final IconData? icon;
+  const MiniChip(this.text, {super.key, this.tone = KitTone.slate, this.icon});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: tone.bg,
+      borderRadius: BorderRadius.circular(99),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 12, color: tone.fg),
+          const SizedBox(width: 4),
+        ],
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: tone.fg,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// One entry of an [ItemCard]'s "⋮" menu.
+class ItemAction {
+  final String label;
+  final IconData icon;
+  final VoidCallback onSelected;
+  final bool destructive;
+  const ItemAction(
+    this.label,
+    this.icon,
+    this.onSelected, {
+    this.destructive = false,
+  });
+}
+
+/// A list item of an editor: leading icon (or photo), title, chips, optional footer, and a "⋮" menu.
+class ItemCard extends StatelessWidget {
+  final IconData icon;
+  final KitTone tone;
+  final Widget? leading;
+  final String title;
+  final String? subtitle;
+  final List<Widget> chips;
+  final Widget? footer;
+  final VoidCallback? onTap;
+  final List<ItemAction> actions;
+
+  const ItemCard({
+    super.key,
+    required this.title,
+    this.icon = Icons.circle_outlined,
+    this.tone = KitTone.green,
+    this.leading,
+    this.subtitle,
+    this.chips = const [],
+    this.footer,
+    this.onTap,
+    this.actions = const [],
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  leading ?? IconBubble(icon, tone: tone, size: 44),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Brand.s800,
+                            ),
+                          ),
+                          if (subtitle != null && subtitle!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                subtitle!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Brand.s500,
+                                ),
+                              ),
+                            ),
+                          if (chips.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: chips,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (actions.isNotEmpty)
+                    PopupMenuButton<int>(
+                      tooltip: 'Actions',
+                      icon: const Icon(Icons.more_vert, color: Brand.s500),
+                      onSelected: (i) => actions[i].onSelected(),
+                      itemBuilder: (_) => [
+                        for (var i = 0; i < actions.length; i++)
+                          PopupMenuItem<int>(
+                            value: i,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  actions[i].icon,
+                                  size: 20,
+                                  color: actions[i].destructive
+                                      ? Brand.red
+                                      : Brand.s700,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  actions[i].label,
+                                  style: TextStyle(
+                                    color: actions[i].destructive
+                                        ? Brand.red
+                                        : Brand.s800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    )
+                  else
+                    const SizedBox(width: 8),
+                ],
+              ),
+              if (footer != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 10, 8, 0),
+                  child: footer,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Asks before a destructive or irreversible action; true when the person confirmed.
+Future<bool> confirmAction(
+  BuildContext context, {
+  required String title,
+  String? message,
+  String confirmLabel = 'Confirmer',
+  bool destructive = false,
+}) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: message == null ? null : Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: destructive
+              ? FilledButton.styleFrom(backgroundColor: Brand.red)
+              : null,
+          onPressed: () => Navigator.pop(ctx, true),
+          child: Text(confirmLabel),
+        ),
+      ],
+    ),
+  );
+  return ok == true;
+}
+
+/// Bottom sheet for creating / editing one item, capped in width for tablets.
+Future<T?> showEditorSheet<T>(BuildContext context, WidgetBuilder builder) =>
+    showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      constraints: const BoxConstraints(maxWidth: 640),
+      builder: builder,
+    );
+
+/// Layout of an editor sheet: header (icon, title, close), scrollable fields, primary action pinned below.
+class SheetScaffold extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final KitTone tone;
+  final List<Widget> children;
+  final Widget action;
+
+  const SheetScaffold({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.children,
+    required this.action,
+    this.subtitle,
+    this.tone = KitTone.green,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 8, 10),
+              child: Row(
+                children: [
+                  IconBubble(icon, tone: tone, size: 38),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if (subtitle != null)
+                          Text(
+                            subtitle!,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: Brand.s500,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Fermer',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < children.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 12),
+                      children[i],
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: action,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

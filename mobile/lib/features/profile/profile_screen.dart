@@ -187,6 +187,12 @@ class ProfileScreen extends ConsumerWidget {
                       title: 'Contrôle à la porte',
                       subtitle: 'Scanner les QR codes des billets',
                       onTap: () => context.push('/scanner')),
+                if (canScan)
+                  _tile(context,
+                      icon: Icons.sensors,
+                      title: 'Présence en direct',
+                      subtitle: 'Entrées, sorties et présents, billets et capteurs',
+                      onTap: () => context.push('/presence-en-direct')),
               ],
             ),
           ],

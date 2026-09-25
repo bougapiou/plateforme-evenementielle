@@ -53,8 +53,9 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 | **Mot de passe oublié** | demande d'un lien par e-mail, puis nouveau mot de passe à partir du code reçu | `POST /auth/password/forgot`, `POST /auth/password/reset` |
 | **Mes structures** | liste, création, modification, représentants (ajout / retrait) | `/structures`, `/structures/{id}/members` |
 | **Devenir organisateur** | formulaire de demande (rattachement structure optionnel) | `POST /organizers/apply`, `GET /organizers/me` |
-| **Mes événements** (organisateurs) | liste, **création**, gestion complète : infos + image, programme (activités + visuel), billetterie (catégories, quotas, portée), stands, intervenants (photo), partenaires (logo), workflow (soumettre / publier / ouvrir-fermer les inscriptions) | `POST/PUT /events`, `/events/mine`, `/events/{id}/activities|tickets|stand-types|speakers|partners`, `/events/{id}/submit\|publish\|…`, `POST /uploads/image` |
+| **Mes événements** (organisateurs) | liste **filtrable par état** (brouillons, à valider, en ligne…) avec l'action attendue sur chaque carte ; **fiche de gestion** : couverture, chiffres clés (billets vendus, revenus, inscriptions, stands), prochaine étape du cycle de vie, configuration (infos, programme par jour, billetterie avec jauge de quota, stands, intervenants, partenaires), accréditations, contrôle, présence en direct ; **création / modification** en sections avec barre d'enregistrement fixe (un administrateur peut modifier un événement à tout état) ; suppressions avec confirmation | `POST/PUT /events`, `/events/mine`, `/events/{id}/activities|tickets|stand-types|speakers|partners`, `/events/{id}/submit\|publish\|…`, `GET /stats/events/{id}`, `POST /uploads/image` |
 | Contrôle des accès | choix de l'événement, **puis de l'activité** (ou entrée générale), **puis du sens : contrôle à l'entrée / à la sortie** ; bascule Entrée / Sortie aussi dans le scanner ; compteurs live (entrées, sorties, présents, ré-entrées) ; scan caméra → VALIDE / REFUSÉ / INVALIDE | `GET /checkins/events` (+ `/{id}/activities`), `POST /checkins/scan` (`activityId`, `sens`), `GET /events/{id}/checkin-stats?activityId=` |
+| **Présence en direct** (public, sans compte) | événements en cours, puis compteurs entrées / sorties / présents / ré-entrées, actualisés toutes les 4 s. **Source au choix** : billets QR, capteurs laser, ou **combiné** (les comptages s'additionnent, avec le détail par source). **Plein écran** immersif sur fond sombre, portrait ou paysage. Accessible depuis l'accueil, le contrôle et la fiche de gestion d'un événement | `GET /public/live-events`, `GET /public/events/{slug}/attendance` |
 | Participer à une activité gratuite | bouton « Participer » sur une activité en accès gratuit → billet + QR immédiats | `POST /activities/{id}/attend` |
 | **Accréditations** (organisateurs) | badges nominatifs (conférencier, exposant, modérateur, MC, panéliste, compétiteur, presse, staff…) pour une activité ou tout l'événement, badge PDF + QR, révocation | `GET/POST /events/{id}/accreditations`, `POST /accreditations/{id}/revoke`, `/badge.pdf` |
 | Profil | compte, rôles, déconnexion | — |
@@ -72,6 +73,8 @@ lib/
 │   ├── models.dart          DTO auth (AuthResponse, UserSummary, ApiException)
 │   ├── format.dart          Formatage dates / montants (fr, FCFA)
 │   ├── widgets.dart         StatusChip, FutureView, EmptyState, ErrorRetry
+│   ├── manage_kit.dart      Design commun des écrans de gestion : SectionCard, ActionTile, KpiTile,
+│   │                        ItemCard, FormSection, DateField, SheetScaffold, InfoBanner, MaxWidth…
 │   ├── token_store.dart     Session en stockage sécurisé
 │   ├── api_client.dart      Dio + intercepteur JWT (refresh auto) + download binaire
 │   ├── auth_repository.dart login / register / logout / session invité / finalisation de compte
@@ -93,7 +96,8 @@ lib/
     ├── organizer/           devenir organisateur + Mes événements (création & gestion complète)
     ├── invoices/            factures & reçus
     ├── notifications/       centre de notifications (+ deep-link)
-    ├── scanner/             contrôle d'accès (mobile_scanner)
+    ├── scanner/             contrôle d'accès (mobile_scanner), retrouver mon billet
+    ├── presence/            présence en direct : source QR / capteurs / combiné, plein écran
     └── profile/             profil, édition, mot de passe, déconnexion
 ```
 

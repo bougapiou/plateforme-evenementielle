@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
 import '../../core/image_field.dart';
+import '../../core/manage_kit.dart';
 import '../../core/models.dart';
 import '../../core/phone_field.dart';
 import '../../core/providers.dart';
@@ -42,6 +43,8 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   bool _standsParticuliers = false;
   bool _validationInscription = false;
 
+  bool _modifiable = true;
+  bool _submitted = false; // date errors only show once the organiser tried to save
   bool _saving = false;
   late final Future<void> _load;
 
@@ -79,6 +82,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
     _standsActifs = e.standsActifs;
     _standsParticuliers = e.standsParticuliers;
     _validationInscription = e.validationInscription;
+    _modifiable = e.modifiable;
   }
 
   @override
@@ -110,6 +114,7 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   }
 
   Future<void> _save() async {
+    setState(() => _submitted = true);
     if (!_formKey.currentState!.validate()) return;
     if (_dateDebut == null || _dateFin == null) {
       showSnack(context, 'Renseignez les dates de début et de fin.', error: true);
@@ -172,9 +177,19 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   @override
   Widget build(BuildContext context) {
     final cats = ref.watch(eventCategoriesProvider).valueOrNull ?? const [];
+    // administrators may edit an event in any status; the organiser only while it is a draft / validated
+    final canEditAnyway = ref.watch(hasPermissionProvider('EVENT_VALIDATE'));
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEdit ? 'Modifier l\'événement' : 'Nouvel événement'),
+        title: Text(_isEdit ? "Modifier l'événement" : 'Nouvel événement'),
+      ),
+      bottomNavigationBar: StickyActionBar(
+        child: FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(_saving
+              ? 'Enregistrement…'
+              : (_isEdit ? 'Enregistrer' : "Créer l'événement")),
+        ),
       ),
       body: FutureBuilder<void>(
         future: _load,
@@ -184,98 +199,177 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
           }
           return Form(
             key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _text(_nom, 'Nom de l\'événement *', required: true),
-                _text(_sigle, 'Sigle'),
-                DropdownButtonFormField<String>(
-                  value: _categoryId,
-                  decoration: const InputDecoration(labelText: 'Catégorie'),
-                  items: cats
-                      .map((c) => DropdownMenuItem(
-                          value: c.id, child: Text(c.nom)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _categoryId = v),
-                ),
-                const SizedBox(height: 12),
-                _dateTile('Début *', _dateDebut,
-                    (d) => setState(() => _dateDebut = d)),
-                _dateTile(
-                    'Fin *', _dateFin, (d) => setState(() => _dateFin = d)),
-                const SizedBox(height: 12),
-                _text(_ville, 'Ville'),
-                _text(_lieu, 'Lieu'),
-                _text(_adresse, 'Adresse'),
-                _text(_capacite, 'Capacité maximale',
-                    keyboard: TextInputType.number),
-                _text(_contactEmail, 'E-mail de contact',
-                    keyboard: TextInputType.emailAddress),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: PhoneField(
-                    initialValue: _contactTel,
-                    onChanged: (v) => _contactTel = v,
+            child: MaxWidth(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  if (_isEdit && !_modifiable && !canEditAnyway) ...[
+                    const InfoBanner(
+                      "Cet événement n'est plus modifiable dans son état actuel : "
+                      "l'enregistrement sera refusé.",
+                      tone: KitTone.amber,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  FormSection(
+                    title: 'Identité',
+                    icon: Icons.badge_outlined,
+                    children: [
+                      _text(_nom, "Nom de l'événement *", required: true),
+                      _text(_sigle, 'Sigle'),
+                      DropdownButtonFormField<String>(
+                        value: _categoryId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Catégorie'),
+                        items: cats
+                            .map((c) => DropdownMenuItem(
+                                value: c.id,
+                                child: Text(c.nom, overflow: TextOverflow.ellipsis)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _categoryId = v),
+                      ),
+                      _text(_descCourte, 'Description courte'),
+                      _text(_descLongue, 'Description détaillée', lines: 4),
+                    ],
                   ),
-                ),
-                _text(_descCourte, 'Description courte'),
-                _text(_descLongue, 'Description détaillée', lines: 4),
-                const SizedBox(height: 8),
-                ImageField(
-                  label: 'Image de couverture',
-                  value: _coverUrl,
-                  folder: 'evenements',
-                  onChanged: (v) => setState(() => _coverUrl = v),
-                ),
-                const SizedBox(height: 12),
-                ImageField(
-                  label: 'Logo',
-                  value: _logoUrl,
-                  folder: 'evenements',
-                  height: 90,
-                  onChanged: (v) => setState(() => _logoUrl = v),
-                ),
-                const SizedBox(height: 16),
-                _dateTile('Ouverture des inscriptions', _inscriptionDebut,
-                    (d) => setState(() => _inscriptionDebut = d), clearable: true),
-                _dateTile('Clôture des inscriptions', _inscriptionFin,
-                    (d) => setState(() => _inscriptionFin = d), clearable: true),
-                const SizedBox(height: 8),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Cet événement contient plusieurs activités'),
-                  value: _hasActivities,
-                  onChanged: (v) => setState(() => _hasActivities = v),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Réservation de stands'),
-                  value: _standsActifs,
-                  onChanged: (v) => setState(() => _standsActifs = v),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Valider chaque inscription manuellement'),
-                  value: _validationInscription,
-                  onChanged: (v) => setState(() => _validationInscription = v),
-                ),
-                if (_standsActifs)
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Stands : autoriser les particuliers'),
-                    subtitle: const Text(
-                        'Réservation possible sans structure vérifiée'),
-                    value: _standsParticuliers,
-                    onChanged: (v) => setState(() => _standsParticuliers = v),
+                  const SizedBox(height: 12),
+                  FormSection(
+                    title: 'Dates',
+                    icon: Icons.event_outlined,
+                    tone: KitTone.blue,
+                    children: [
+                      DateField(
+                        label: 'Début *',
+                        value: _dateDebut,
+                        format: Fmt.dateTime,
+                        errorText: _submitted && _dateDebut == null ? 'Requis' : null,
+                        onTap: () async {
+                          final d = await _pickDateTime(_dateDebut);
+                          if (d != null) setState(() => _dateDebut = d);
+                        },
+                      ),
+                      DateField(
+                        label: 'Fin *',
+                        value: _dateFin,
+                        format: Fmt.dateTime,
+                        errorText: _submitted && _dateFin == null ? 'Requis' : null,
+                        onTap: () async {
+                          final d = await _pickDateTime(_dateFin);
+                          if (d != null) setState(() => _dateFin = d);
+                        },
+                      ),
+                    ],
                   ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: Text(_saving
-                      ? 'Enregistrement…'
-                      : (_isEdit ? 'Enregistrer' : 'Créer l\'événement')),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  FormSection(
+                    title: 'Lieu',
+                    icon: Icons.place_outlined,
+                    tone: KitTone.amber,
+                    children: [
+                      _text(_ville, 'Ville'),
+                      _text(_lieu, 'Lieu'),
+                      _text(_adresse, 'Adresse'),
+                      _text(_capacite, 'Capacité maximale',
+                          keyboard: TextInputType.number),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  FormSection(
+                    title: 'Contact',
+                    icon: Icons.contact_phone_outlined,
+                    tone: KitTone.violet,
+                    hint: 'Affiché sur la page publique',
+                    children: [
+                      _text(_contactEmail, 'E-mail de contact',
+                          keyboard: TextInputType.emailAddress),
+                      PhoneField(
+                        initialValue: _contactTel,
+                        onChanged: (v) => _contactTel = v,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  FormSection(
+                    title: 'Visuels',
+                    icon: Icons.image_outlined,
+                    tone: KitTone.slate,
+                    hint: 'La couverture décore aussi les billets et les PDF',
+                    children: [
+                      ImageField(
+                        label: 'Image de couverture',
+                        value: _coverUrl,
+                        folder: 'evenements',
+                        onChanged: (v) => setState(() => _coverUrl = v),
+                      ),
+                      ImageField(
+                        label: 'Logo',
+                        value: _logoUrl,
+                        folder: 'evenements',
+                        height: 90,
+                        onChanged: (v) => setState(() => _logoUrl = v),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  FormSection(
+                    title: 'Inscriptions',
+                    icon: Icons.how_to_reg_outlined,
+                    tone: KitTone.blue,
+                    hint: "Fenêtre d'inscription (facultatif)",
+                    children: [
+                      DateField(
+                        label: 'Ouverture des inscriptions',
+                        value: _inscriptionDebut,
+                        format: Fmt.dateTime,
+                        onClear: () => setState(() => _inscriptionDebut = null),
+                        onTap: () async {
+                          final d = await _pickDateTime(_inscriptionDebut);
+                          if (d != null) setState(() => _inscriptionDebut = d);
+                        },
+                      ),
+                      DateField(
+                        label: 'Clôture des inscriptions',
+                        value: _inscriptionFin,
+                        format: Fmt.dateTime,
+                        onClear: () => setState(() => _inscriptionFin = null),
+                        onTap: () async {
+                          final d = await _pickDateTime(_inscriptionFin);
+                          if (d != null) setState(() => _inscriptionFin = d);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SectionCard(title: 'Options', children: [
+                    SwitchListTile(
+                      title: const Text('Cet événement contient plusieurs activités'),
+                      subtitle: const Text('Programme découpé en créneaux'),
+                      value: _hasActivities,
+                      onChanged: (v) => setState(() => _hasActivities = v),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Réservation de stands'),
+                      subtitle: const Text('Les exposants réservent un emplacement'),
+                      value: _standsActifs,
+                      onChanged: (v) => setState(() => _standsActifs = v),
+                    ),
+                    if (_standsActifs)
+                      SwitchListTile(
+                        title: const Text('Stands : autoriser les particuliers'),
+                        subtitle: const Text(
+                            'Réservation possible sans structure vérifiée'),
+                        value: _standsParticuliers,
+                        onChanged: (v) => setState(() => _standsParticuliers = v),
+                      ),
+                    SwitchListTile(
+                      title: const Text('Valider chaque inscription manuellement'),
+                      subtitle: const Text('Vous approuvez les demandes une par une'),
+                      value: _validationInscription,
+                      onChanged: (v) => setState(() => _validationInscription = v),
+                    ),
+                  ]),
+                ],
+              ),
             ),
           );
         },
@@ -284,43 +378,15 @@ class _EventFormScreenState extends ConsumerState<EventFormScreen> {
   }
 
   Widget _text(TextEditingController c, String label,
-      {bool required = false,
-      TextInputType? keyboard,
-      int lines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: c,
-        keyboardType: keyboard,
-        maxLines: lines,
-        decoration: InputDecoration(labelText: label),
-        validator: required
-            ? (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null
-            : null,
-      ),
-    );
-  }
-
-  Widget _dateTile(String label, DateTime? value, ValueChanged<DateTime?> onSet,
-      {bool clearable = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.event),
-        title: Text(label),
-        subtitle: Text(value == null ? 'Non défini' : Fmt.dateTime(value)),
-        trailing: clearable && value != null
-            ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () => onSet(null),
-              )
-            : const Icon(Icons.chevron_right),
-        onTap: () async {
-          final d = await _pickDateTime(value);
-          if (d != null) onSet(d);
-        },
-      ),
+      {bool required = false, TextInputType? keyboard, int lines = 1}) {
+    return TextFormField(
+      controller: c,
+      keyboardType: keyboard,
+      maxLines: lines,
+      decoration: InputDecoration(labelText: label),
+      validator: required
+          ? (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null
+          : null,
     );
   }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../../core/brand.dart';
 import '../../core/format.dart';
 import '../../core/image_field.dart';
+import '../../core/manage_kit.dart';
 import '../../core/media.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -18,6 +21,8 @@ class ProgrammeEditorScreen extends ConsumerStatefulWidget {
 }
 
 class _ProgrammeEditorScreenState extends ConsumerState<ProgrammeEditorScreen> {
+  static final _dayFmt = DateFormat('EEEE d MMMM', 'fr');
+
   late Future<List<Activity>> _future;
 
   @override
@@ -31,15 +36,22 @@ class _ProgrammeEditorScreenState extends ConsumerState<ProgrammeEditorScreen> {
       ref.read(organizerEventsRepositoryProvider).activities(widget.eventId));
 
   Future<void> _edit([Activity? a]) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _ActivitySheet(eventId: widget.eventId, activity: a),
+    final saved = await showEditorSheet<bool>(
+      context,
+      (_) => _ActivitySheet(eventId: widget.eventId, activity: a),
     );
     if (saved == true) _refresh();
   }
 
   Future<void> _delete(Activity a) async {
+    final ok = await confirmAction(
+      context,
+      title: 'Supprimer « ${a.titre} » ?',
+      message: 'Cette activité sera retirée du programme.',
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    );
+    if (!ok) return;
     try {
       await ref
           .read(organizerEventsRepositoryProvider)
@@ -64,48 +76,107 @@ class _ProgrammeEditorScreenState extends ConsumerState<ProgrammeEditorScreen> {
         onRetry: _refresh,
         builder: (list) {
           if (list.isEmpty) {
-            return const EmptyState(
-                icon: Icons.event_note_outlined, title: 'Aucune activité');
+            return EmptyState(
+              icon: Icons.event_note_outlined,
+              title: 'Aucune activité',
+              subtitle:
+                  'Ajoutez les conférences, ateliers et spectacles du programme, avec leur horaire.',
+              action: FilledButton.icon(
+                onPressed: () => _edit(),
+                icon: const Icon(Icons.add),
+                label: const Text('Ajouter une activité'),
+              ),
+            );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: list.length,
-            itemBuilder: (_, i) {
-              final a = list[i];
-              return Card(
-                clipBehavior: Clip.antiAlias,
-                margin: const EdgeInsets.only(bottom: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (a.imageUrl != null)
-                      AspectRatio(
-                          aspectRatio: 16 / 6,
-                          child: RemoteImage(url: a.imageUrl)),
-                    ListTile(
-                      title: Text(a.titre),
-                      subtitle: Text([
-                        Fmt.dateTime(a.dateDebut),
-                        if (a.salle != null) a.salle!,
-                        if (a.typeActivite != null) a.typeActivite!,
-                        if (a.gratuit) 'Gratuit' else if (a.payant) 'Payant',
-                      ].join(' · ')),
-                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                        IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: () => _edit(a)),
-                        IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => _delete(a)),
-                      ]),
-                    ),
-                  ],
-                ),
-              );
-            },
+          final sorted = [...list]..sort((a, b) => (a.dateDebut ?? DateTime(0))
+              .compareTo(b.dateDebut ?? DateTime(0)));
+          final children = <Widget>[];
+          String? lastDay;
+          for (final a in sorted) {
+            final day = a.dateDebut == null ? 'Sans date' : _dayFmt.format(a.dateDebut!.toLocal());
+            if (day != lastDay) {
+              children.add(Padding(
+                padding: EdgeInsets.fromLTRB(4, lastDay == null ? 0 : 12, 4, 8),
+                child: Text(day.toUpperCase(),
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelSmall
+                        ?.copyWith(letterSpacing: .8, color: Brand.s500)),
+              ));
+              lastDay = day;
+            }
+            children.add(_card(a));
+          }
+          return MaxWidth(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              children: children,
+            ),
           );
         },
       ),
+    );
+  }
+
+  Widget _card(Activity a) {
+    final (accesLabel, accesTone) = switch (a.acces) {
+      'GRATUIT' => ('Gratuit sur billet', KitTone.green),
+      'PAYANT' => ('Payant', KitTone.amber),
+      _ => ("Billet de l'événement", KitTone.slate),
+    };
+    return ItemCard(
+      leading: _TimeBlock(start: a.dateDebut, end: a.dateFin),
+      title: a.titre,
+      subtitle: a.intervenant,
+      onTap: () => _edit(a),
+      chips: [
+        MiniChip(accesLabel, tone: accesTone),
+        if (a.typeActivite != null)
+          MiniChip(activityTypeLabel(a.typeActivite), tone: KitTone.blue),
+        if (a.salle != null && a.salle!.isNotEmpty)
+          MiniChip(a.salle!, icon: Icons.meeting_room_outlined),
+      ],
+      footer: a.imageUrl == null
+          ? null
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: AspectRatio(
+                aspectRatio: 16 / 6,
+                child: RemoteImage(url: a.imageUrl),
+              ),
+            ),
+      actions: [
+        ItemAction('Modifier', Icons.edit_outlined, () => _edit(a)),
+        ItemAction('Supprimer', Icons.delete_outline, () => _delete(a),
+            destructive: true),
+      ],
+    );
+  }
+}
+
+/// Start time (and end, when known) of an activity, in a tinted square.
+class _TimeBlock extends StatelessWidget {
+  final DateTime? start;
+  final DateTime? end;
+  const _TimeBlock({required this.start, required this.end});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 56,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: KitTone.blue.bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(start == null ? '—' : Fmt.time(start),
+            style: TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w800, color: KitTone.blue.fg)),
+        if (end != null)
+          Text(Fmt.time(end),
+              style: TextStyle(fontSize: 12, color: KitTone.blue.fg.withValues(alpha: .7))),
+      ]),
     );
   }
 }
@@ -132,6 +203,7 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
   DateTime? _fin;
   String? _imageUrl;
   bool _saving = false;
+  bool _submitted = false;
 
   @override
   void initState() {
@@ -176,6 +248,7 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
   }
 
   Future<void> _save() async {
+    setState(() => _submitted = true);
     if (_titre.text.trim().isEmpty || _debut == null) {
       showSnack(context, 'Titre et date de début requis.', error: true);
       return;
@@ -210,94 +283,95 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+    return SheetScaffold(
+      title: widget.activity == null ? 'Nouvelle activité' : "Modifier l'activité",
+      subtitle: 'Créneau du programme',
+      icon: Icons.event_note_outlined,
+      tone: KitTone.blue,
+      action: FilledButton(
+        onPressed: _saving ? null : _save,
+        child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.activity == null ? 'Nouvelle activité' : 'Modifier l\'activité',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            TextField(controller: _titre, decoration: const InputDecoration(labelText: 'Titre *')),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              value: _type,
-              decoration: const InputDecoration(labelText: 'Type'),
-              items: activityTypes
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                  .toList(),
-              onChanged: (v) => setState(() => _type = v),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              value: _acces,
-              decoration: const InputDecoration(labelText: 'Accès'),
-              items: const [
-                DropdownMenuItem(
-                    value: 'SANS_BILLET',
-                    child: Text('Sans billet (billet de l\'événement)')),
-                DropdownMenuItem(
-                    value: 'GRATUIT', child: Text('Gratuit sur billet')),
-                DropdownMenuItem(
-                    value: 'PAYANT', child: Text('Payant (billets dédiés)')),
-              ],
-              onChanged: (v) => setState(() => _acces = v ?? 'SANS_BILLET'),
-            ),
-            const SizedBox(height: 10),
-            _dateRow('Début *', _debut, (d) => setState(() => _debut = d)),
-            _dateRow('Fin', _fin, (d) => setState(() => _fin = d)),
-            const SizedBox(height: 10),
-            TextField(controller: _salle, decoration: const InputDecoration(labelText: 'Salle')),
-            const SizedBox(height: 10),
-            TextField(controller: _intervenant, decoration: const InputDecoration(labelText: 'Intervenant')),
-            const SizedBox(height: 10),
-            TextField(controller: _moderateur, decoration: const InputDecoration(labelText: 'Modérateur')),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _capacite,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Capacité'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _description,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-            const SizedBox(height: 12),
-            ImageField(
-              label: 'Visuel de l\'activité',
-              value: _imageUrl,
-              folder: 'activites',
-              onChanged: (v) => setState(() => _imageUrl = v),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
-            ),
-          ],
+      children: [
+        TextField(
+          controller: _titre,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            labelText: 'Titre *',
+            errorText: _submitted && _titre.text.trim().isEmpty ? 'Requis' : null,
+          ),
         ),
-      ),
+        DropdownButtonFormField<String>(
+          value: _type,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Type'),
+          items: activityTypes
+              .map((t) => DropdownMenuItem(value: t, child: Text(activityTypeLabel(t))))
+              .toList(),
+          onChanged: (v) => setState(() => _type = v),
+        ),
+        DropdownButtonFormField<String>(
+          value: _acces,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Accès'),
+          items: const [
+            DropdownMenuItem(
+                value: 'SANS_BILLET',
+                child: Text("Sans billet (billet de l'événement)")),
+            DropdownMenuItem(value: 'GRATUIT', child: Text('Gratuit sur billet')),
+            DropdownMenuItem(value: 'PAYANT', child: Text('Payant (billets dédiés)')),
+          ],
+          onChanged: (v) => setState(() => _acces = v ?? 'SANS_BILLET'),
+        ),
+        DateField(
+          label: 'Début *',
+          value: _debut,
+          format: Fmt.dateTime,
+          errorText: _submitted && _debut == null ? 'Requis' : null,
+          onTap: () async {
+            final d = await _pick(_debut);
+            if (d != null) setState(() => _debut = d);
+          },
+        ),
+        DateField(
+          label: 'Fin',
+          value: _fin,
+          format: Fmt.dateTime,
+          onClear: () => setState(() => _fin = null),
+          onTap: () async {
+            final d = await _pick(_fin ?? _debut);
+            if (d != null) setState(() => _fin = d);
+          },
+        ),
+        TextField(
+          controller: _salle,
+          decoration: const InputDecoration(labelText: 'Salle'),
+        ),
+        TextField(
+          controller: _intervenant,
+          decoration: const InputDecoration(labelText: 'Intervenant'),
+        ),
+        TextField(
+          controller: _moderateur,
+          decoration: const InputDecoration(labelText: 'Modérateur'),
+        ),
+        TextField(
+          controller: _capacite,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Capacité'),
+        ),
+        TextField(
+          controller: _description,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'Description'),
+        ),
+        ImageField(
+          label: "Visuel de l'activité",
+          value: _imageUrl,
+          folder: 'activites',
+          onChanged: (v) => setState(() => _imageUrl = v),
+        ),
+      ],
     );
   }
-
-  Widget _dateRow(String label, DateTime? v, ValueChanged<DateTime?> onSet) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        dense: true,
-        leading: const Icon(Icons.schedule),
-        title: Text(label),
-        subtitle: Text(v == null ? 'Non défini' : Fmt.dateTime(v)),
-        onTap: () async {
-          final d = await _pick(v);
-          if (d != null) onSet(d);
-        },
-      );
 }

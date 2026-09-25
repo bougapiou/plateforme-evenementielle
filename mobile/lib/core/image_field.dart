@@ -97,6 +97,7 @@ class _ImageFieldState extends ConsumerState<ImageField> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size(0, 42)),
                     onPressed: _busy ? null : _pick,
                     icon: _busy
                         ? const SizedBox(
@@ -104,7 +105,10 @@ class _ImageFieldState extends ConsumerState<ImageField> {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.upload_outlined, size: 18),
-                    label: Text(_busy ? 'Envoi…' : 'Choisir une image'),
+                    // short labels: a long one wrapped over three lines on a narrow phone
+                    label: Text(_busy
+                        ? 'Envoi…'
+                        : (widget.value == null ? 'Choisir' : 'Changer')),
                   ),
                   if (widget.value != null)
                     TextButton(

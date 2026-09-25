@@ -66,6 +66,12 @@ class OrganizerEventsRepository {
         (d) => EventFull.fromJson(d as Map<String, dynamic>),
       );
 
+  /// Sales, stands, registrations, revenue and entries of one event.
+  Future<EventStats> stats(String id) => _req(
+        () => api.dio.get('/stats/events/$id'),
+        (d) => EventStats.fromJson(d as Map<String, dynamic>),
+      );
+
   // --- programme / activités ---
 
   Future<List<Activity>> activities(String eventId) => _req(

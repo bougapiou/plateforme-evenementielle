@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/manage_kit.dart';
 import '../../core/providers.dart';
 import '../../core/widgets.dart';
 import '../../data/domain.dart';
@@ -64,15 +65,17 @@ class _StructuresScreenState extends ConsumerState<StructuresScreen> {
                 ),
               ]);
             }
-            return ListView.builder(
+            return MaxWidth(
+              child: ListView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: list.length,
               itemBuilder: (_, i) {
                 final s = list[i];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
+                  clipBehavior: Clip.antiAlias,
                   child: ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.domain)),
+                    leading: const IconBubble(Icons.domain, tone: KitTone.slate),
                     title: Text(s.raisonSociale),
                     subtitle: Text([
                       structureTypeLabels[s.typeStructure] ?? s.typeStructure,
@@ -86,6 +89,7 @@ class _StructuresScreenState extends ConsumerState<StructuresScreen> {
                   ),
                 );
               },
+            ),
             );
           },
         ),

@@ -309,6 +309,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           eventNom: s.uri.queryParameters['nom'] ?? 'Événement',
           activityId: s.uri.queryParameters['activityId'],
           activiteNom: s.uri.queryParameters['activiteNom'],
+          slug: s.uri.queryParameters['slug'],
           sens: s.uri.queryParameters['sens'] == 'SORTIE' ? 'SORTIE' : 'ENTREE',
         ),
       ),

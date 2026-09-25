@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/manage_kit.dart';
+import 'scan_widgets.dart';
 
 /// Camera scanner open to any visitor, signed in or not — no permission
 /// required. Meant for scanning an event's printed QR (poster, flyer): it
@@ -97,11 +99,11 @@ class _PublicScannerScreenState extends State<PublicScannerScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
-              'Visez le QR affiché sur l\'affiche ou le flyer d\'un événement : '
+            child: const InfoBanner(
+              "Visez le QR affiché sur l'affiche ou le flyer d'un événement : "
               'vous arrivez directement sur sa page pour vous inscrire ou '
               'prendre votre billet.',
-              style: Theme.of(context).textTheme.bodySmall,
+              icon: Icons.qr_code_scanner,
             ),
           ),
           Expanded(
@@ -144,21 +146,14 @@ class _PublicScannerScreenState extends State<PublicScannerScreen> {
                     ),
                   ),
                 ),
-                Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white70, width: 3),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
+                const ScanFrame(),
               ],
             ),
           ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              child: InfoBanner(_error!, tone: KitTone.red),
             ),
           Padding(
             padding: const EdgeInsets.all(16),

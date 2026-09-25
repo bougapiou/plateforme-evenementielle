@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/brand.dart';
 import '../../core/image_field.dart';
+import '../../core/manage_kit.dart';
 import '../../core/media.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -39,10 +41,9 @@ class _PeopleEditorScreenState extends ConsumerState<PeopleEditorScreen> {
   void _refresh() => setState(() => _future = _load());
 
   Future<void> _edit([dynamic person]) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _PersonSheet(
+    final saved = await showEditorSheet<bool>(
+      context,
+      (_) => _PersonSheet(
         eventId: widget.eventId,
         isSpeakers: widget.isSpeakers,
         speaker: person is Speaker ? person : null,
@@ -53,6 +54,14 @@ class _PeopleEditorScreenState extends ConsumerState<PeopleEditorScreen> {
   }
 
   Future<void> _delete(dynamic person) async {
+    final name = widget.isSpeakers ? (person as Speaker).nom : (person as Partner).nom;
+    final ok = await confirmAction(
+      context,
+      title: 'Retirer « $name » ?',
+      confirmLabel: 'Retirer',
+      destructive: true,
+    );
+    if (!ok) return;
     try {
       if (widget.isSpeakers) {
         await _repo.deleteSpeaker(widget.eventId, (person as Speaker).id);
@@ -67,13 +76,13 @@ class _PeopleEditorScreenState extends ConsumerState<PeopleEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.isSpeakers ? 'Intervenants' : 'Partenaires';
+    final sp = widget.isSpeakers;
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(sp ? 'Intervenants' : 'Partenaires')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(),
         icon: const Icon(Icons.add),
-        label: Text(widget.isSpeakers ? 'Intervenant' : 'Partenaire'),
+        label: Text(sp ? 'Intervenant' : 'Partenaire'),
       ),
       body: FutureView<List<dynamic>>(
         future: _future,
@@ -81,53 +90,97 @@ class _PeopleEditorScreenState extends ConsumerState<PeopleEditorScreen> {
         builder: (list) {
           if (list.isEmpty) {
             return EmptyState(
-                icon: widget.isSpeakers
-                    ? Icons.record_voice_over_outlined
-                    : Icons.handshake_outlined,
-                title: 'Aucun ${widget.isSpeakers ? 'intervenant' : 'partenaire'}');
+              icon: sp ? Icons.record_voice_over_outlined : Icons.handshake_outlined,
+              title: 'Aucun ${sp ? 'intervenant' : 'partenaire'}',
+              subtitle: sp
+                  ? 'Présentez les conférenciers et invités : ils apparaissent sur la page publique.'
+                  : 'Présentez les sponsors et institutions partenaires, avec leur logo.',
+              action: FilledButton.icon(
+                onPressed: () => _edit(),
+                icon: const Icon(Icons.add),
+                label: Text(sp ? 'Ajouter un intervenant' : 'Ajouter un partenaire'),
+              ),
+            );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: list.length,
-            itemBuilder: (_, i) {
-              final p = list[i];
-              final name = widget.isSpeakers
-                  ? (p as Speaker).nom
-                  : (p as Partner).nom;
-              final sub = widget.isSpeakers
-                  ? [(p as Speaker).titre, p.organisation]
-                      .where((x) => x != null && x.isNotEmpty)
-                      .join(' · ')
-                  : ((p as Partner).niveau ?? '');
-              final img = widget.isSpeakers
-                  ? (p as Speaker).photoUrl
-                  : (p as Partner).logoUrl;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  leading: img != null
-                      ? SizedBox(
-                          width: 44, height: 44, child: RemoteImage(url: img))
-                      : CircleAvatar(
-                          child: Icon(widget.isSpeakers
-                              ? Icons.person
-                              : Icons.business)),
-                  title: Text(name),
-                  subtitle: sub.isEmpty ? null : Text(sub),
-                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                    IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _edit(p)),
-                    IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _delete(p)),
-                  ]),
-                ),
-              );
-            },
+          return MaxWidth(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              itemCount: list.length,
+              itemBuilder: (_, i) => sp ? _speaker(list[i] as Speaker) : _partner(list[i] as Partner),
+            ),
           );
         },
       ),
+    );
+  }
+
+  Widget _speaker(Speaker s) {
+    final sub = [s.titre, s.organisation]
+        .where((x) => x != null && x.isNotEmpty)
+        .join(' · ');
+    return ItemCard(
+      leading: _Avatar(url: s.photoUrl, name: s.nom, round: true),
+      title: s.nom,
+      subtitle: sub,
+      onTap: () => _edit(s),
+      actions: [
+        ItemAction('Modifier', Icons.edit_outlined, () => _edit(s)),
+        ItemAction('Retirer', Icons.delete_outline, () => _delete(s), destructive: true),
+      ],
+    );
+  }
+
+  Widget _partner(Partner p) {
+    return ItemCard(
+      leading: _Avatar(url: p.logoUrl, name: p.nom, round: false),
+      title: p.nom,
+      subtitle: p.siteWeb,
+      onTap: () => _edit(p),
+      chips: [
+        if (p.niveau != null && p.niveau!.isNotEmpty)
+          MiniChip(partnerLevelLabel(p.niveau), tone: KitTone.amber),
+      ],
+      actions: [
+        ItemAction('Modifier', Icons.edit_outlined, () => _edit(p)),
+        ItemAction('Retirer', Icons.delete_outline, () => _delete(p), destructive: true),
+      ],
+    );
+  }
+}
+
+/// Photo or logo in a 48 px frame; the first letter of the name when there is no image.
+class _Avatar extends StatelessWidget {
+  final String? url;
+  final String name;
+  final bool round;
+  const _Avatar({required this.url, required this.name, required this.round});
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(round ? 24 : 12);
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Brand.s100,
+        borderRadius: radius,
+        border: Border.all(color: Brand.s200),
+      ),
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      child: url == null
+          ? Text(
+              name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),
+              style: const TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.w700, color: Brand.s500),
+            )
+          : RemoteImage(
+              url: url,
+              width: 48,
+              height: 48,
+              // a logo must stay whole; a face fills its frame
+              fit: round ? BoxFit.cover : BoxFit.contain,
+            ),
     );
   }
 }
@@ -172,6 +225,7 @@ class _PersonSheetState extends ConsumerState<_PersonSheet> {
     } else if (widget.partner != null) {
       final p = widget.partner!;
       _nom.text = p.nom;
+      _a.text = p.siteWeb ?? '';
       _niveau = p.niveau;
       _imageUrl = p.logoUrl;
     }
@@ -219,63 +273,62 @@ class _PersonSheetState extends ConsumerState<_PersonSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+    final editing = widget.speaker != null || widget.partner != null;
+    return SheetScaffold(
+      title: _sp
+          ? (editing ? "Modifier l'intervenant" : 'Nouvel intervenant')
+          : (editing ? 'Modifier le partenaire' : 'Nouveau partenaire'),
+      subtitle: _sp ? 'Conférencier ou invité' : 'Sponsor ou institution',
+      icon: _sp ? Icons.record_voice_over_outlined : Icons.handshake_outlined,
+      tone: KitTone.slate,
+      action: FilledButton(
+        onPressed: _saving ? null : _save,
+        child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              _sp ? 'Intervenant' : 'Partenaire',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            TextField(controller: _nom, decoration: const InputDecoration(labelText: 'Nom *')),
-            const SizedBox(height: 10),
-            if (_sp) ...[
-              TextField(controller: _a, decoration: const InputDecoration(labelText: 'Titre / fonction')),
-              const SizedBox(height: 10),
-              TextField(controller: _b, decoration: const InputDecoration(labelText: 'Organisation')),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _bio,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Bio'),
-              ),
-            ] else ...[
-              DropdownButtonFormField<String>(
-                value: _niveau,
-                decoration: const InputDecoration(labelText: 'Niveau'),
-                items: partnerLevels
-                    .map((n) => DropdownMenuItem(value: n, child: Text(n)))
-                    .toList(),
-                onChanged: (v) => setState(() => _niveau = v),
-              ),
-              const SizedBox(height: 10),
-              TextField(controller: _a, decoration: const InputDecoration(labelText: 'Site web')),
-            ],
-            const SizedBox(height: 12),
-            ImageField(
-              label: _sp ? 'Photo' : 'Logo',
-              value: _imageUrl,
-              folder: 'activites',
-              height: 90,
-              onChanged: (v) => setState(() => _imageUrl = v),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_saving ? 'Enregistrement…' : 'Enregistrer'),
-            ),
-          ],
+      children: [
+        TextField(
+          controller: _nom,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'Nom *'),
         ),
-      ),
+        if (_sp) ...[
+          TextField(
+            controller: _a,
+            decoration: const InputDecoration(labelText: 'Titre / fonction'),
+          ),
+          TextField(
+            controller: _b,
+            decoration: const InputDecoration(labelText: 'Organisation'),
+          ),
+          TextField(
+            controller: _bio,
+            maxLines: 3,
+            decoration: const InputDecoration(labelText: 'Bio'),
+          ),
+        ] else ...[
+          DropdownButtonFormField<String>(
+            value: _niveau,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Niveau'),
+            items: partnerLevels
+                .map((n) => DropdownMenuItem(value: n, child: Text(partnerLevelLabel(n))))
+                .toList(),
+            onChanged: (v) => setState(() => _niveau = v),
+          ),
+          TextField(
+            controller: _a,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(labelText: 'Site web'),
+          ),
+        ],
+        ImageField(
+          label: _sp ? 'Photo' : 'Logo',
+          value: _imageUrl,
+          folder: 'activites',
+          height: 90,
+          onChanged: (v) => setState(() => _imageUrl = v),
+        ),
+      ],
     );
   }
 }
