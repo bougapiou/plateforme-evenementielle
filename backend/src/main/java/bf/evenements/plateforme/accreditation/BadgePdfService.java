@@ -1,104 +1,114 @@
 package bf.evenements.plateforme.accreditation;
 
-import bf.evenements.plateforme.common.pdf.EventTheme;
-import bf.evenements.plateforme.common.pdf.PdfBrand;
-import bf.evenements.plateforme.common.pdf.PdfText;
+import bf.evenements.plateforme.common.pdf.PdfArt;
+import bf.evenements.plateforme.common.pdf.PdfBackdrop;
+import bf.evenements.plateforme.common.pdf.PdfFonts;
 import bf.evenements.plateforme.common.storage.FileStorageService;
 import bf.evenements.plateforme.common.web.QrImages;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.stereotype.Service;
 
-/** Renders an accreditation badge as a one-page PDF: event cover, role pill, name, QR code. */
+/**
+ * Renders an accreditation badge as a one-page A6 PDF, in the same design as the ticket: the event's cover
+ * photo as the full background, the PNE emblem, the event name in two-tone type, the function chip, the
+ * person, and a large QR card whose size takes whatever room the text leaves.
+ */
 @Service
 @RequiredArgsConstructor
 public class BadgePdfService {
 
-    private static final float BAR_H = 4f;
+    private static final float W = PDRectangle.A6.getWidth();
+    private static final float H = PDRectangle.A6.getHeight();
+    /** Design-mockup pixels (397 x 559) to points. */
+    private static final float S = W / 397f;
 
     private final FileStorageService fileStorage;
+
+    private static float px(float v) {
+        return v * S;
+    }
 
     public byte[] render(Accreditation accr) {
         try (PDDocument doc = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A6);
             doc.addPage(page);
+            PdfFonts f = PdfFonts.load(doc);
 
-            PDType1Font bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-            PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
-
-            byte[] qr = QrImages.png(accr.getQrToken(), 200);
-            PDImageXObject qrImage = PDImageXObject.createFromByteArray(doc, qr, "qr");
-            EventTheme theme = EventTheme.of(doc, fileStorage, accr.getEvent().getCoverUrl(),
-                    accr.getEvent().getNom());
-
-            float w = PDRectangle.A6.getWidth();
-            float h = PDRectangle.A6.getHeight();
+            var event = accr.getEvent();
+            PDImageXObject background = PdfBackdrop.create(doc, fileStorage, event.getCoverUrl(), event.getNom(),
+                    900, Math.round(900 * H / W), PdfBackdrop.Veil.PORTRAIT);
+            PDImageXObject qr = PDImageXObject.createFromByteArray(doc, QrImages.png(accr.getQrToken(), 600), "qr");
 
             try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
-                // Couverture de l'événement (ou générée), avec son nom, en tête du badge.
-                float y = theme.drawHero(cs, w, h, 84f, 24f, "", accr.getEvent().getNom(), "") - 24;
+                cs.saveGraphicsState();
+                PdfArt.roundedRect(cs, 0, 0, W, H, px(20));
+                cs.clip();
 
-                drawRolePill(cs, bold, 24, y - 15, up(accr.fonctionLabel()), theme);
-                y -= 40;
+                cs.drawImage(background, 0, 0, W, H);
+                PdfArt.frame(cs, px(10), px(10), W - 2 * px(10), H - 2 * px(10), px(15), 0.7f, 0.5f);
+                PdfArt.swoosh(cs, 0, 0, px(180), px(72));
+                PdfArt.patternCorner(cs, W, px(60));
 
-                cs.setNonStrokingColor(PdfBrand.SLATE_900);
-                PdfText.draw(cs, bold, 15, 24, y, safe(accr.getPersonneNom()));
-                cs.setNonStrokingColor(Color.BLACK);
-                y -= 18;
-
-                if (accr.getOrganisation() != null) {
-                    cs.setNonStrokingColor(PdfBrand.SLATE_500);
-                    PdfText.draw(cs, regular, 10, 24, y, safe(accr.getOrganisation()));
-                    cs.setNonStrokingColor(Color.BLACK);
-                    y -= 16;
-                }
-
-                cs.setNonStrokingColor(PdfBrand.SLATE_500);
-                PdfText.draw(cs, regular, 9, 24, y, accr.getActivity() != null
-                        ? "Activite : " + safe(accr.getActivity().getTitre())
-                        : "Acces : toutes les activites");
-                y -= 14;
-                PdfText.draw(cs, regular, 9, 24, y, "N° " + accr.getNumero());
-                cs.setNonStrokingColor(Color.BLACK);
-                y -= 20;
-
-                cs.setStrokingColor(PdfBrand.SLATE_200);
-                cs.setLineWidth(1);
-                cs.moveTo(24, y);
-                cs.lineTo(w - 24, y);
-                cs.stroke();
-
-                float qrSize = 118;
-                float qrBoxSize = qrSize + 16;
-                float qrY = y - 20 - qrBoxSize;
+                // brand
+                PdfArt.emblem(cs, px(26 + 22), H - px(26 + 22), px(44) * 0.4286f);
                 cs.setNonStrokingColor(Color.WHITE);
-                cs.addRect((w - qrBoxSize) / 2, qrY, qrBoxSize, qrBoxSize);
-                cs.fill();
-                cs.setStrokingColor(theme.accent);
-                cs.setLineWidth(1.4f);
-                cs.addRect((w - qrBoxSize) / 2, qrY, qrBoxSize, qrBoxSize);
-                cs.stroke();
-                cs.drawImage(qrImage, (w - qrSize) / 2, qrY + 8, qrSize, qrSize);
+                f.drawSpaced(cs, f.bold, px(24), px(26 + 44 + 9), H - px(26 + 20), "PNE", px(1));
+                f.draw(cs, f.regular, px(8.5f), px(26 + 44 + 9), H - px(26 + 30), "Plateforme Nationale");
+                f.draw(cs, f.regular, px(8.5f), px(26 + 44 + 9), H - px(26 + 40), "de Gestion des Événements");
 
-                String caption = PdfText.sanitize("Presentez ce badge a l'accueil");
-                float capW = regular.getStringWidth(caption) / 1000 * 8.5f;
-                cs.setNonStrokingColor(PdfBrand.SLATE_500);
-                PdfText.draw(cs, regular, 8.5f, (w - capW) / 2, qrY - 16, caption);
-                cs.setNonStrokingColor(Color.BLACK);
+                float y = drawTitle(cs, f, event.getNom());
 
-                cs.setNonStrokingColor(theme.accent);
-                cs.addRect(0, 0, w, BAR_H);
-                cs.fill();
-                cs.setNonStrokingColor(Color.BLACK);
+                // function chip
+                String role = up(accr.fonctionLabel());
+                float chipSize = px(14);
+                float chipH = chipSize + 2 * px(6);
+                y += px(12);
+                PdfArt.chip(cs, f, px(26), H - y - chipH, role, chipSize, px(16), px(6), px(1.6f), PdfArt.GOLD,
+                        PdfArt.NAVY);
+                y += chipH + px(10);
+
+                // person
+                String name = accr.getPersonneNom() == null ? "" : accr.getPersonneNom();
+                float nameSize = f.fitSize(f.bold, name, W - 2 * px(26), px(27), px(16));
+                y += nameSize;
+                cs.setNonStrokingColor(Color.WHITE);
+                f.draw(cs, f.bold, nameSize, px(26), H - y, name);
+                if (accr.getOrganisation() != null && !accr.getOrganisation().isBlank()) {
+                    y += px(21);
+                    cs.setNonStrokingColor(PdfArt.SOFT_WHITE);
+                    f.draw(cs, f.regular, px(15), px(26), H - y,
+                            f.ellipsize(f.regular, px(15), W - 2 * px(26), accr.getOrganisation()));
+                }
+                y += px(19);
+                String access = accr.getActivity() != null
+                        ? "Activité : " + accr.getActivity().getTitre() : "Accès : toutes les activités";
+                cs.setNonStrokingColor(PdfArt.SOFT_WHITE);
+                f.draw(cs, f.regular, px(13), px(26), H - y,
+                        f.ellipsize(f.regular, px(13), W - 2 * px(26), access + " · N° " + accr.getNumero()));
+
+                // QR card: as large as the remaining room allows
+                float pad = px(12);
+                float strip = px(30);
+                float gap = pad * 0.8f;
+                float cardTop = y + px(16);
+                float room = H - cardTop - px(22);
+                float qrSize = Math.max(96f, Math.min(170f, room - pad - gap - strip));
+                float cardW = qrSize + 2 * pad;
+                PdfArt.qrCard(cs, f, qr, (W - cardW) / 2, H - cardTop, qrSize, pad, strip, px(20),
+                        "SCAN POUR CONTRÔLE");
+
+                cs.restoreGraphicsState();
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -109,25 +119,36 @@ public class BadgePdfService {
         }
     }
 
-    private static void drawRolePill(PDPageContentStream cs, PDType1Font bold, float x, float y, String label,
-                                     EventTheme theme)
-            throws java.io.IOException {
-        String s = PdfText.sanitize(label);
-        float textWidth = bold.getStringWidth(s) / 1000 * 10f;
-        float w = textWidth + 18, h = 19;
-        cs.setNonStrokingColor(theme.accent);
-        cs.addRect(x, y, w, h);
-        cs.fill();
-        cs.setNonStrokingColor(Color.WHITE);
-        PdfText.draw(cs, bold, 10, x + 9, y + 6, s);
-        cs.setNonStrokingColor(Color.BLACK);
+    /** Event name in two-tone display type (max two lines); returns the distance from the top of its baseline. */
+    private float drawTitle(PDPageContentStream cs, PdfFonts f, String name) throws IOException {
+        String title = (name == null ? "" : name).toUpperCase(Locale.FRENCH);
+        float maxW = W - 2 * px(26);
+        float min = px(28);
+        float size = f.fitSize(f.display, title, maxW, px(58), min);
+        List<String> lines = size > min || f.width(f.display, size, title) <= maxW
+                ? List.of(title)
+                : first(f.wrap(f.display, size, maxW, title), 2);
+        float baseline = px(96) + size * 0.80f;
+        int word = 0;
+        for (int i = 0; i < lines.size(); i++) {
+            float cx = px(26);
+            for (String w : lines.get(i).split(" ")) {
+                if (w.isEmpty()) {
+                    continue;
+                }
+                cs.setNonStrokingColor(word++ == 0 ? Color.WHITE : PdfArt.GOLD);
+                f.draw(cs, f.display, size, cx, H - (baseline + i * size * 0.95f), w);
+                cx += f.width(f.display, size, w + " ");
+            }
+        }
+        return baseline + (lines.size() - 1) * size * 0.95f + size * 0.12f;
+    }
+
+    private static List<String> first(List<String> lines, int max) {
+        return lines.size() <= max ? lines : new ArrayList<>(lines.subList(0, max));
     }
 
     private static String up(String s) {
         return s == null ? "" : s.toUpperCase(Locale.FRENCH);
-    }
-
-    private static String safe(String s) {
-        return s == null ? "" : s;
     }
 }
