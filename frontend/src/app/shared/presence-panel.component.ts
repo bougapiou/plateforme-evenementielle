@@ -128,7 +128,7 @@ function leaveFullscreen(): void {
                 <p class="mt-2 text-xs font-semibold uppercase tracking-widest sm:text-base"
                    [class]="tone(c.key).darkLabel">{{ c.label }}</p>
                 @if (c.detail) {
-                  <p class="mt-1 text-xs text-slate-400 sm:text-sm">{{ c.detail }}</p>
+                  <p class="mt-1 whitespace-pre-line text-xs text-slate-400 sm:text-sm">{{ c.detail }}</p>
                 }
               </div>
             }
@@ -174,7 +174,7 @@ function leaveFullscreen(): void {
                 <p class="text-2xl font-bold tabular-nums" [class]="tone(c.key).lightValue">{{ fmt(c.value) }}</p>
                 <p class="text-xs" [class]="tone(c.key).lightLabel">{{ c.label.toLowerCase() }}</p>
                 @if (c.detail) {
-                  <p class="mt-1 text-[11px] text-slate-500">{{ c.detail }}</p>
+                  <p class="mt-1 whitespace-pre-line text-[11px] text-slate-500">{{ c.detail }}</p>
                 }
               </div>
             }
@@ -302,7 +302,7 @@ export class PresencePanelComponent implements OnDestroy {
     const detail = (key: 'entrees' | 'sorties' | 'presents'): string | null => {
       if (!combined) return null;
       const c = contributions(key, this.qr(), this.physique());
-      return `Billets ${NUMBER.format(c.qr)} · Capteurs ${NUMBER.format(c.physique)}`;
+      return `Billets ${NUMBER.format(c.qr)}\nCapteurs ${NUMBER.format(c.physique)}`;
     };
     const list: Counter[] = [
       { key: 'entrees', label: 'Entrées', icon: 'login', value: f.entrees, detail: detail('entrees') },
