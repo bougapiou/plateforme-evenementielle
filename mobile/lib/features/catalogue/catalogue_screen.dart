@@ -231,7 +231,7 @@ class _EventCard extends StatelessWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 16 / 8,
-                  child: RemoteImage(url: event.coverUrl, fallbackIcon: Icons.event),
+                  child: EventCover(nom: event.nom, url: event.coverUrl),
                 ),
                 if (d != null)
                   Positioned(

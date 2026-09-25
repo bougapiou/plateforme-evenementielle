@@ -102,8 +102,8 @@ class _Body extends ConsumerWidget {
       // Tout est construit d'avance pour que le défilement vers la billetterie fonctionne.
       cacheExtent: 100000,
       children: [
-        if (e.coverUrl != null)
-          AspectRatio(aspectRatio: 16 / 8, child: RemoteImage(url: e.coverUrl)),
+        AspectRatio(
+            aspectRatio: 16 / 8, child: EventCover(nom: e.nom, url: e.coverUrl)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           child: Column(

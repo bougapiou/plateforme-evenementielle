@@ -114,19 +114,17 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              // Image de couverture de l'événement, si disponible — toujours
+              // Couverture de l'événement (générée s'il n'a pas de photo) — toujours
               // au-dessus du QR, jamais par-dessus : le QR reste visible et
               // scannable en toutes circonstances.
-              if (t.eventCoverUrl != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 8,
-                    child: RemoteImage(url: t.eventCoverUrl),
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: AspectRatio(
+                  aspectRatio: 16 / 8,
+                  child: EventCover(nom: t.eventNom, url: t.eventCoverUrl),
                 ),
-                const SizedBox(height: 16),
-              ],
+              ),
+              const SizedBox(height: 16),
               Center(
                 child: Container(
                   padding: const EdgeInsets.all(16),

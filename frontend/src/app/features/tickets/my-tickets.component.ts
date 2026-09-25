@@ -6,21 +6,20 @@ import { TicketsService } from './tickets.service';
 import { PaymentsService } from '../payments/payments.service';
 import { MyTicket, TicketOrder } from '../events/event.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { EventCoverComponent } from '../../shared/event-cover.component';
 import { formatDate, formatDateTime } from '../../shared/format';
 
 @Component({
   selector: 'app-my-tickets',
   standalone: true,
-  imports: [RouterLink, StatusBadgeComponent, IconComponent],
+  imports: [RouterLink, StatusBadgeComponent, IconComponent, EventCoverComponent],
   template: `
     <h1 class="text-xl font-bold text-slate-800">Mes billets</h1>
 
     <div class="mt-4 grid gap-3 sm:grid-cols-2">
       @for (t of tickets(); track t.id) {
         <div class="card overflow-hidden p-0">
-          @if (t.eventCoverUrl) {
-            <img [src]="t.eventCoverUrl" alt="" class="h-28 w-full object-cover" />
-          }
+          <app-event-cover class="h-28" [nom]="t.eventNom" [coverUrl]="t.eventCoverUrl" />
           <div class="p-4">
           <div class="flex items-start justify-between">
             <div>

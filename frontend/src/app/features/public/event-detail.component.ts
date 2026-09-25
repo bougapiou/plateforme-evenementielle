@@ -12,6 +12,7 @@ import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
 import { PaymentsService } from '../payments/payments.service';
 import { PhoneInputComponent } from '../../shared/phone-input.component';
+import { EventCoverComponent } from '../../shared/event-cover.component';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
 import { EventPublic, EventTicket, IdentiteRequise, MyTicket } from '../events/event.models';
 import {
@@ -27,12 +28,10 @@ import { ApiError } from '../../core/models';
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, PhoneInputComponent],
+  imports: [RouterLink, FormsModule, PhoneInputComponent, EventCoverComponent],
   template: `
     @if (event(); as e) {
-      <div class="rounded-xl bg-slate-100">
-        @if (e.coverUrl) { <img [src]="e.coverUrl" alt="" class="h-56 w-full rounded-xl object-cover" /> }
-      </div>
+      <app-event-cover class="h-56 rounded-xl" [nom]="e.nom" [coverUrl]="e.coverUrl" />
 
       <div class="mt-4">
         @if (e.categoryNom) {

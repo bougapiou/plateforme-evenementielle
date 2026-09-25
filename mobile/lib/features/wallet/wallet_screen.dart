@@ -67,18 +67,15 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   margin: const EdgeInsets.only(bottom: 10),
                   child: ListTile(
                     onTap: () => context.push('/billets/${t.id}'),
-                    leading: t.eventCoverUrl != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: RemoteImage(
-                              url: t.eventCoverUrl,
-                              width: 44,
-                              height: 44,
-                            ),
-                          )
-                        : const CircleAvatar(
-                            child: Icon(Icons.qr_code_2),
-                          ),
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: EventCover(
+                        nom: t.eventNom,
+                        url: t.eventCoverUrl,
+                        width: 44,
+                        height: 44,
+                      ),
+                    ),
                     title: Text(t.eventNom,
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                     subtitle: Text([

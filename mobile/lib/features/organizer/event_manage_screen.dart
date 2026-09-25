@@ -76,8 +76,8 @@ class _EventManageScreenState extends ConsumerState<EventManageScreen> {
         builder: (e) => ListView(
           padding: EdgeInsets.zero,
           children: [
-            if (e.coverUrl != null)
-              AspectRatio(aspectRatio: 16 / 7, child: RemoteImage(url: e.coverUrl)),
+            AspectRatio(
+                aspectRatio: 16 / 7, child: EventCover(nom: e.nom, url: e.coverUrl)),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(

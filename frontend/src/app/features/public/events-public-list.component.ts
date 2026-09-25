@@ -5,13 +5,14 @@ import { EventsService } from '../events/events.service';
 import { EventCategory, EventSummary } from '../events/event.models';
 import { formatDateRange, formatTime } from '../../shared/format';
 import { IconComponent } from '../../shared/icon.component';
+import { EventCoverComponent } from '../../shared/event-cover.component';
 
 const ZONE = 'Africa/Ouagadougou';
 
 @Component({
   selector: 'app-events-public-list',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent],
+  imports: [FormsModule, RouterLink, IconComponent, EventCoverComponent],
   template: `
     <section class="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 px-5 py-8 text-white sm:px-8 sm:py-10">
       <p class="text-xs font-semibold uppercase tracking-widest text-brand-100">Découvrez et participez</p>
@@ -50,7 +51,7 @@ const ZONE = 'Africa/Ouagadougou';
         <article class="card flex flex-col overflow-hidden transition hover:shadow-md">
           <!-- Clic sur l'image = détail de l'événement -->
           <a [routerLink]="['/evenements', e.slug]" class="relative block h-44 bg-gradient-to-br from-brand-100 to-slate-100">
-            @if (e.coverUrl) { <img [src]="e.coverUrl" alt="" class="h-full w-full object-cover" loading="lazy" /> }
+            <app-event-cover class="h-full w-full" [nom]="e.nom" [coverUrl]="e.coverUrl" />
             <span class="absolute left-3 top-3 rounded-xl bg-white px-2.5 py-1.5 text-center leading-tight shadow">
               <span class="block text-xl font-extrabold text-slate-900">{{ day(e) }}</span>
               <span class="block text-xs font-bold uppercase text-brand-700">{{ month(e) }}</span>

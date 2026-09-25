@@ -72,7 +72,7 @@ class _OrganizerEventsScreenState extends ConsumerState<OrganizerEventsScreen> {
                     leading: SizedBox(
                       width: 56,
                       height: 56,
-                      child: RemoteImage(url: e.coverUrl),
+                      child: EventCover(nom: e.nom, url: e.coverUrl),
                     ),
                     title: Text(e.nom,
                         maxLines: 1, overflow: TextOverflow.ellipsis),
