@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/faso.dart';
+import '../../core/manage_kit.dart';
 import '../../core/models.dart';
 import '../../core/phone_field.dart';
 import '../../core/providers.dart';
@@ -65,7 +66,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Créer un compte')),
-      body: Padding(
+      body: MaxWidth(
+        width: 520,
+        child: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -128,7 +131,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                  child: InfoBanner(_error!, tone: KitTone.red),
                 ),
               FilledButton(
                 onPressed: _loading ? null : _submit,
@@ -137,6 +140,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

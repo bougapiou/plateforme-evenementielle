@@ -203,6 +203,14 @@ class EventsRepository extends _Base {
         },
       );
 
+  /// Events happening right now: the ones whose live attendance can be displayed.
+  Future<List<EventSummary>> liveEvents() => _get(
+        '/public/live-events',
+        (d) => (d as List<dynamic>)
+            .map((e) => EventSummary.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
   Future<List<EventCategory>> categories() => _get(
         '/public/event-categories',
         (d) => (d as List<dynamic>)
@@ -526,6 +534,12 @@ class CheckinRepository extends _Base {
         (d) => (d as Map<String, dynamic>)
             .map((k, v) => MapEntry(k, (v as num).toInt())),
         query: activityId != null ? {'activityId': activityId} : null,
+      );
+
+  /// Real-time attendance of a publicly visible event — no login needed.
+  Future<AttendanceView> publicAttendance(String slug) => _get(
+        '/public/events/$slug/attendance',
+        (d) => AttendanceView.fromJson(d as Map<String, dynamic>),
       );
 
   /// Events for which the current user may run entry control (organiser, control

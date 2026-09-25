@@ -1215,6 +1215,62 @@ class ScanOutcome {
       );
 }
 
+/// Live flow of one activity (ticket scans only: sensors count at the event's door).
+class ActivityFlow {
+  final String id;
+  final String titre;
+  final DateTime? dateDebut;
+  final String? acces; // GRATUIT / PAYANT
+  final Map<String, int> flux;
+
+  ActivityFlow({
+    required this.id,
+    required this.titre,
+    this.dateDebut,
+    this.acces,
+    this.flux = const {},
+  });
+
+  factory ActivityFlow.fromJson(Map<String, dynamic> j) => ActivityFlow(
+        id: j['id'] as String,
+        titre: j['titre'] as String? ?? '',
+        dateDebut: parseDate(j['dateDebut']),
+        acces: j['acces'] as String?,
+        flux: _counters(j['flux']),
+      );
+}
+
+/// Real-time attendance of an event: ticket scans (QR), anonymous sensor counts, one line per activity.
+class AttendanceView {
+  final String eventId;
+  final String eventNom;
+  final Map<String, int> event;
+  final List<ActivityFlow> activites;
+  final Map<String, int> comptagePhysique;
+
+  AttendanceView({
+    required this.eventId,
+    required this.eventNom,
+    this.event = const {},
+    this.activites = const [],
+    this.comptagePhysique = const {},
+  });
+
+  factory AttendanceView.fromJson(Map<String, dynamic> j) => AttendanceView(
+        eventId: j['eventId'] as String? ?? '',
+        eventNom: j['eventNom'] as String? ?? '',
+        event: _counters(j['event']),
+        activites: (j['activites'] as List<dynamic>? ?? [])
+            .map((a) => ActivityFlow.fromJson(a as Map<String, dynamic>))
+            .toList(),
+        comptagePhysique: _counters(j['comptagePhysique']),
+      );
+}
+
+Map<String, int> _counters(dynamic raw) => raw is Map
+    ? raw.map((k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0))
+    : const {};
+
 /// Labels for enum-ish status codes shown in the UI.
 String statutLabel(String code) {
   switch (code) {

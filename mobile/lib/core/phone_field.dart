@@ -72,44 +72,55 @@ class _PhoneFieldState extends State<PhoneField> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 108,
-          child: DropdownButtonFormField<String>(
-            value: _dialCode,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Indicatif'),
-            items: kCountryCallingCodes
-                .map((c) => DropdownMenuItem(
-                      value: c.phoneCode,
-                      child: Text('${c.code} ${c.phoneCode}',
-                          overflow: TextOverflow.ellipsis),
-                    ))
-                .toList(),
-            onChanged: (v) {
-              setState(() => _dialCode = v ?? '+226');
-              _emit();
-            },
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: TextFormField(
-            controller: _number,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: widget.required ? '${widget.label} *' : widget.label,
-            ),
-            validator: widget.required
-                ? (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null
-                : null,
-            onChanged: (_) => _emit(),
-          ),
-        ),
-      ],
+    final dial = DropdownButtonFormField<String>(
+      value: _dialCode,
+      isExpanded: true,
+      menuMaxHeight: 360,
+      decoration: const InputDecoration(labelText: 'Indicatif'),
+      items: kCountryCallingCodes
+          .map((c) => DropdownMenuItem(
+                value: c.phoneCode,
+                child: Text('${c.code} ${c.phoneCode}',
+                    overflow: TextOverflow.ellipsis),
+              ))
+          .toList(),
+      onChanged: (v) {
+        setState(() => _dialCode = v ?? '+226');
+        _emit();
+      },
     );
+    final number = TextFormField(
+      controller: _number,
+      keyboardType: TextInputType.phone,
+      decoration: InputDecoration(
+        labelText: widget.required ? '${widget.label} *' : widget.label,
+      ),
+      validator: widget.required
+          ? (v) => (v == null || v.trim().isEmpty) ? 'Requis' : null
+          : null,
+      onChanged: (_) => _emit(),
+    );
+
+    return LayoutBuilder(builder: (context, c) {
+      // A very narrow field, or a large system font, cannot fit both parts
+      // side by side: stack them instead of squeezing the number field.
+      final scale = MediaQuery.textScalerOf(context).scale(1);
+      if (c.maxWidth < 280 || (c.maxWidth < 340 && scale > 1.3)) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [dial, const SizedBox(height: 12), number],
+        );
+      }
+      final dialWidth = (c.maxWidth * .36).clamp(108.0, 136.0);
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: dialWidth, child: dial),
+          const SizedBox(width: 8),
+          Expanded(child: number),
+        ],
+      );
+    });
   }
 
   @override

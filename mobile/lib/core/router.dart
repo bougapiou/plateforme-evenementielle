@@ -34,6 +34,9 @@ import '../features/profile/edit_profile_screen.dart';
 import '../features/profile/change_password_screen.dart';
 import '../features/invoices/invoices_screen.dart';
 import '../features/notifications/notifications_screen.dart';
+import '../features/presence/live_events_screen.dart';
+import '../features/presence/presence_flow.dart';
+import '../features/presence/presence_screen.dart';
 import '../features/scanner/find_ticket_screen.dart';
 import '../features/scanner/public_scanner_screen.dart';
 import '../features/scanner/scanner_home_screen.dart';
@@ -51,6 +54,7 @@ const _publicPrefixes = [
   '/mot-de-passe',
   '/scanner-qr',
   '/retrouver-billet',
+  '/presence-en-direct',
 ];
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -275,6 +279,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/retrouver-billet',
         parentNavigatorKey: _rootKey,
         builder: (_, __) => const FindTicketScreen(),
+      ),
+      GoRoute(
+        path: '/presence-en-direct',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const LiveEventsScreen(),
+      ),
+      GoRoute(
+        path: '/presence-en-direct/:slug',
+        parentNavigatorKey: _rootKey,
+        builder: (_, s) => PresenceScreen(
+          slug: s.pathParameters['slug']!,
+          initialSource: PresenceSource.values
+              .where((v) => v.name == s.uri.queryParameters['source'])
+              .firstOrNull,
+          startFullscreen: s.uri.queryParameters['plein'] == '1',
+        ),
       ),
       GoRoute(
         path: '/scanner',

@@ -57,22 +57,11 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
       appBar: AppBar(
         title: const FasoMark(height: 26),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            tooltip: 'Scanner un QR code',
-            onPressed: () => context.push('/scanner-qr'),
-          ),
-          if (!signedIn) ...[
-            IconButton(
-              icon: const Icon(Icons.confirmation_number_outlined),
-              tooltip: 'Retrouver mon billet',
-              onPressed: () => context.push('/retrouver-billet'),
-            ),
+          if (!signedIn)
             TextButton(
               onPressed: () => context.push('/connexion'),
               child: const Text('Connexion'),
             ),
-          ],
         ],
       ),
       body: Column(
@@ -93,6 +82,32 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                         .textTheme
                         .bodySmall
                         ?.copyWith(color: Colors.white70)),
+                const SizedBox(height: 10),
+                // accès rapides : libellés clairs plutôt que des icônes seules
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: [
+                    _QuickAction(
+                      icon: Icons.sensors,
+                      label: 'Présence en direct',
+                      onTap: () => context.push('/presence-en-direct'),
+                    ),
+                    const SizedBox(width: 8),
+                    _QuickAction(
+                      icon: Icons.qr_code_scanner,
+                      label: 'Scanner un QR',
+                      onTap: () => context.push('/scanner-qr'),
+                    ),
+                    if (!signedIn) ...[
+                      const SizedBox(width: 8),
+                      _QuickAction(
+                        icon: Icons.confirmation_number_outlined,
+                        label: 'Retrouver mon billet',
+                        onTap: () => context.push('/retrouver-billet'),
+                      ),
+                    ],
+                  ]),
+                ),
               ],
             ),
           ),
@@ -182,6 +197,40 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Translucent pill on the green header: a labelled shortcut.
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _QuickAction(
+      {required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: .14),
+      shape: StadiumBorder(
+          side: BorderSide(color: Colors.white.withValues(alpha: .28))),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            Text(label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ]),
+        ),
       ),
     );
   }
