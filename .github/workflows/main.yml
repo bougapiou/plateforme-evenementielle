@@ -7,6 +7,10 @@ jobs:
   build-ios:
     runs-on: macos-latest
 
+    defaults:
+      run:
+        working-directory: mobile
+
     steps:
       - name: Récupérer le projet
         uses: actions/checkout@v4
@@ -19,20 +23,18 @@ jobs:
       - name: Vérifier Flutter
         run: flutter doctor -v
 
-      - name: Installer les dépendances
+      - name: Installer les dépendances Flutter
         run: flutter pub get
 
       - name: Installer CocoaPods
-        run: |
-          cd ios
-          pod install
-          cd ..
+        run: pod install
+        working-directory: mobile/ios
 
-      - name: Compiler l'application iOS
+      - name: Compiler iOS
         run: flutter build ios --release --no-codesign
 
       - name: Sauvegarder l'application
         uses: actions/upload-artifact@v4
         with:
           name: flutter-ios-build
-          path: build/ios/iphoneos/Runner.app
+          path: mobile/build/ios/iphoneos/Runner.app
