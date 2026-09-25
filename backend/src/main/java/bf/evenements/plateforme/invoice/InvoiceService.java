@@ -101,7 +101,11 @@ public class InvoiceService {
         String label = invoice.getType() == Invoice.InvoiceType.FACTURE ? "Facture" : "Reçu de paiement";
 
         DocumentPdf pdf = DocumentPdf.create()
-                .cover(fileStorage, event == null ? null : event.getCoverUrl())
+                .event(fileStorage, event == null ? null : event.getCoverUrl(),
+                        event == null ? null : event.getNom(), event == null ? null : event.getNom(),
+                        event == null ? "" : java.util.stream.Stream.of(event.getVille(), event.getLieu())
+                                .filter(s -> s != null && !s.isBlank())
+                                .collect(java.util.stream.Collectors.joining(" · ")))
                 .kicker(label)
                 .title("N° " + invoice.getNumero())
                 .subtitle("Émis le " + DATE.format(invoice.getEmiseLe()))
@@ -109,7 +113,7 @@ public class InvoiceService {
                 .row("Nom", invoice.getClientNom())
                 .row("Détails", invoice.getClientDetails());
         if (event != null) {
-            pdf.section("Événement").row("Nom", event.getNom());
+            pdf.section("Événement").row("Date", DATE.format(event.getDateDebut()));
         }
         pdf.section("Détail")
                 .paragraph(invoice.getLignes())

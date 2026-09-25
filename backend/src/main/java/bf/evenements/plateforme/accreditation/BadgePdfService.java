@@ -1,6 +1,6 @@
 package bf.evenements.plateforme.accreditation;
 
-import bf.evenements.plateforme.common.pdf.CoverBanner;
+import bf.evenements.plateforme.common.pdf.EventTheme;
 import bf.evenements.plateforme.common.pdf.PdfBrand;
 import bf.evenements.plateforme.common.pdf.PdfText;
 import bf.evenements.plateforme.common.storage.FileStorageService;
@@ -37,24 +37,17 @@ public class BadgePdfService {
 
             byte[] qr = QrImages.png(accr.getQrToken(), 200);
             PDImageXObject qrImage = PDImageXObject.createFromByteArray(doc, qr, "qr");
-            PDImageXObject coverImage = CoverBanner.load(doc, fileStorage, accr.getEvent().getCoverUrl());
+            EventTheme theme = EventTheme.of(doc, fileStorage, accr.getEvent().getCoverUrl(),
+                    accr.getEvent().getNom());
 
             float w = PDRectangle.A6.getWidth();
             float h = PDRectangle.A6.getHeight();
 
             try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
-                float y;
-                if (coverImage != null) {
-                    float bannerHeight = 76f;
-                    CoverBanner.draw(cs, coverImage, w, h, bannerHeight);
-                    PdfBrand.tricolorBar(cs, 0, h - bannerHeight - BAR_H, w, BAR_H);
-                    y = h - bannerHeight - BAR_H - 20;
-                } else {
-                    PdfBrand.tricolorBar(cs, 0, h - BAR_H, w, BAR_H);
-                    y = h - BAR_H - 26;
-                }
+                // Couverture de l'événement (ou générée), avec son nom, en tête du badge.
+                float y = theme.drawHero(cs, w, h, 84f, 24f, "", accr.getEvent().getNom(), "") - 24;
 
-                drawRolePill(cs, bold, 24, y - 15, up(accr.fonctionLabel()));
+                drawRolePill(cs, bold, 24, y - 15, up(accr.fonctionLabel()), theme);
                 y -= 40;
 
                 cs.setNonStrokingColor(PdfBrand.SLATE_900);
@@ -70,8 +63,6 @@ public class BadgePdfService {
                 }
 
                 cs.setNonStrokingColor(PdfBrand.SLATE_500);
-                PdfText.draw(cs, regular, 9.5f, 24, y, safe(accr.getEvent().getNom()));
-                y -= 14;
                 PdfText.draw(cs, regular, 9, 24, y, accr.getActivity() != null
                         ? "Activite : " + safe(accr.getActivity().getTitre())
                         : "Acces : toutes les activites");
@@ -86,13 +77,14 @@ public class BadgePdfService {
                 cs.lineTo(w - 24, y);
                 cs.stroke();
 
-                float qrSize = 130;
+                float qrSize = 118;
                 float qrBoxSize = qrSize + 16;
                 float qrY = y - 20 - qrBoxSize;
                 cs.setNonStrokingColor(Color.WHITE);
                 cs.addRect((w - qrBoxSize) / 2, qrY, qrBoxSize, qrBoxSize);
                 cs.fill();
-                cs.setStrokingColor(PdfBrand.SLATE_200);
+                cs.setStrokingColor(theme.accent);
+                cs.setLineWidth(1.4f);
                 cs.addRect((w - qrBoxSize) / 2, qrY, qrBoxSize, qrBoxSize);
                 cs.stroke();
                 cs.drawImage(qrImage, (w - qrSize) / 2, qrY + 8, qrSize, qrSize);
@@ -103,7 +95,10 @@ public class BadgePdfService {
                 PdfText.draw(cs, regular, 8.5f, (w - capW) / 2, qrY - 16, caption);
                 cs.setNonStrokingColor(Color.BLACK);
 
-                PdfBrand.tricolorBar(cs, 0, 0, w, BAR_H);
+                cs.setNonStrokingColor(theme.accent);
+                cs.addRect(0, 0, w, BAR_H);
+                cs.fill();
+                cs.setNonStrokingColor(Color.BLACK);
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -114,12 +109,13 @@ public class BadgePdfService {
         }
     }
 
-    private static void drawRolePill(PDPageContentStream cs, PDType1Font bold, float x, float y, String label)
+    private static void drawRolePill(PDPageContentStream cs, PDType1Font bold, float x, float y, String label,
+                                     EventTheme theme)
             throws java.io.IOException {
         String s = PdfText.sanitize(label);
         float textWidth = bold.getStringWidth(s) / 1000 * 10f;
         float w = textWidth + 18, h = 19;
-        cs.setNonStrokingColor(PdfBrand.GREEN);
+        cs.setNonStrokingColor(theme.accent);
         cs.addRect(x, y, w, h);
         cs.fill();
         cs.setNonStrokingColor(Color.WHITE);

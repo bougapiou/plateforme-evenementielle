@@ -13,14 +13,13 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
 /**
- * Branded, paginated A4 document builder for invoices, receipts and confirmations: an optional
- * event cover photo, a colored kicker + title, then section headings, label/value rows, paragraphs
- * and a highlighted amount block — with the platform's tricolor signature on every page. Long
- * values wrap instead of being cut off, and content that overflows a page flows onto the next one
- * (unlike a fixed one-page layout, nothing is silently dropped).
+ * Paginated A4 document builder for invoices, receipts and confirmations. The look comes from the EVENT
+ * ({@link EventTheme}): its cover (or a generated one) is the hero of the first page with the event name on
+ * it, and the cover's dominant color tints the chips, section ticks and the highlighted amount card.
+ * Long values wrap instead of being cut off, and content that overflows a page flows onto the next one
+ * (nothing is silently dropped).
  */
 public final class DocumentPdf {
 
@@ -28,7 +27,7 @@ public final class DocumentPdf {
     private static final float PAGE_H = PDRectangle.A4.getHeight();
     private static final float MARGIN = 50f;
     private static final float BAR_H = 5f;
-    private static final float COVER_H = 150f;
+    private static final float HERO_H = 190f;
     private static final float LABEL_W = 130f;
     private static final float CONTENT_W = PAGE_W - 2 * MARGIN;
     private static final float LINE_H = 15f;
@@ -41,10 +40,14 @@ public final class DocumentPdf {
 
     private FileStorageService fileStorage;
     private String coverUrl;
+    private String themeSeed;
+    private String heroTitle = "Plateforme Nationale des Événements";
+    private String heroSubtitle = "";
     private String kicker = "";
     private String title = "";
     private String subtitle = "";
     private int pageNumber = 0;
+    private EventTheme theme;
 
     private DocumentPdf() {
     }
@@ -53,9 +56,19 @@ public final class DocumentPdf {
         return new DocumentPdf();
     }
 
-    public DocumentPdf cover(FileStorageService fileStorage, String coverUrl) {
+    /**
+     * The event this document is about: its cover (or a generated one) becomes the hero of the page, its
+     * name is written on it, and its dominant color tints the whole document.
+     */
+    public DocumentPdf event(FileStorageService fileStorage, String coverUrl, String seed, String name,
+                             String heroSubtitle) {
         this.fileStorage = fileStorage;
         this.coverUrl = coverUrl;
+        this.themeSeed = seed;
+        if (name != null && !name.isBlank()) {
+            this.heroTitle = name;
+        }
+        this.heroSubtitle = heroSubtitle == null ? "" : heroSubtitle;
         return this;
     }
 
@@ -126,10 +139,10 @@ public final class DocumentPdf {
 
     public byte[] build() {
         try (doc) {
-            PDImageXObject cover = fileStorage != null ? CoverBanner.load(doc, fileStorage, coverUrl) : null;
+            theme = EventTheme.of(doc, fileStorage, coverUrl, themeSeed);
 
             Page page = newPage();
-            drawHeader(page, cover);
+            drawHeader(page);
 
             for (Block b : blocks) {
                 float needed = b.height();
@@ -172,7 +185,9 @@ public final class DocumentPdf {
     }
 
     private void finishPage(Page page) throws IOException {
-        PdfBrand.tricolorBar(page.cs, 0, 0, PAGE_W, BAR_H);
+        page.cs.setNonStrokingColor(theme.accent);
+        page.cs.addRect(0, 0, PAGE_W, BAR_H);
+        page.cs.fill();
         page.cs.setNonStrokingColor(PdfBrand.SLATE_500);
         PdfText.draw(page.cs, regular, 8.5f, MARGIN, BAR_H + 14,
                 "Plateforme Nationale de Gestion des Evenements");
@@ -183,19 +198,8 @@ public final class DocumentPdf {
         page.cs.close();
     }
 
-    private void drawHeader(Page page, PDImageXObject cover) throws IOException {
-        if (cover != null) {
-            CoverBanner.draw(page.cs, cover, PAGE_W, PAGE_H, COVER_H);
-            PdfBrand.tricolorBar(page.cs, 0, PAGE_H - COVER_H - BAR_H, PAGE_W, BAR_H);
-            page.y = PAGE_H - COVER_H - BAR_H - 26;
-        } else {
-            PdfBrand.tricolorBar(page.cs, 0, PAGE_H - BAR_H, PAGE_W, BAR_H);
-            page.y = PAGE_H - BAR_H - 26;
-        }
-        if (!kicker.isEmpty()) {
-            drawKicker(page.cs, MARGIN, page.y - 15, kicker);
-            page.y -= 30;
-        }
+    private void drawHeader(Page page) throws IOException {
+        page.y = theme.drawHero(page.cs, PAGE_W, PAGE_H, HERO_H, MARGIN, kicker, heroTitle, heroSubtitle) - 30;
         if (!title.isEmpty()) {
             page.cs.setNonStrokingColor(PdfBrand.SLATE_900);
             PdfText.draw(page.cs, bold, 19, MARGIN, page.y, title);
@@ -217,24 +221,15 @@ public final class DocumentPdf {
     }
 
     private void drawContinuationHeader(Page page) throws IOException {
-        PdfBrand.tricolorBar(page.cs, 0, PAGE_H - BAR_H, PAGE_W, BAR_H);
+        page.cs.setNonStrokingColor(theme.accent);
+        page.cs.addRect(0, PAGE_H - BAR_H, PAGE_W, BAR_H);
+        page.cs.fill();
         page.y = PAGE_H - BAR_H - 26;
         page.cs.setNonStrokingColor(PdfBrand.SLATE_500);
         String label = (title.isEmpty() ? kicker : title) + " (suite)";
         PdfText.draw(page.cs, bold, 11, MARGIN, page.y, label);
         page.cs.setNonStrokingColor(Color.BLACK);
         page.y -= 24;
-    }
-
-    private void drawKicker(PDPageContentStream cs, float x, float y, String label) throws IOException {
-        String s = PdfText.sanitize(label.toUpperCase(Locale.FRENCH));
-        float w = PdfText.width(bold, 9.5f, s) + 20;
-        cs.setNonStrokingColor(PdfBrand.GREEN);
-        cs.addRect(x, y, w, 20);
-        cs.fill();
-        cs.setNonStrokingColor(Color.WHITE);
-        PdfText.draw(cs, bold, 9.5f, x + 10, y + 6.5f, s);
-        cs.setNonStrokingColor(Color.BLACK);
     }
 
     // ---- blocks ----
@@ -258,7 +253,7 @@ public final class DocumentPdf {
 
         public void draw(Page page) throws IOException {
             page.y -= 10;
-            page.cs.setNonStrokingColor(PdfBrand.GREEN);
+            page.cs.setNonStrokingColor(theme.accent);
             page.cs.addRect(MARGIN, page.y - 9, 3, 12);
             page.cs.fill();
             page.cs.setNonStrokingColor(PdfBrand.SLATE_900);
@@ -330,25 +325,25 @@ public final class DocumentPdf {
         }
 
         public float height() {
-            return 66f;
+            return 74f;
         }
 
         public void draw(Page page) throws IOException {
             page.y -= 8;
-            float boxH = 52;
+            float boxH = 60;
             float boxY = page.y - boxH;
-            page.cs.setNonStrokingColor(PdfBrand.GREEN_TINT);
+            page.cs.setNonStrokingColor(theme.accentTint);
             page.cs.addRect(MARGIN, boxY, CONTENT_W, boxH);
             page.cs.fill();
-            page.cs.setNonStrokingColor(PdfBrand.GREEN);
+            page.cs.setNonStrokingColor(theme.accent);
             page.cs.addRect(MARGIN, boxY, 4, boxH);
             page.cs.fill();
 
             page.cs.setNonStrokingColor(PdfBrand.SLATE_500);
-            PdfText.draw(page.cs, bold, 9.5f, MARGIN + 18, boxY + boxH - 20,
+            PdfText.draw(page.cs, bold, 9.5f, MARGIN + 18, boxY + boxH - 21,
                     label.toUpperCase(Locale.FRENCH));
-            page.cs.setNonStrokingColor(PdfBrand.GREEN_DARK);
-            PdfText.draw(page.cs, bold, 20, MARGIN + 18, boxY + 16, value);
+            page.cs.setNonStrokingColor(theme.accentDark);
+            PdfText.draw(page.cs, bold, 20, MARGIN + 18, boxY + 14, value);
             page.cs.setNonStrokingColor(Color.BLACK);
             page.y = boxY - 14;
         }

@@ -22,12 +22,11 @@ public class ConfirmationPdfService {
 
     public byte[] registration(Registration r) {
         DocumentPdf pdf = DocumentPdf.create()
-                .cover(fileStorage, r.getEvent().getCoverUrl())
+                .event(fileStorage, r.getEvent().getCoverUrl(), r.getEvent().getNom(), r.getEvent().getNom(),
+                        heroSubtitle(r.getEvent()))
                 .kicker("Confirmation d'inscription")
-                .title(r.getReference())
-                .subtitle(DATE.format(r.getEvent().getDateDebut()))
+                .title("Inscription " + r.getReference())
                 .section("Événement")
-                .row("Nom", r.getEvent().getNom())
                 .row("Date", DATE.format(r.getEvent().getDateDebut()))
                 .row("Lieu", r.getEvent().getLieu())
                 .section("Inscrit")
@@ -46,13 +45,14 @@ public class ConfirmationPdfService {
 
     public byte[] standReservation(StandReservation r) {
         return DocumentPdf.create()
-                .cover(fileStorage, r.getEvent().getCoverUrl())
-                .kicker("Confirmation de réservation de stand")
-                .title(r.getReference())
+                .event(fileStorage, r.getEvent().getCoverUrl(), r.getEvent().getNom(), r.getEvent().getNom(),
+                        heroSubtitle(r.getEvent()))
+                .kicker("Réservation de stand")
+                .title("Réservation " + r.getReference())
                 .subtitle("N° " + r.getNumeroReservation())
                 .section("Événement")
-                .row("Nom", r.getEvent().getNom())
                 .row("Date", DATE.format(r.getEvent().getDateDebut()))
+                .row("Lieu", r.getEvent().getLieu())
                 .section("Stand")
                 .row("Emplacement", r.getStand().getNumero() + " (" + r.getStandType().getNom() + ")")
                 .amount("Montant", r.amount().formatted())
@@ -62,5 +62,11 @@ public class ConfirmationPdfService {
                 .section("Statut")
                 .row("Statut", r.getStatut().name())
                 .build();
+    }
+
+    /** "Ouagadougou · Parc des Expositions" — shown under the event name on the cover. */
+    private static String heroSubtitle(bf.evenements.plateforme.event.Event e) {
+        return java.util.stream.Stream.of(e.getVille(), e.getLieu())
+                .filter(s -> s != null && !s.isBlank()).collect(java.util.stream.Collectors.joining(" · "));
     }
 }

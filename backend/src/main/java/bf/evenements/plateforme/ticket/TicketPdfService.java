@@ -1,6 +1,6 @@
 package bf.evenements.plateforme.ticket;
 
-import bf.evenements.plateforme.common.pdf.CoverBanner;
+import bf.evenements.plateforme.common.pdf.EventTheme;
 import bf.evenements.plateforme.common.pdf.PdfBrand;
 import bf.evenements.plateforme.common.pdf.PdfText;
 import bf.evenements.plateforme.common.storage.FileStorageService;
@@ -52,48 +52,35 @@ public class TicketPdfService {
             PDImageXObject qrImage = PDImageXObject.createFromByteArray(doc, qr, "qr");
 
             var event = ticket.getEvent();
-            PDImageXObject coverImage = CoverBanner.load(doc, fileStorage, event.getCoverUrl());
+            EventTheme theme = EventTheme.of(doc, fileStorage, event.getCoverUrl(), event.getNom());
 
             try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
                 float w = PDRectangle.A5.getWidth();
                 float h = PDRectangle.A5.getHeight();
-                float y;
 
-                if (coverImage != null) {
-                    float bannerHeight = 130f;
-                    CoverBanner.draw(cs, coverImage, w, h, bannerHeight);
-                    PdfBrand.tricolorBar(cs, 0, h - bannerHeight - BAR_H, w, BAR_H);
-                    y = h - bannerHeight - BAR_H - 24;
-                } else {
-                    PdfBrand.tricolorBar(cs, 0, h - BAR_H, w, BAR_H);
-                    y = h - BAR_H - MARGIN;
-                }
+                // La couverture de l'événement (ou une couverture générée) décore le billet.
+                float y = theme.drawHero(cs, w, h, 160f, MARGIN, "Billet électronique", event.getNom(),
+                        DATE.format(event.getDateDebut())) - 24;
 
-                // QR encadré, centré — comme sur l'écran de détail.
+                // QR encadré, centré — jamais recouvert par la couverture.
                 float qrBoxSize = 170;
                 float qrSize = 150;
                 float qrBoxY = y - qrBoxSize;
                 cs.setNonStrokingColor(Color.WHITE);
                 cs.addRect((w - qrBoxSize) / 2, qrBoxY, qrBoxSize, qrBoxSize);
                 cs.fill();
-                cs.setStrokingColor(PdfBrand.SLATE_200);
-                cs.setLineWidth(1.2f);
+                cs.setStrokingColor(theme.accent);
+                cs.setLineWidth(1.6f);
                 cs.addRect((w - qrBoxSize) / 2, qrBoxY, qrBoxSize, qrBoxSize);
                 cs.stroke();
                 cs.drawImage(qrImage, (w - qrSize) / 2, qrBoxY + (qrBoxSize - qrSize) / 2, qrSize, qrSize);
                 y = qrBoxY - 22;
 
-                // Statut, en pastille verte centrée.
-                drawStatusPill(cs, bold, w, y, ticket.getStatut().toString());
-                y -= 30;
+                // Statut, en pastille aux couleurs de l'événement.
+                drawStatusPill(cs, bold, w, y, ticket.getStatut().toString(), theme);
+                y -= 34;
 
-                // Nom de l'événement.
-                cs.setNonStrokingColor(PdfBrand.SLATE_900);
-                PdfText.draw(cs, bold, 16, MARGIN, y, safe(event.getNom()));
-                cs.setNonStrokingColor(Color.BLACK);
-                y -= 26;
-
-                // Informations du billet, dans le même ordre que l'écran mobile.
+                // Informations du billet.
                 y = row(cs, bold, regular, y, "Billet n°", ticket.getNumero());
                 if (ticket.getEventTicket().getNom() != null) {
                     y = row(cs, bold, regular, y, "Catégorie", ticket.getEventTicket().getNom());
@@ -101,7 +88,6 @@ public class TicketPdfService {
                 if (ticket.getParticipantNom() != null && !ticket.getParticipantNom().isBlank()) {
                     y = row(cs, bold, regular, y, "Participant", ticket.getParticipantNom());
                 }
-                y = row(cs, bold, regular, y, "Date", DATE.format(event.getDateDebut()));
                 if (event.getLieu() != null && !event.getLieu().isBlank()) {
                     y = row(cs, bold, regular, y, "Lieu", event.getLieu());
                 }
@@ -109,7 +95,9 @@ public class TicketPdfService {
                     row(cs, bold, regular, y, "Commande", ticket.getOrder().getReference());
                 }
 
-                PdfBrand.tricolorBar(cs, 0, 0, w, BAR_H);
+                cs.setNonStrokingColor(theme.accent);
+                cs.addRect(0, 0, w, BAR_H);
+                cs.fill();
                 cs.setNonStrokingColor(PdfBrand.SLATE_500);
                 PdfText.draw(cs, regular, 8, MARGIN, BAR_H + 14,
                         "Presentez ce QR code a l'entree de l'evenement.");
@@ -125,15 +113,15 @@ public class TicketPdfService {
     }
 
     private static void drawStatusPill(PDPageContentStream cs, PDType1Font bold, float pageWidth, float y,
-                                       String status) throws java.io.IOException {
+                                       String status, EventTheme theme) throws java.io.IOException {
         String s = PdfText.sanitize(status);
         float textWidth = bold.getStringWidth(s) / 1000 * 9.5f;
         float w = textWidth + 22, h = 20;
         float x = (pageWidth - w) / 2;
-        cs.setNonStrokingColor(PdfBrand.GREEN_TINT);
+        cs.setNonStrokingColor(theme.accentTint);
         cs.addRect(x, y - 14, w, h);
         cs.fill();
-        cs.setNonStrokingColor(PdfBrand.GREEN_DARK);
+        cs.setNonStrokingColor(theme.accentDark);
         PdfText.draw(cs, bold, 9.5f, x + 11, y - 8, s);
         cs.setNonStrokingColor(Color.BLACK);
     }
