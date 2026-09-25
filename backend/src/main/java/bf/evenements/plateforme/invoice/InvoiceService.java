@@ -3,8 +3,11 @@ package bf.evenements.plateforme.invoice;
 import bf.evenements.plateforme.common.events.PaymentSucceededEvent;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.money.Money;
-import bf.evenements.plateforme.common.pdf.SimplePdf;
+import bf.evenements.plateforme.common.pdf.DocumentPdf;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
+import bf.evenements.plateforme.common.storage.FileStorageService;
+import bf.evenements.plateforme.event.Event;
+import bf.evenements.plateforme.event.EventRepository;
 import bf.evenements.plateforme.payment.Payment;
 import bf.evenements.plateforme.payment.PaymentRepository;
 import bf.evenements.plateforme.payment.PaymentStatus;
@@ -41,6 +44,8 @@ public class InvoiceService {
     private final TicketOrderRepository ticketOrderRepository;
     private final StandReservationRepository standReservationRepository;
     private final UserRepository userRepository;
+    private final EventRepository eventRepository;
+    private final FileStorageService fileStorage;
     private final CurrentUserProvider currentUser;
 
     @EventListener
@@ -91,26 +96,29 @@ public class InvoiceService {
     public byte[] pdf(UUID id) {
         Invoice invoice = load(id);
         assertAccess(invoice.getUserId());
-        String label = invoice.getType() == Invoice.InvoiceType.FACTURE ? "FACTURE" : "REÇU DE PAIEMENT";
-        return SimplePdf.create(label + "  N° " + invoice.getNumero())
-                .text("Plateforme Nationale de Gestion des Événements")
-                .text("Émis le " + DATE.format(invoice.getEmiseLe()))
-                .spacer()
-                .heading("Client")
-                .text(invoice.getClientNom() == null ? "-" : invoice.getClientNom())
-                .text(invoice.getClientDetails() == null ? "" : invoice.getClientDetails())
-                .spacer()
-                .heading("Détail")
-                .text(invoice.getLignes() == null ? "-" : invoice.getLignes())
-                .spacer()
-                .heading("Montant")
-                .text("Total : " + Money.of(invoice.getMontant(), invoice.getDevise()).formatted())
-                .text("TVA : non applicable")
-                .spacer()
-                .text(invoice.getType() == Invoice.InvoiceType.RECU
+        Event event = invoice.getEventId() == null ? null
+                : eventRepository.findById(invoice.getEventId()).orElse(null);
+        String label = invoice.getType() == Invoice.InvoiceType.FACTURE ? "Facture" : "Reçu de paiement";
+
+        DocumentPdf pdf = DocumentPdf.create()
+                .cover(fileStorage, event == null ? null : event.getCoverUrl())
+                .kicker(label)
+                .title("N° " + invoice.getNumero())
+                .subtitle("Émis le " + DATE.format(invoice.getEmiseLe()))
+                .section("Client")
+                .row("Nom", invoice.getClientNom())
+                .row("Détails", invoice.getClientDetails());
+        if (event != null) {
+            pdf.section("Événement").row("Nom", event.getNom());
+        }
+        pdf.section("Détail")
+                .paragraph(invoice.getLignes())
+                .amount("Montant total", Money.of(invoice.getMontant(), invoice.getDevise()).formatted())
+                .note("TVA : non applicable")
+                .note(invoice.getType() == Invoice.InvoiceType.RECU
                         ? "Paiement reçu et confirmé."
-                        : "Facture acquittée.")
-                .build();
+                        : "Facture acquittée.");
+        return pdf.build();
     }
 
     // --- helpers ---

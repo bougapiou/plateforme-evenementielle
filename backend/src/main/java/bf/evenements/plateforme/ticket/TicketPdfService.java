@@ -1,5 +1,8 @@
 package bf.evenements.plateforme.ticket;
 
+import bf.evenements.plateforme.common.pdf.CoverBanner;
+import bf.evenements.plateforme.common.pdf.PdfBrand;
+import bf.evenements.plateforme.common.pdf.PdfText;
 import bf.evenements.plateforme.common.storage.FileStorageService;
 import bf.evenements.plateforme.common.web.QrImages;
 import java.awt.Color;
@@ -33,8 +36,7 @@ public class TicketPdfService {
             .withZone(ZoneId.of("Africa/Ouagadougou"));
 
     private static final float MARGIN = 40f;
-    private static final Color LABEL_COLOR = new Color(0x64, 0x74, 0x8B);
-    private static final Color BORDER_COLOR = new Color(0xE2, 0xE8, 0xF0);
+    private static final float BAR_H = 4f;
 
     private final FileStorageService fileStorage;
 
@@ -50,35 +52,45 @@ public class TicketPdfService {
             PDImageXObject qrImage = PDImageXObject.createFromByteArray(doc, qr, "qr");
 
             var event = ticket.getEvent();
-            PDImageXObject coverImage = loadCover(doc, event.getCoverUrl());
+            PDImageXObject coverImage = CoverBanner.load(doc, fileStorage, event.getCoverUrl());
 
             try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
                 float w = PDRectangle.A5.getWidth();
                 float h = PDRectangle.A5.getHeight();
-                float y = h - MARGIN;
+                float y;
 
                 if (coverImage != null) {
                     float bannerHeight = 130f;
-                    drawCoverBanner(cs, coverImage, w, h, bannerHeight);
-                    y = h - bannerHeight - 24;
+                    CoverBanner.draw(cs, coverImage, w, h, bannerHeight);
+                    PdfBrand.tricolorBar(cs, 0, h - bannerHeight - BAR_H, w, BAR_H);
+                    y = h - bannerHeight - BAR_H - 24;
+                } else {
+                    PdfBrand.tricolorBar(cs, 0, h - BAR_H, w, BAR_H);
+                    y = h - BAR_H - MARGIN;
                 }
 
                 // QR encadré, centré — comme sur l'écran de détail.
                 float qrBoxSize = 170;
                 float qrSize = 150;
                 float qrBoxY = y - qrBoxSize;
-                cs.setStrokingColor(BORDER_COLOR);
+                cs.setNonStrokingColor(Color.WHITE);
+                cs.addRect((w - qrBoxSize) / 2, qrBoxY, qrBoxSize, qrBoxSize);
+                cs.fill();
+                cs.setStrokingColor(PdfBrand.SLATE_200);
+                cs.setLineWidth(1.2f);
                 cs.addRect((w - qrBoxSize) / 2, qrBoxY, qrBoxSize, qrBoxSize);
                 cs.stroke();
                 cs.drawImage(qrImage, (w - qrSize) / 2, qrBoxY + (qrBoxSize - qrSize) / 2, qrSize, qrSize);
                 y = qrBoxY - 22;
 
-                // Statut, centré.
-                centeredLine(cs, regular, 10, w, y, ticket.getStatut().toString());
-                y -= 26;
+                // Statut, en pastille verte centrée.
+                drawStatusPill(cs, bold, w, y, ticket.getStatut().toString());
+                y -= 30;
 
                 // Nom de l'événement.
-                line(cs, bold, 16, MARGIN, y, safe(event.getNom()));
+                cs.setNonStrokingColor(PdfBrand.SLATE_900);
+                PdfText.draw(cs, bold, 16, MARGIN, y, safe(event.getNom()));
+                cs.setNonStrokingColor(Color.BLACK);
                 y -= 26;
 
                 // Informations du billet, dans le même ordre que l'écran mobile.
@@ -97,7 +109,11 @@ public class TicketPdfService {
                     row(cs, bold, regular, y, "Commande", ticket.getOrder().getReference());
                 }
 
-                line(cs, regular, 8, MARGIN, 26, "Presentez ce QR code a l'entree de l'evenement.");
+                PdfBrand.tricolorBar(cs, 0, 0, w, BAR_H);
+                cs.setNonStrokingColor(PdfBrand.SLATE_500);
+                PdfText.draw(cs, regular, 8, MARGIN, BAR_H + 14,
+                        "Presentez ce QR code a l'entree de l'evenement.");
+                cs.setNonStrokingColor(Color.BLACK);
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -108,85 +124,32 @@ public class TicketPdfService {
         }
     }
 
-    /** Best-effort: a missing/unreadable/corrupt cover image never breaks the PDF. */
-    private PDImageXObject loadCover(PDDocument doc, String coverUrl) {
-        byte[] bytes = fileStorage.readIfLocal(coverUrl);
-        if (bytes == null) {
-            return null;
-        }
-        try {
-            return PDImageXObject.createFromByteArray(doc, bytes, "cover");
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /** Crops the cover image to fill the banner width/height (like CSS object-fit: cover). */
-    private static void drawCoverBanner(PDPageContentStream cs, PDImageXObject cover,
-                                         float pageWidth, float pageHeight, float bannerHeight)
-            throws java.io.IOException {
-        float bannerY = pageHeight - bannerHeight;
-        float scale = Math.max(pageWidth / cover.getWidth(), bannerHeight / cover.getHeight());
-        float drawW = cover.getWidth() * scale;
-        float drawH = cover.getHeight() * scale;
-        float x = (pageWidth - drawW) / 2;
-        float y = bannerY - (drawH - bannerHeight) / 2;
-
-        cs.saveGraphicsState();
-        cs.addRect(0, bannerY, pageWidth, bannerHeight);
-        cs.clip();
-        cs.drawImage(cover, x, y, drawW, drawH);
-        cs.restoreGraphicsState();
-    }
-
-    private static void line(PDPageContentStream cs, PDType1Font font, float sizePt, float x, float y,
-                             String text) throws java.io.IOException {
-        cs.beginText();
-        cs.setFont(font, sizePt);
-        cs.newLineAtOffset(x, y);
-        cs.showText(winAnsi(text));
-        cs.endText();
-    }
-
-    private static void centeredLine(PDPageContentStream cs, PDType1Font font, float sizePt,
-                                       float pageWidth, float y, String text) throws java.io.IOException {
-        String safeText = winAnsi(text);
-        float width = font.getStringWidth(safeText) / 1000 * sizePt;
-        line(cs, font, sizePt, (pageWidth - width) / 2, y, text);
+    private static void drawStatusPill(PDPageContentStream cs, PDType1Font bold, float pageWidth, float y,
+                                       String status) throws java.io.IOException {
+        String s = PdfText.sanitize(status);
+        float textWidth = bold.getStringWidth(s) / 1000 * 9.5f;
+        float w = textWidth + 22, h = 20;
+        float x = (pageWidth - w) / 2;
+        cs.setNonStrokingColor(PdfBrand.GREEN_TINT);
+        cs.addRect(x, y - 14, w, h);
+        cs.fill();
+        cs.setNonStrokingColor(PdfBrand.GREEN_DARK);
+        PdfText.draw(cs, bold, 9.5f, x + 11, y - 8, s);
+        cs.setNonStrokingColor(Color.BLACK);
     }
 
     /** Draws one "label / value" row (label in gray, value in bold black) and returns the next y. */
     private static float row(PDPageContentStream cs, PDType1Font bold, PDType1Font regular, float y,
                               String label, String value) throws java.io.IOException {
-        cs.setNonStrokingColor(LABEL_COLOR);
-        line(cs, regular, 10, MARGIN, y, label);
+        cs.setNonStrokingColor(PdfBrand.SLATE_500);
+        PdfText.draw(cs, regular, 10, MARGIN, y, label);
+        cs.setNonStrokingColor(PdfBrand.SLATE_900);
+        PdfText.draw(cs, bold, 10, MARGIN + 100, y, value);
         cs.setNonStrokingColor(Color.BLACK);
-        line(cs, bold, 10, MARGIN + 100, y, value);
         return y - 18;
     }
 
     private static String safe(String s) {
         return s == null ? "" : s;
-    }
-
-    /** Keep only characters the standard Helvetica (WinAnsi) font can encode. */
-    private static String winAnsi(String text) {
-        if (text == null) {
-            return "";
-        }
-        String t = text
-                .replace('’', '\'').replace('‘', '\'')
-                .replace('“', '"').replace('”', '"')
-                .replace('–', '-').replace('—', '-')
-                .replace('…', ' ').replace(' ', ' ');
-        StringBuilder sb = new StringBuilder(t.length());
-        for (char c : t.toCharArray()) {
-            if ((c >= 32 && c <= 126) || (c >= 160 && c <= 255)) {
-                sb.append(c);
-            } else if (c == '\t' || c == '\n') {
-                sb.append(' ');
-            }
-        }
-        return sb.toString();
     }
 }
