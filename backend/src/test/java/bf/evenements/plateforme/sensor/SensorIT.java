@@ -2,6 +2,8 @@ package bf.evenements.plateforme.sensor;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 
 import bf.evenements.plateforme.support.AbstractIntegrationTest;
@@ -9,9 +11,15 @@ import bf.evenements.plateforme.support.TestAuth;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class SensorIT extends AbstractIntegrationTest {
+
+    @Autowired
+    JdbcTemplate jdbc;
 
     private RequestSpecification as(String token) {
         return given().header("Authorization", "Bearer " + token).contentType(ContentType.JSON);
@@ -103,6 +111,22 @@ class SensorIT extends AbstractIntegrationTest {
                 .then().statusCode(204);
         given().header("X-Sensor-Key", key)
                 .when().post("/api/sensors/entry").then().statusCode(401);
+    }
+
+    @Test
+    void public_live_events_lists_only_the_events_in_progress() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("sn3-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+        String inProgress = publishedEvent(orga, admin, n);
+        String upcoming = publishedEvent(orga, admin, n + 1);
+        jdbc.update("update events set statut = 'EN_COURS' where id = ?", UUID.fromString(inProgress));
+
+        // no login needed, and only what is happening now
+        given().when().get("/api/public/live-events")
+                .then().statusCode(200)
+                .body("id", hasItem(inProgress))
+                .body("id", not(hasItem(upcoming)));
     }
 
     @Test

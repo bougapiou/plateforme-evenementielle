@@ -80,7 +80,7 @@ interface EventGroup {
             <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ error() }}</p>
           }
 
-          <button type="submit" class="btn-primary" [disabled]="submitting()">
+          <button type="submit" class="btn-primary w-full sm:w-auto" [disabled]="submitting()">
             {{ submitting() ? 'Recherche…' : 'Retrouver mes billets' }}
           </button>
           <p class="text-xs text-slate-400">

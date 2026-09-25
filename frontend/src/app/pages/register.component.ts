@@ -36,18 +36,16 @@ import { PhoneInputComponent } from '../shared/phone-input.component';
             <label class="form-label" for="email">Adresse e-mail</label>
             <input id="email" type="email" class="form-input" formControlName="email" />
           </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="form-label" for="phone">Téléphone</label>
-              <app-phone-input id="phone" formControlName="phone" />
-            </div>
-            <div>
-              <label class="form-label" for="type">Type de compte</label>
-              <select id="type" class="form-input" formControlName="type">
-                <option value="PARTICULIER">Particulier</option>
-                <option value="STRUCTURE">Structure</option>
-              </select>
-            </div>
+          <div>
+            <label class="form-label" for="phone">Téléphone</label>
+            <app-phone-input id="phone" formControlName="phone" />
+          </div>
+          <div>
+            <label class="form-label" for="type">Type de compte</label>
+            <select id="type" class="form-input" formControlName="type">
+              <option value="PARTICULIER">Particulier</option>
+              <option value="STRUCTURE">Structure</option>
+            </select>
           </div>
           <div>
             <label class="form-label" for="password">Mot de passe</label>

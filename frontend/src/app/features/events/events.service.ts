@@ -104,4 +104,9 @@ export class EventsService extends ApiBase {
   publicBySlug(slug: string): Observable<EventPublic> {
     return this.get<EventPublic>(`/public/events/${slug}`);
   }
+
+  /** Events happening right now — the ones whose live attendance can be displayed. */
+  liveEvents(): Observable<EventSummary[]> {
+    return this.get<EventSummary[]>('/public/live-events');
+  }
 }

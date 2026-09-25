@@ -8,8 +8,10 @@ import bf.evenements.plateforme.event.dto.EventSummary;
 import bf.evenements.plateforme.event.dto.PartnerResponse;
 import bf.evenements.plateforme.event.dto.SpeakerResponse;
 import java.time.Instant;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,13 @@ public class PublicEventService {
                 EventSpecifications.startsAfter(from),
                 EventSpecifications.startsBefore(to));
         return PageResponse.of(eventRepository.findAll(spec, pageable), EventSummary::from);
+    }
+
+    /** Events happening right now: the ones whose live attendance is worth showing. */
+    @Transactional(readOnly = true)
+    public List<EventSummary> live() {
+        return eventRepository.findAll(EventSpecifications.hasStatus(EventStatus.EN_COURS), Sort.by("dateDebut"))
+                .stream().limit(50).map(EventSummary::from).toList();
     }
 
     @Transactional(readOnly = true)

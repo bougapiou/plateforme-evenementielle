@@ -12,15 +12,19 @@ import { COUNTRY_CALLING_CODES } from './countries';
   selector: 'app-phone-input',
   standalone: true,
   imports: [FormsModule],
+  // A custom element is inline by default and an <input> never shrinks below its intrinsic width on its own:
+  // without `block` / `min-w-0` the number field overflowed its column on small screens.
+  host: { class: 'block min-w-0' },
   template: `
-    <div class="flex gap-2">
-      <select class="form-input w-[7.5rem] shrink-0" [(ngModel)]="dialCode" (ngModelChange)="emit()">
+    <div class="flex min-w-0 gap-2">
+      <select class="form-input w-[6.5rem] shrink-0 sm:w-[7.5rem]" [(ngModel)]="dialCode" (ngModelChange)="emit()"
+              aria-label="Indicatif du pays">
         @for (c of countries; track c.code) {
           <option [value]="c.phoneCode">{{ c.code }} {{ c.phoneCode }}</option>
         }
       </select>
-      <input class="form-input flex-1" type="tel" inputmode="tel" [placeholder]="placeholder"
-             [(ngModel)]="localNumber" (ngModelChange)="emit()" />
+      <input class="form-input min-w-0 flex-1" type="tel" inputmode="tel" [placeholder]="placeholder"
+             aria-label="Numéro de téléphone" [(ngModel)]="localNumber" (ngModelChange)="emit()" />
     </div>
   `,
   providers: [

@@ -22,8 +22,15 @@ export const routes: Routes = [
         title: 'Événement',
       },
       {
-        // Présence en direct, sans connexion — un lien dédié par événement
-        // (pas de sélecteur), pour un écran à l'entrée ou un partage public.
+        // Entrée « Présence en direct » du menu public : les événements en cours.
+        path: 'presence-en-direct',
+        loadComponent: () =>
+          import('./features/public/live-events.component').then((m) => m.LiveEventsComponent),
+        title: 'Présence en direct',
+      },
+      {
+        // Présence en direct d'un événement, sans connexion — lien partageable
+        // pour un écran à l'entrée (le plein écran s'ouvre depuis la page).
         path: 'evenements/:slug/flux',
         loadComponent: () =>
           import('./features/public/public-attendance.component').then(

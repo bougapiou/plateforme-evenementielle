@@ -45,6 +45,10 @@ import { IconComponent } from '../shared/icon.component';
            [routerLinkActiveOptions]="{ exact: true }" class="btn-ghost inline-flex items-center gap-1.5">
           <app-icon name="calendar" class="h-4 w-4" /> Événements
         </a>
+        <a routerLink="/presence-en-direct" routerLinkActive="text-brand-700"
+           class="btn-ghost inline-flex items-center gap-1.5">
+          <app-icon name="present" class="h-4 w-4" /> Présence en direct
+        </a>
         <a routerLink="/scanner" routerLinkActive="text-brand-700"
            class="btn-ghost inline-flex items-center gap-1.5">
           <app-icon name="scan" class="h-4 w-4" /> Scanner

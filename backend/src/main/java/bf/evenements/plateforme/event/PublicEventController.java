@@ -44,6 +44,12 @@ public class PublicEventController {
         return publicEventService.search(search, categorie, ville, du, au, pageable);
     }
 
+    @GetMapping("/live-events")
+    @Operation(summary = "Événements en cours, dont la présence peut être affichée en direct")
+    public List<EventSummary> liveEvents() {
+        return publicEventService.live();
+    }
+
     @GetMapping("/events/{slug}")
     @Operation(summary = "Page publique d'un événement")
     public EventPublicResponse event(@PathVariable String slug) {
