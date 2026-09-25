@@ -1,0 +1,64 @@
+name: Build iOS
+
+# Un build iOS exige macOS + Xcode : impossible sur un poste Windows, donc il se fait ici, sur un runner
+# macOS de GitHub. Déclenchement MANUEL uniquement (les minutes macOS sont facturées plus cher) :
+# onglet Actions → « Build iOS » → Run workflow.
+#
+# Sans compte Apple Developer, le build est produit sans signature (IPA non signé) : il prouve que
+# l'application compile pour iOS et se signe ensuite à part (voir mobile/README.md, section « Build iOS »).
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: "URL de l'API (vide = production, définie dans mobile/lib/core/config.dart)"
+        required: false
+        default: ''
+
+jobs:
+  ios:
+    name: iOS (IPA non signé)
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.29.2'
+          cache: true
+
+      - name: Dépendances
+        run: flutter pub get
+
+      - name: Analyse et tests
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build iOS (sans signature)
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+        run: |
+          DEFINES=""
+          if [ -n "$API_BASE_URL" ]; then DEFINES="--dart-define=API_BASE_URL=$API_BASE_URL"; fi
+          flutter build ios --release --no-codesign --build-number "${{ github.run_number }}" $DEFINES
+
+      - name: Empaqueter l'IPA (non signé)
+        run: |
+          rm -rf build/ios/ipa-unsigned
+          mkdir -p build/ios/ipa-unsigned/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa-unsigned/Payload/
+          (cd build/ios/ipa-unsigned && zip -qry ../pne-mobile-unsigned.ipa Payload)
+          ls -lh build/ios/pne-mobile-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pne-mobile-ios-unsigned
+          path: mobile/build/ios/pne-mobile-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

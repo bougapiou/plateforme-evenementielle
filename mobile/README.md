@@ -31,6 +31,41 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
   désactivés (pas de système de fichiers dans le navigateur) ; le QR reste
   affiché en ligne.
 
+## Build iOS
+
+Un build iOS exige **macOS + Xcode** : il ne se fait pas depuis un poste Windows. Deux voies.
+
+**1. Sur GitHub (aucun Mac requis)** — workflow `.github/workflows/ios-build.yml`, déclenché à la
+main : onglet *Actions* → **Build iOS** → *Run workflow* (champ facultatif : URL de l'API ; vide =
+production). Il installe Flutter 3.29.2, lance `flutter analyze` + `flutter test`, compile en
+`--no-codesign` et publie l'artefact **`pne-mobile-ios-unsigned`** (IPA non signé, conservé 14 jours).
+Un IPA non signé ne s'installe pas tel quel : il faut le signer (voir ci-dessous).
+
+**2. Sur un Mac** :
+
+```bash
+cd mobile && flutter pub get
+open ios/Runner.xcworkspace     # Runner → Signing & Capabilities → choisir l'équipe Apple
+flutter build ipa               # ou Xcode : Product → Archive
+```
+
+**Signer et distribuer** — selon ce dont on dispose :
+
+| Besoin | Ce qu'il faut |
+|--------|---------------|
+| Tester sur son propre iPhone, sans payer | un Apple ID gratuit + un outil de signature (Sideloadly, AltStore) sur l'IPA non signé ; l'app expire au bout de 7 jours |
+| TestFlight / App Store / distribution interne | **compte Apple Developer** (99 $/an) : certificat de distribution, profil de provisionnement, identifiant d'équipe. Signature automatisable dans le workflow une fois ces éléments fournis (secrets GitHub) |
+
+À savoir pour iOS :
+
+- Identifiant de l'app : `bf.evenements.plateformeMobile` (`ios/Runner.xcodeproj`) ; à changer avant
+  la première publication si un autre identifiant doit être réservé chez Apple.
+- iOS 12.0 minimum. Caméra et photothèque sont déjà déclarées dans `Info.plist`.
+- L'API doit être en **HTTPS** (App Transport Security) : le build de production vise
+  `https://evenements-19.mtdpce-test.gov.bf/api`. Un `http://` distant serait bloqué sur iPhone.
+- App Store : icônes et captures, textes de présentation, et déclaration de chiffrement
+  (`ITSAppUsesNonExemptEncryption`) demandée par App Store Connect.
+
 ## Fonctionnalités
 
 | Zone | Écran | API |
