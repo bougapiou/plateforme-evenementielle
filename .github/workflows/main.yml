@@ -1,11 +1,24 @@
 name: Flutter iOS Build
 
+# Un build iOS exige macOS + Xcode : impossible sur un poste Windows, donc il se fait ici, sur un runner
+# macOS de GitHub. Déclenchement MANUEL uniquement (les minutes macOS sont facturées plus cher) :
+# onglet Actions → « Flutter iOS Build » → Run workflow.
+#
+# Sans compte Apple Developer, le build est produit sans signature (IPA non signé) : il prouve que
+# l'application compile pour iOS et se signe ensuite à part (voir mobile/README.md, section « Build iOS »).
+
 on:
   workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: "URL de l'API (vide = production, définie dans mobile/lib/core/config.dart)"
+        required: false
+        default: ''
 
 jobs:
   build-ios:
     runs-on: macos-latest
+    timeout-minutes: 45
 
     defaults:
       run:
@@ -19,6 +32,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
 
       - name: Vérifier Flutter
         run: flutter doctor -v
@@ -26,15 +40,28 @@ jobs:
       - name: Installer les dépendances Flutter
         run: flutter pub get
 
-      - name: Installer CocoaPods
-        run: pod install
-        working-directory: mobile/ios
+      # Pas d'étape `pod install` : le dépôt n'a pas de Podfile, `flutter build ios` le génère
+      # et installe lui-même les pods.
+      - name: Compiler iOS (sans signature)
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+        run: |
+          DEFINES=""
+          if [ -n "$API_BASE_URL" ]; then DEFINES="--dart-define=API_BASE_URL=$API_BASE_URL"; fi
+          flutter build ios --release --no-codesign --build-number "${{ github.run_number }}" $DEFINES
 
-      - name: Compiler iOS
-        run: flutter build ios --release --no-codesign
+      - name: Empaqueter l'IPA (non signé)
+        run: |
+          rm -rf build/ios/ipa-unsigned
+          mkdir -p build/ios/ipa-unsigned/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa-unsigned/Payload/
+          (cd build/ios/ipa-unsigned && zip -qry ../pne-mobile-unsigned.ipa Payload)
+          ls -lh build/ios/pne-mobile-unsigned.ipa
 
-      - name: Sauvegarder l'application
+      - name: Sauvegarder l'IPA
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-ios-build
-          path: mobile/build/ios/iphoneos/Runner.app
+          name: pne-mobile-ios-unsigned
+          path: mobile/build/ios/pne-mobile-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

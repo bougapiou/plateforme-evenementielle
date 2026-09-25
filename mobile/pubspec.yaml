@@ -16,7 +16,7 @@ dependencies:
   go_router: ^14.6.2
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.4
-  intl: ^0.20.3
+  intl: any   # la version est imposée par flutter_localizations (varie selon la version de Flutter)
   mobile_scanner: ^5.2.3
   path_provider: ^2.1.5
   open_filex: ^4.5.0

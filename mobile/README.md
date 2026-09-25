@@ -35,11 +35,16 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080/api
 
 Un build iOS exige **macOS + Xcode** : il ne se fait pas depuis un poste Windows. Deux voies.
 
-**1. Sur GitHub (aucun Mac requis)** — workflow `.github/workflows/ios-build.yml`, déclenché à la
-main : onglet *Actions* → **Build iOS** → *Run workflow* (champ facultatif : URL de l'API ; vide =
-production). Il installe Flutter 3.29.2, lance `flutter analyze` + `flutter test`, compile en
-`--no-codesign` et publie l'artefact **`pne-mobile-ios-unsigned`** (IPA non signé, conservé 14 jours).
-Un IPA non signé ne s'installe pas tel quel : il faut le signer (voir ci-dessous).
+**1. Sur GitHub (aucun Mac requis)** — workflow `.github/workflows/main.yml`, déclenché à la
+main : onglet *Actions* → **Flutter iOS Build** → *Run workflow* (champ facultatif : URL de l'API ;
+vide = production). Il installe la dernière version stable de Flutter, compile en `--no-codesign`
+(le Podfile est généré par `flutter build ios`, il n'est pas dans le dépôt) et publie l'artefact
+**`pne-mobile-ios-unsigned`** (IPA non signé, conservé 14 jours). Un IPA non signé ne s'installe
+pas tel quel : il faut le signer (voir ci-dessous).
+
+`pubspec.yaml` déclare `intl: any` exprès : la version d'`intl` est imposée par
+`flutter_localizations` et change avec la version de Flutter (0.19 avec Flutter 3.29, 0.20.x avec les
+versions récentes) ; une version fixe casse soit le poste de développement, soit le build GitHub.
 
 **2. Sur un Mac** :
 
