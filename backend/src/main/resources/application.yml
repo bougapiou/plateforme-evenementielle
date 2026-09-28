@@ -5,6 +5,11 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/plateforme}
     username: ${DB_USERNAME:plateforme}
     password: ${DB_PASSWORD:plateforme}
+    hikari:
+      # Par défaut Spring Boot (10) épuisé dès ~30 utilisateurs simultanés en test de
+      # charge (HikariPool-1 - Connection is not available, waiting=100). Vérifier
+      # `SHOW max_connections;` sur PostgreSQL avant d'augmenter encore ce chiffre.
+      maximum-pool-size: ${DB_POOL_SIZE:20}
   jpa:
     open-in-view: false
     hibernate:
