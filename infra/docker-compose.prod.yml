@@ -41,6 +41,11 @@ services:
       # 503 en permanence à cause du contrôle mail. À retirer une fois
       # MAIL_HOST configuré vers un vrai serveur.
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      # Sans limite mémoire sur le conteneur, la JVM ne voit que 25 % de la RAM
+      # de l'hôte pour son tas par défaut — trop juste pour le traitement
+      # d'images des PDF sous charge (OutOfMemoryError constaté en test de
+      # charge). Remonté à 60 % ; ajuster si la machine change de taille.
+      JDK_JAVA_OPTIONS: "-XX:MaxRAMPercentage=60.0"
     expose:
       - "8080"
     volumes:
