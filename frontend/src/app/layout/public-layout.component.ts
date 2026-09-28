@@ -58,10 +58,6 @@ import { IconComponent } from '../shared/icon.component';
              class="btn-ghost inline-flex items-center gap-1.5">
             <app-icon name="ticket" class="h-4 w-4" /> Retrouver mon billet
           </a>
-          <a routerLink="/connexion" routerLinkActive="text-brand-700"
-             class="btn-ghost inline-flex items-center gap-1.5">
-            <app-icon name="login" class="h-4 w-4" /> Connexion
-          </a>
         }
         @if (auth.isGuest()) {
           <a routerLink="/tableau-de-bord" class="btn-ghost">Mes billets</a>
