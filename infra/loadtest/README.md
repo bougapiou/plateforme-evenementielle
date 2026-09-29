@@ -50,7 +50,7 @@ aucun temps de réponse qui s'aggrave régulièrement au fil du palier.
 |---|---|---|---|
 | `k6-lecture-publique.js` | visiteurs qui naviguent : liste + filtres, fiche, billets, catégories, présence publique, page d'accueil, image | **non** | aucun (juste `BASE_URL`) |
 | `k6-billet-gratuit.js` | prise d'un billet gratuit (session invité, inscription, PDF) | oui | événement de test |
-| `k6-scan-entree.js` | agents qui scannent des billets à l'ouverture des portes (80 % valides, 15 % déjà utilisés, 5 % faux) | oui (scans) | billets + `tokens.csv` + compte organisateur |
+| `k6-scan-entree.js` | agents qui scannent des billets à l'ouverture des portes, entrée ou sortie (80 % valides, 15 % déjà utilisés, 5 % faux) | oui (scans) | billets + `tokens.csv` + compte organisateur |
 | `k6-capteurs.js` | boîtiers laser qui envoient leurs passages chaque seconde | oui (passages) | événement de test + compte organisateur |
 
 Ordre conseillé : **lecture publique** (sans risque) → **billet gratuit** → **scan** → **capteurs**, chacun d'abord en `fumee`,
@@ -69,9 +69,12 @@ k6 run -e BASE_URL=https://<domaine> -e EVENT_SLUG=<slug> -e ORGA_EMAIL=<organis
 ```
 
 - **Scan** : il faut assez de jetons (le script avertit s'il en manque). 60 scans/s pendant 2 min = ~7 200 scans :
-  générer autant de billets avant (plusieurs passes de `k6-billet-gratuit.js`). Le « contrôle des sorties » ne doit
-  pas être activé sur l'événement de test. Métriques à lire : `scan_valide`, `scan_deja_utilise`, `scan_invalide`
-  et surtout `scan_resultat_inattendu` (doit rester < 2 %).
+  générer autant de billets avant (plusieurs passes de `k6-billet-gratuit.js`). Métriques à lire : `scan_valide`,
+  `scan_deja_utilise`, `scan_invalide` et surtout `scan_resultat_inattendu` (doit rester < 2 % — un peu plus en
+  pratique si le pool de jetons est trop petit pour le nombre de scans, le script le signale).
+- **Scan en sortie** : `-e SENS=SORTIE` (défaut `ENTREE`). Chaque billet doit d'abord être « à l'intérieur » —
+  lancer ce script en entrée sur `tokens.csv` avant de tester la sortie sur ce même fichier, sinon la sortie
+  est refusée (« pas à l'intérieur ») et `scan_resultat_inattendu` explose.
 - **Capteurs** : à la fin, comparer `passages_entree` / `passages_sortie` (récapitulatif k6) avec la ligne
   « Totaux serveur » du journal : les deux doivent correspondre. Le limiteur de débit ne concerne pas les capteurs.
 - Le compte organisateur n'a pas besoin d'être un administrateur : celui qui a créé l'événement de test suffit.

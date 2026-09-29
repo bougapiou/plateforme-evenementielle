@@ -1,18 +1,23 @@
-// Test de charge k6 — CONTRÔLE À L'ENTRÉE : des agents scannent des billets QR (POST /api/checkins/scan),
-// avec un débit qui monte comme à l'ouverture des portes.
+// Test de charge k6 — CONTRÔLE À L'ENTRÉE (ou À LA SORTIE) : des agents scannent des billets QR
+// (POST /api/checkins/scan), avec un débit qui monte comme à l'ouverture des portes.
 //
 // Étapes (voir README.md) :
 //   1. k6-billet-gratuit.js  -> crée des billets sur l'événement de test ZZ-TEST-CHARGE…
 //   2. export-tokens.sql     -> exporte leurs jetons QR dans tokens.csv (à placer à côté de ce script)
-//   3. ce script             -> les scanne
+//   3. ce script             -> les scanne, en entrée par défaut
 //
 //   k6 run -e BASE_URL=https://<domaine> -e EVENT_SLUG=<slug> \
 //          -e SCANNER_EMAIL=<organisateur> -e SCANNER_PASSWORD=<mot de passe> -e PROFILE=fumee k6-scan-entree.js
 //   PROFILE : fumee (3 scans/s) | palier (10 -> 30 -> 60 scans/s) | pic (100 scans/s) ; SCALE : multiplicateur
+//   SENS : ENTREE (défaut) | SORTIE
 //
-// Mélange : 80 % de premiers scans (attendu : VALIDE), 15 % de re-scans (attendu : DEJA_UTILISE),
-// 5 % de faux QR (attendu : INVALIDE). Hypothèse : le « contrôle des sorties » n'est PAS activé sur
-// l'événement de test (sinon un 2e scan d'entrée est une ré-entrée).
+// Mélange : 80 % de premiers scans dans ce sens (attendu : VALIDE), 15 % de re-scans dans le même
+// sens (attendu : DEJA_UTILISE), 5 % de faux QR (attendu : INVALIDE).
+//
+// SENS=SORTIE suppose que les billets du pool sont déjà « à l'intérieur » (scannés en ENTREE au
+// moins une fois auparavant, par un run précédent de ce même script) — sinon la sortie est refusée
+// (DEJA_UTILISE : « pas à l'intérieur ») et le taux scan_resultat_inattendu explose. Lancer d'abord
+// ce script en ENTREE sur le pool de tokens.csv avant de tester la sortie sur ce même pool.
 //
 // Le compte SCANNER doit pouvoir contrôler l'événement (l'organisateur de l'événement de test convient).
 
@@ -27,6 +32,9 @@ import {
 } from './lib.js';
 
 exigerEnv('BASE_URL', 'EVENT_SLUG', 'SCANNER_EMAIL', 'SCANNER_PASSWORD');
+
+const SENS = (__ENV.SENS || 'ENTREE').toUpperCase();
+if (SENS !== 'ENTREE' && SENS !== 'SORTIE') throw new Error(`SENS invalide : ${SENS} (ENTREE ou SORTIE)`);
 
 const jetons = new SharedArray('jetons', () =>
   open(__ENV.TOKENS_FILE || 'tokens.csv').split('\n').map((l) => l.trim().replace(/"/g, '')).filter(Boolean));
@@ -69,7 +77,7 @@ function entetes(data) {
 }
 
 function scanner(data, jeton) {
-  const corps = JSON.stringify({ token: jeton, eventId: data.eventId, sens: 'ENTREE' });
+  const corps = JSON.stringify({ token: jeton, eventId: data.eventId, sens: SENS });
   let r = http.post(`${BASE}/api/checkins/scan`, corps, { headers: entetes(data), tags: { name: 'scan' } });
   if (r.status === 401) { // jeton de session expiré : on se reconnecte une fois
     sessionToken = connexion(__ENV.SCANNER_EMAIL, __ENV.SCANNER_PASSWORD);

@@ -44,3 +44,8 @@ infra/data/
 
 # Capteur laser ESP32 (contient le mot de passe Wi-Fi et la clé du capteur)
 capteur-laser/
+
+# Test de charge : jetons QR réels exportés depuis la base, clés privées
+infra/loadtest/tokens.csv
+*.ppk
+*.pem
