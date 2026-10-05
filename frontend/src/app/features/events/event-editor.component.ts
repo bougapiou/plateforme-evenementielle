@@ -11,7 +11,7 @@ import { ApiError } from '../../core/models';
 import { AuthService } from '../../core/auth.service';
 import { TicketsService } from '../tickets/tickets.service';
 import { StandsService } from '../stands/stands.service';
-import { StandType } from '../stands/stand.models';
+import { Stand, StandType } from '../stands/stand.models';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { Registration } from '../registrations/registration.models';
 import { CheckinService, CheckinView, SensorView, StaffMember } from '../checkin/checkin.service';
@@ -446,6 +446,27 @@ type Tab =
           } @empty { <li class="text-sm text-slate-400">Aucun type de stand.</li> }
         </ul>
 
+        @if (stands().length) {
+          <h3 class="mt-6 font-semibold text-slate-700">Fréquentation des stands</h3>
+          <p class="mt-1 text-sm text-slate-500">
+            Un lien propre à chaque stand, à afficher sur place (affiche ou écran) : les visiteurs
+            y signalent leur passage, sans compte.
+            <a [routerLink]="['/evenements', e.slug, 'frequentation']" target="_blank"
+               class="text-brand-700 hover:underline">Voir le classement public</a>
+          </p>
+          <ul class="mt-2 space-y-1 text-sm">
+            @for (s of stands(); track s.id) {
+              <li class="card flex flex-wrap items-center justify-between gap-2 p-3">
+                <span class="font-medium text-slate-700">Stand {{ s.numero }} · {{ s.standTypeNom }}</span>
+                <a [routerLink]="['/evenements', e.slug, 'stands', s.id, 'passage']" target="_blank"
+                   class="text-xs text-brand-700 hover:underline">
+                  <code>{{ apiOrigin }}/evenements/{{ e.slug }}/stands/{{ s.id }}/passage</code>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+
         @if (standReservations().length) {
           <h3 class="mt-6 font-semibold text-slate-700">Réservations</h3>
           <ul class="mt-2 space-y-1 text-sm">
@@ -650,6 +671,7 @@ export class EventEditorComponent implements OnDestroy {
   tickets = signal<EventTicket[]>([]);
   selectedActivityIds = signal<string[]>([]);
   standTypes = signal<StandType[]>([]);
+  stands = signal<Stand[]>([]);
   standReservations = signal<any[]>([]);
   registrations = signal<Registration[]>([]);
   staff = signal<StaffMember[]>([]);
@@ -843,6 +865,10 @@ export class EventEditorComponent implements OnDestroy {
     this.service.partners(id).subscribe((p) => this.partners.set(p));
     this.ticketsService.forEvent(id).subscribe((t) => this.tickets.set(t));
     this.standsService.types(id).subscribe((t) => this.standTypes.set(t));
+    this.standsService.standsForEvent(id).subscribe({
+      next: (s) => this.stands.set(s),
+      error: () => {},
+    });
     this.standsService.reservationsForEvent(id).subscribe((p) => this.standReservations.set(p.content));
     this.registrationsService.forEvent(id).subscribe((p) => this.registrations.set(p.content));
     this.checkinService.staff(id).subscribe({ next: (s) => this.staff.set(s), error: () => {} });
@@ -936,6 +962,7 @@ export class EventEditorComponent implements OnDestroy {
         this.editingStandTypeId.set(null);
         this.standForm.reset({ prixMontant: 0, quantiteTotale: 10 });
         this.standsService.types(this.id()).subscribe((t) => this.standTypes.set(t));
+        this.standsService.standsForEvent(this.id()).subscribe((s) => this.stands.set(s));
       },
       error: (err: HttpErrorResponse) =>
         this.standError.set((err.error as ApiError)?.message ?? 'Enregistrement impossible.'),
@@ -950,7 +977,10 @@ export class EventEditorComponent implements OnDestroy {
   }
   removeStandType(t: StandType): void {
     this.standsService.removeType(this.id(), t.id).subscribe({
-      next: () => this.standsService.types(this.id()).subscribe((x) => this.standTypes.set(x)),
+      next: () => {
+        this.standsService.types(this.id()).subscribe((x) => this.standTypes.set(x));
+        this.standsService.standsForEvent(this.id()).subscribe((s) => this.stands.set(s));
+      },
       error: (err: HttpErrorResponse) =>
         this.standError.set((err.error as ApiError)?.message ?? 'Suppression impossible.'),
     });

@@ -39,6 +39,25 @@ export const routes: Routes = [
         title: 'Présence en direct',
       },
       {
+        // Fréquentation des stands : module indépendant du contrôle d'accès et des capteurs —
+        // un visiteur signale son passage depuis la page propre à un stand (un lien/QR par
+        // stand), et le classement par stand est public.
+        path: 'evenements/:slug/stands/:standId/passage',
+        loadComponent: () =>
+          import('./features/frequentation/signaler-passage.component').then(
+            (m) => m.SignalerPassageComponent,
+          ),
+        title: 'Signaler mon passage',
+      },
+      {
+        path: 'evenements/:slug/frequentation',
+        loadComponent: () =>
+          import('./features/frequentation/frequentation-page.component').then(
+            (m) => m.FrequentationPageComponent,
+          ),
+        title: 'Fréquentation des stands',
+      },
+      {
         path: 'connexion',
         loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent),
         title: 'Connexion',

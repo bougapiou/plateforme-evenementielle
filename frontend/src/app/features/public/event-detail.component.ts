@@ -13,6 +13,7 @@ import { Registration } from '../registrations/registration.models';
 import { PaymentsService } from '../payments/payments.service';
 import { PhoneInputComponent } from '../../shared/phone-input.component';
 import { EventCoverComponent } from '../../shared/event-cover.component';
+import { IconComponent } from '../../shared/icon.component';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
 import { EventPublic, EventTicket, IdentiteRequise, MyTicket } from '../events/event.models';
 import {
@@ -28,7 +29,7 @@ import { ApiError } from '../../core/models';
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, PhoneInputComponent, EventCoverComponent],
+  imports: [RouterLink, FormsModule, PhoneInputComponent, EventCoverComponent, IconComponent],
   template: `
     @if (event(); as e) {
       <app-event-cover class="h-56 rounded-xl" [nom]="e.nom" [coverUrl]="e.coverUrl" />
@@ -228,7 +229,13 @@ import { ApiError } from '../../core/models';
       <!-- STANDS -->
       @if (e.standsActifs) {
         <section class="card mt-6 p-5" id="stands">
-          <h2 class="font-semibold text-slate-800">Stands</h2>
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="font-semibold text-slate-800">Stands</h2>
+            <a [routerLink]="['/evenements', e.slug, 'frequentation']"
+               class="inline-flex items-center gap-1 text-sm text-brand-700 hover:underline">
+              <app-icon name="users" class="h-4 w-4" /> Fréquentation en direct
+            </a>
+          </div>
           @if (standReservation(); as sr) {
             <div class="mt-3 rounded-lg bg-slate-50 p-4 text-sm">
               <p class="font-medium text-slate-700">
