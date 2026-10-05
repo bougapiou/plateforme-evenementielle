@@ -49,6 +49,10 @@ import { IconComponent } from '../shared/icon.component';
            class="btn-ghost inline-flex items-center gap-1.5">
           <app-icon name="present" class="h-4 w-4" /> Présence en direct
         </a>
+        <a routerLink="/pointage-visiteurs" routerLinkActive="text-brand-700"
+           class="btn-ghost inline-flex items-center gap-1.5">
+          <app-icon name="building" class="h-4 w-4" /> Pointage des visiteurs
+        </a>
         <a routerLink="/scanner" routerLinkActive="text-brand-700"
            class="btn-ghost inline-flex items-center gap-1.5">
           <app-icon name="scan" class="h-4 w-4" /> Scanner

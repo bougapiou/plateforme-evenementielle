@@ -9,6 +9,7 @@ import bf.evenements.plateforme.stand.StandReservation;
 import bf.evenements.plateforme.stand.StandReservationRepository;
 import bf.evenements.plateforme.standvisit.dto.FrequentationResponse;
 import bf.evenements.plateforme.standvisit.dto.SignalerPassageRequest;
+import bf.evenements.plateforme.standvisit.dto.SignalerPassagesRequest;
 import bf.evenements.plateforme.standvisit.dto.StandFrequentationResponse;
 import bf.evenements.plateforme.standvisit.dto.StandInfoResponse;
 import java.util.Comparator;
@@ -20,10 +21,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Stand foot traffic, independent of ticket check-in and the laser sensors : a visitor signals
- * their own passage from a page specific to one stand (one link/QR per stand, printed or
- * displayed there). No account, no required identity. Everything here is public — the stats page
- * is a live ranking anyone can open, by design (see the project's product decision).
+ * Fréquentation des stands, indépendante du contrôle d'accès billetterie et des capteurs laser :
+ * un visiteur signale lui-même son passage depuis une page propre à un stand (un lien/QR par
+ * stand, imprimé ou affiché sur place). Aucun compte, aucune identité obligatoire. Tout est public
+ * ici — la page de statistiques est un classement en direct que tout le monde peut ouvrir, par
+ * choix de conception (voir la décision produit du projet).
  */
 @Service
 @RequiredArgsConstructor
@@ -52,25 +54,69 @@ public class VisiteStandService {
         visiteRepository.save(v);
     }
 
+    /** Le visiteur coche en une fois tous les stands visités, puis donne une identité (facultative) une seule fois. */
+    @Transactional
+    public int signalerPlusieurs(String slug, SignalerPassagesRequest request) {
+        Event event = resolveEvent(slug);
+        List<Stand> stands = standRepository.findAllById(request.standIds()).stream()
+                .filter(s -> s.getEvent().getId().equals(event.getId()))
+                .toList();
+        if (stands.isEmpty()) {
+            throw new ResourceNotFoundException("Aucun stand valide pour cet événement");
+        }
+        String nom = blankToNull(request.nom());
+        String prenom = blankToNull(request.prenom());
+        String telephone = blankToNull(request.telephone());
+        List<VisiteStand> visites = stands.stream().map(s -> {
+            VisiteStand v = new VisiteStand();
+            v.setEvent(event);
+            v.setStand(s);
+            v.setNom(nom);
+            v.setPrenom(prenom);
+            v.setTelephone(telephone);
+            return v;
+        }).toList();
+        visiteRepository.saveAll(visites);
+        return visites.size();
+    }
+
     @Transactional(readOnly = true)
     public FrequentationResponse stats(String slug) {
         Event event = resolveEvent(slug);
-        Map<UUID, Long> parStand = visiteRepository.countByStandForEvent(event.getId()).stream()
+        Map<UUID, VisiteStandRepository.StandCountDetail> parStand = visiteRepository
+                .countDetailByStandForEvent(event.getId()).stream()
                 .collect(java.util.stream.Collectors.toMap(
-                        VisiteStandRepository.StandCount::getStandId, VisiteStandRepository.StandCount::getTotal));
+                        VisiteStandRepository.StandCountDetail::getStandId, d -> d));
 
         List<StandFrequentationResponse> stands = standRepository
                 .findByEventIdOrderByNumeroAsc(event.getId()).stream()
-                .map(s -> new StandFrequentationResponse(s.getId(), s.getNumero(), s.getStandType().getNom(),
-                        exposantNom(s.getId()), parStand.getOrDefault(s.getId(), 0L)))
+                .map(s -> {
+                    VisiteStandRepository.StandCountDetail d = parStand.get(s.getId());
+                    long identifiees = d == null ? 0L : d.getIdentifiees();
+                    long anonymes = d == null ? 0L : d.getAnonymes();
+                    return new StandFrequentationResponse(s.getId(), s.getNumero(), s.getStandType().getNom(),
+                            exposantNom(s.getId()), identifiees + anonymes, identifiees, anonymes);
+                })
                 .sorted(Comparator.comparingLong(StandFrequentationResponse::visites).reversed())
                 .toList();
 
-        long total = stands.stream().mapToLong(StandFrequentationResponse::visites).sum();
-        return new FrequentationResponse(event.getNom(), total, stands);
+        long totalIdentifiees = stands.stream().mapToLong(StandFrequentationResponse::visitesIdentifiees).sum();
+        long totalAnonymes = stands.stream().mapToLong(StandFrequentationResponse::visitesAnonymes).sum();
+        return new FrequentationResponse(event.getNom(), totalIdentifiees + totalAnonymes,
+                totalIdentifiees, totalAnonymes, stands);
     }
 
-    /** First structure or user name behind an active reservation of this stand, if any. */
+    @Transactional(readOnly = true)
+    public StandFrequentationResponse standStats(String slug, UUID standId) {
+        Stand stand = resolveStand(slug, standId);
+        VisiteStandRepository.StandCountDetail d = visiteRepository.countDetailForStand(standId);
+        long identifiees = d == null || d.getIdentifiees() == null ? 0L : d.getIdentifiees();
+        long anonymes = d == null || d.getAnonymes() == null ? 0L : d.getAnonymes();
+        return new StandFrequentationResponse(stand.getId(), stand.getNumero(), stand.getStandType().getNom(),
+                exposantNom(stand.getId()), identifiees + anonymes, identifiees, anonymes);
+    }
+
+    /** Nom de la structure ou de l'utilisateur derrière une réservation active de ce stand, s'il y en a. */
     private String exposantNom(UUID standId) {
         List<StandReservation> actives = reservationRepository.findActiveByStand(standId);
         if (actives.isEmpty()) {

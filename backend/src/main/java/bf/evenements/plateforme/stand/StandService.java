@@ -1,5 +1,6 @@
 package bf.evenements.plateforme.stand;
 
+import bf.evenements.plateforme.common.exception.BusinessException;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.event.Event;
 import bf.evenements.plateforme.event.EventRepository;
@@ -54,6 +55,19 @@ public class StandService {
         Stand stand = standRepository.findById(standId)
                 .filter(s -> s.getEvent().getId().equals(eventId))
                 .orElseThrow(() -> ResourceNotFoundException.of("Stand", standId));
+        if (request.numero() != null) {
+            String numero = request.numero().trim();
+            if (numero.isBlank()) {
+                throw new BusinessException("STAND_NUMERO_INVALIDE", "Le numéro du stand ne peut pas être vide.");
+            }
+            if (numero.length() > 200) {
+                throw new BusinessException("STAND_NUMERO_INVALIDE", "Le numéro du stand est limité à 200 caractères.");
+            }
+            if (!numero.equals(stand.getNumero()) && standRepository.existsByEventIdAndNumero(eventId, numero)) {
+                throw new BusinessException("STAND_NUMERO_DEJA_UTILISE", "Ce numéro de stand est déjà utilisé.");
+            }
+            stand.setNumero(numero);
+        }
         if (request.positionX() != null) {
             stand.setPositionX(request.positionX());
         }

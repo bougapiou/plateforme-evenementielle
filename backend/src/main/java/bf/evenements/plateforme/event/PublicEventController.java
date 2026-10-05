@@ -50,6 +50,12 @@ public class PublicEventController {
         return publicEventService.live();
     }
 
+    @GetMapping("/events-with-stands")
+    @Operation(summary = "Événements publiés proposant des stands, pour le module fréquentation des stands")
+    public List<EventSummary> eventsWithStands() {
+        return publicEventService.withStands();
+    }
+
     @GetMapping("/events/{slug}")
     @Operation(summary = "Page publique d'un événement")
     public EventPublicResponse event(@PathVariable String slug) {

@@ -229,12 +229,18 @@ import { ApiError } from '../../core/models';
       <!-- STANDS -->
       @if (e.standsActifs) {
         <section class="card mt-6 p-5" id="stands">
-          <div class="flex items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="font-semibold text-slate-800">Stands</h2>
-            <a [routerLink]="['/evenements', e.slug, 'frequentation']"
-               class="inline-flex items-center gap-1 text-sm text-brand-700 hover:underline">
-              <app-icon name="users" class="h-4 w-4" /> Fréquentation en direct
-            </a>
+            <div class="flex flex-wrap items-center gap-3">
+              <a [routerLink]="['/evenements', e.slug, 'pointage', 'signaler']"
+                 class="inline-flex items-center gap-1 text-sm text-brand-700 hover:underline">
+                <app-icon name="check" class="h-4 w-4" /> Signaler mon passage
+              </a>
+              <a [routerLink]="['/evenements', e.slug, 'pointage']"
+                 class="inline-flex items-center gap-1 text-sm text-brand-700 hover:underline">
+                <app-icon name="users" class="h-4 w-4" /> Pointage en direct
+              </a>
+            </div>
           </div>
           @if (standReservation(); as sr) {
             <div class="mt-3 rounded-lg bg-slate-50 p-4 text-sm">

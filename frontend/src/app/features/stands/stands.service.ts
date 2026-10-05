@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiBase } from '../../core/api';
 import { Page } from '../../core/models';
-import { Stand, StandReservation, StandType, StandTypePayload } from './stand.models';
+import { Stand, StandReservation, StandStatus, StandType, StandTypePayload } from './stand.models';
 
 @Injectable({ providedIn: 'root' })
 export class StandsService extends ApiBase {
@@ -20,6 +20,13 @@ export class StandsService extends ApiBase {
   }
   standsForEvent(eventId: string): Observable<Stand[]> {
     return this.get<Stand[]>(`/events/${eventId}/stands`);
+  }
+  updateStand(
+    eventId: string,
+    standId: string,
+    body: { numero?: string; positionX?: number; positionY?: number; statut?: StandStatus },
+  ): Observable<Stand> {
+    return this.http.patch<Stand>(`${this.base}/events/${eventId}/stands/${standId}`, body);
   }
   reservationsForEvent(eventId: string): Observable<Page<StandReservation>> {
     return this.get<Page<StandReservation>>(`/stand-reservations/for-event/${eventId}`, { size: 50 });

@@ -50,6 +50,18 @@ public class PublicEventService {
                 .stream().limit(50).map(EventSummary::from).toList();
     }
 
+    /** Published events offering stands — the ones where "fréquentation des stands" applies. */
+    @Transactional(readOnly = true)
+    public List<EventSummary> withStands() {
+        Specification<Event> spec = Specification.allOf(
+                EventSpecifications.statusIn(java.util.List.of(
+                        EventStatus.PUBLIE, EventStatus.INSCRIPTIONS_OUVERTES,
+                        EventStatus.INSCRIPTIONS_FERMEES, EventStatus.EN_COURS, EventStatus.TERMINE)),
+                EventSpecifications.standsActifs());
+        return eventRepository.findAll(spec, Sort.by("dateDebut"))
+                .stream().limit(50).map(EventSummary::from).toList();
+    }
+
     @Transactional(readOnly = true)
     public EventPublicResponse getBySlug(String slug) {
         Event event = eventRepository.findBySlug(slug)

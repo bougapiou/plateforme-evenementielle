@@ -70,7 +70,7 @@ public class StandTypeController {
     }
 
     @PatchMapping("/stands/{standId}")
-    @Operation(summary = "Positionner / (dés)activer un stand")
+    @Operation(summary = "Renommer / positionner / (dés)activer un stand")
     public StandResponse updateStand(@PathVariable UUID eventId, @PathVariable UUID standId,
                                      @RequestBody UpdateStandRequest request) {
         return standService.update(eventId, standId, request);

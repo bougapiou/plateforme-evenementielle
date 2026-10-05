@@ -8,17 +8,23 @@ import org.springframework.data.repository.query.Param;
 
 public interface VisiteStandRepository extends JpaRepository<VisiteStand, UUID> {
 
-    long countByStandId(UUID standId);
+    @Query("select v.stand.id as standId, "
+            + "sum(case when v.nom is not null or v.prenom is not null then 1L else 0L end) as identifiees, "
+            + "sum(case when v.nom is null and v.prenom is null then 1L else 0L end) as anonymes "
+            + "from VisiteStand v where v.event.id = :eventId group by v.stand.id")
+    List<StandCountDetail> countDetailByStandForEvent(@Param("eventId") UUID eventId);
 
-    long countByEventId(UUID eventId);
+    @Query("select "
+            + "sum(case when v.nom is not null or v.prenom is not null then 1L else 0L end) as identifiees, "
+            + "sum(case when v.nom is null and v.prenom is null then 1L else 0L end) as anonymes "
+            + "from VisiteStand v where v.stand.id = :standId")
+    StandCountDetail countDetailForStand(@Param("standId") UUID standId);
 
-    @Query("select v.stand.id as standId, count(v) as total from VisiteStand v "
-            + "where v.event.id = :eventId group by v.stand.id")
-    List<StandCount> countByStandForEvent(@Param("eventId") UUID eventId);
-
-    interface StandCount {
+    interface StandCountDetail {
         UUID getStandId();
 
-        long getTotal();
+        Long getIdentifiees();
+
+        Long getAnonymes();
     }
 }

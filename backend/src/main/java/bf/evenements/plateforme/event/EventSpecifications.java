@@ -31,6 +31,10 @@ public final class EventSpecifications {
         return (root, query, cb) -> root.get("id").in(ids);
     }
 
+    public static Specification<Event> standsActifs() {
+        return (root, query, cb) -> cb.isTrue(root.get("standsActifs"));
+    }
+
     public static Specification<Event> hasCategory(UUID categoryId) {
         return categoryId == null ? null
                 : (root, query, cb) -> cb.equal(root.get("category").get("id"), categoryId);

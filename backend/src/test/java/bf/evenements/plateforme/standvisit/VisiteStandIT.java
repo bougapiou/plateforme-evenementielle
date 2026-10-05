@@ -71,13 +71,80 @@ class VisiteStandIT extends AbstractIntegrationTest {
                 .when().post("/api/public/events/" + slug + "/stands/" + standId + "/passage")
                 .then().statusCode(400);
 
-        // the public ranking reflects both real visits
+        // the public ranking reflects both real visits, split identified / anonymous
         given().when().get("/api/public/events/" + slug + "/frequentation")
                 .then().statusCode(200)
                 .body("totalVisites", equalTo(2))
+                .body("totalIdentifiees", equalTo(1))
+                .body("totalAnonymes", equalTo(1))
                 .body("stands", hasSize(1))
                 .body("stands[0].visites", equalTo(2))
+                .body("stands[0].visitesIdentifiees", equalTo(1))
+                .body("stands[0].visitesAnonymes", equalTo(1))
                 .body("stands[0].numero", equalTo(numero));
+    }
+
+    private String[] publishedEventWithStands(String orga, String admin, long n, int quantite) {
+        var res = as(orga).body(Map.of(
+                        "nom", "Salon " + n,
+                        "dateDebut", "2027-10-01T08:00:00Z",
+                        "dateFin", "2027-10-10T18:00:00Z",
+                        "ville", "Ouagadougou",
+                        "standsActifs", true))
+                .when().post("/api/events").then().statusCode(201).extract().response();
+        String id = res.path("id");
+        String slug = res.path("slug");
+        as(orga).when().post("/api/events/" + id + "/submit").then().statusCode(200);
+        as(admin).when().post("/api/events/" + id + "/validate").then().statusCode(200);
+        as(orga).when().post("/api/events/" + id + "/publish").then().statusCode(200);
+        as(orga).body(Map.of("nom", "Stand Standard", "prixMontant", 100000, "quantiteTotale", quantite))
+                .when().post("/api/events/" + id + "/stand-types").then().statusCode(201);
+        return new String[] {id, slug};
+    }
+
+    @Test
+    void visitor_signals_several_stands_at_once_and_per_stand_stats_are_available() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("vsb-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+        String[] ev = publishedEventWithStands(orga, admin, n, 3);
+        String slug = ev[1];
+
+        var stands = given().when().get("/api/public/events/" + slug + "/stands")
+                .then().statusCode(200).body("$", hasSize(3)).extract().response();
+        String stand1 = stands.path("[0].id");
+        String stand2 = stands.path("[1].id");
+        String stand3 = stands.path("[2].id");
+
+        // ticking two stands at once, with a first name only
+        given().contentType(ContentType.JSON)
+                .body(Map.of("standIds", java.util.List.of(stand1, stand2), "prenom", "Awa"))
+                .when().post("/api/public/events/" + slug + "/passages")
+                .then().statusCode(201).body("enregistres", equalTo(2));
+
+        // no stand selected at all -> rejected before it reaches the service
+        given().contentType(ContentType.JSON).body(Map.of("standIds", java.util.List.of()))
+                .when().post("/api/public/events/" + slug + "/passages")
+                .then().statusCode(400);
+
+        given().when().get("/api/public/events/" + slug + "/stands/" + stand1 + "/frequentation")
+                .then().statusCode(200)
+                .body("visites", equalTo(1))
+                .body("visitesIdentifiees", equalTo(1))
+                .body("visitesAnonymes", equalTo(0));
+
+        given().when().get("/api/public/events/" + slug + "/stands/" + stand3 + "/frequentation")
+                .then().statusCode(200)
+                .body("visites", equalTo(0))
+                .body("visitesIdentifiees", equalTo(0))
+                .body("visitesAnonymes", equalTo(0));
+
+        given().when().get("/api/public/events/" + slug + "/frequentation")
+                .then().statusCode(200)
+                .body("totalVisites", equalTo(2))
+                .body("totalIdentifiees", equalTo(2))
+                .body("totalAnonymes", equalTo(0))
+                .body("stands", hasSize(3));
     }
 
     @Test

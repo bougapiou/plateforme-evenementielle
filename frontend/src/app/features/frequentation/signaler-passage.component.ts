@@ -44,7 +44,7 @@ import { StandInfo } from './frequentation.models';
             <div class="card mt-4 p-6 text-center">
               <app-icon name="check" class="mx-auto h-8 w-8 text-green-600" />
               <p class="mt-2 font-medium text-slate-800">Passage enregistré, merci !</p>
-              <a [routerLink]="['/evenements', s.eventSlug, 'frequentation']"
+              <a [routerLink]="['/evenements', s.eventSlug, 'pointage']"
                  class="mt-4 inline-flex items-center gap-1 text-sm text-brand-700 hover:underline">
                 <app-icon name="users" class="h-4 w-4" /> Voir la fréquentation des stands
               </a>

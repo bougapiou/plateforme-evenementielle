@@ -39,9 +39,43 @@ export const routes: Routes = [
         title: 'Présence en direct',
       },
       {
-        // Fréquentation des stands : module indépendant du contrôle d'accès et des capteurs —
-        // un visiteur signale son passage depuis la page propre à un stand (un lien/QR par
-        // stand), et le classement par stand est public.
+        // Pointage des visiteurs : module à part entière, indépendant des événements — un
+        // visiteur coche les stands (points de comptage) visités, sans lien avec la billetterie.
+        path: 'pointage-visiteurs',
+        loadComponent: () =>
+          import('./features/pointage/pointage-select.component').then(
+            (m) => m.PointageSelectComponent,
+          ),
+        title: 'Pointage des visiteurs',
+      },
+      {
+        path: 'pointage-visiteurs/stats',
+        loadComponent: () =>
+          import('./features/pointage/pointage-stats.component').then(
+            (m) => m.PointageStatsComponent,
+          ),
+        title: 'Pointage des visiteurs — statistiques',
+      },
+      {
+        path: 'pointage-visiteurs/rapport',
+        loadComponent: () =>
+          import('./features/pointage/pointage-report.component').then(
+            (m) => m.PointageReportComponent,
+          ),
+        title: 'Pointage des visiteurs — rapport global',
+      },
+      {
+        path: 'pointage-visiteurs/stands/:standId',
+        loadComponent: () =>
+          import('./features/pointage/pointage-stand-stats.component').then(
+            (m) => m.PointageStandStatsComponent,
+          ),
+        title: 'Pointage du stand',
+      },
+      {
+        // Un visiteur signale son passage depuis la page propre à un stand (un lien/QR par
+        // stand), et le classement par stand est public. (Module événementiel distinct, pour
+        // les stands réellement réservés dans le cadre d'un événement.)
         path: 'evenements/:slug/stands/:standId/passage',
         loadComponent: () =>
           import('./features/frequentation/signaler-passage.component').then(
@@ -50,12 +84,30 @@ export const routes: Routes = [
         title: 'Signaler mon passage',
       },
       {
-        path: 'evenements/:slug/frequentation',
+        // Sélection libre : le visiteur coche tous les stands visités en une fois (ou "Tout
+        // sélectionner"), puis donne une identité facultative une seule fois pour l'ensemble.
+        path: 'evenements/:slug/pointage/signaler',
+        loadComponent: () =>
+          import('./features/frequentation/signaler-passages.component').then(
+            (m) => m.SignalerPassagesComponent,
+          ),
+        title: 'Signaler mes passages',
+      },
+      {
+        path: 'evenements/:slug/pointage/stands/:standId',
+        loadComponent: () =>
+          import('./features/frequentation/stand-frequentation.component').then(
+            (m) => m.StandFrequentationComponent,
+          ),
+        title: 'Pointage du stand',
+      },
+      {
+        path: 'evenements/:slug/pointage',
         loadComponent: () =>
           import('./features/frequentation/frequentation-page.component').then(
             (m) => m.FrequentationPageComponent,
           ),
-        title: 'Fréquentation des stands',
+        title: 'Pointage des visiteurs',
       },
       {
         path: 'connexion',

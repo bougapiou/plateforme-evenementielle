@@ -14,10 +14,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * A visitor signalling their passage at a stand, from that stand's own public page (one link/QR
- * per stand). Identity is optional: a name and a phone number, kept only if the visitor chose to
- * give them. Independent of ticket check-in and the laser sensors — this counts foot traffic per
- * stand, not entry to the event.
+ * Un visiteur qui signale son passage à un stand, depuis la page publique propre à ce stand (un
+ * lien/QR par stand). L'identité est facultative : un nom et un numéro de téléphone, conservés
+ * seulement si le visiteur a choisi de les donner. Indépendant du contrôle d'accès billetterie et
+ * des capteurs laser — ceci compte la fréquentation par stand, pas l'entrée à l'événement.
  */
 @Entity
 @Table(name = "visites_stand")

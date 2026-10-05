@@ -1,4 +1,5 @@
 import { Component, OnDestroy, effect, inject, input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { IconComponent } from '../../shared/icon.component';
 import { FrequentationService } from './frequentation.service';
@@ -7,14 +8,14 @@ import { Frequentation } from './frequentation.models';
 const REFRESH_MS = 8000;
 
 /**
- * Page publique, pleine page : classement de fréquentation des stands d'un événement. Alimentée
- * par les passages que les visiteurs signalent depuis la page propre à chaque stand — aucun
- * compte, aucune billetterie impliquée.
+ * Page publique, pleine page : statistiques globales de fréquentation des stands d'un événement
+ * (total, dont identifiés / anonymes), classement cliquable vers le détail par stand. Alimentée
+ * par les passages que les visiteurs signalent — aucun compte, aucune billetterie impliquée.
  */
 @Component({
   selector: 'app-frequentation-page',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, RouterLink],
   template: `
     <div class="mx-auto max-w-2xl">
       @if (notFound()) {
@@ -30,7 +31,7 @@ const REFRESH_MS = 8000;
               <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">
                 {{ d.eventNom }}
               </p>
-              <h1 class="mt-1 text-xl font-bold text-slate-800">Fréquentation des stands</h1>
+              <h1 class="mt-1 text-xl font-bold text-slate-800">Pointage des visiteurs</h1>
             </div>
             <div class="text-right">
               <p class="text-3xl font-black tabular-nums text-brand-700">{{ d.totalVisites }}</p>
@@ -38,12 +39,18 @@ const REFRESH_MS = 8000;
             </div>
           </div>
           <p class="mt-1 text-sm text-slate-500">
+            Dont {{ d.totalIdentifiees }} avec nom renseigné et {{ d.totalAnonymes }} anonyme{{ d.totalAnonymes > 1 ? 's' : '' }}.
             Mise à jour automatique toutes les {{ REFRESH_MS / 1000 }} s.
           </p>
+          <a [routerLink]="['/evenements', slug(), 'pointage', 'signaler']"
+             class="mt-3 inline-flex items-center gap-1 text-sm text-brand-700 hover:underline">
+            <app-icon name="check" class="h-4 w-4" /> Signaler les stands que j'ai visités
+          </a>
 
           <div class="mt-6 space-y-2">
             @for (s of d.stands; track s.standId; let i = $index) {
-              <div class="card flex items-center gap-4 p-4">
+              <a [routerLink]="['/evenements', slug(), 'pointage', 'stands', s.standId]"
+                 class="card flex items-center gap-4 p-4 hover:border-brand-300">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
                       [class]="i === 0 ? 'bg-amber-100 text-amber-700'
                         : i === 1 ? 'bg-slate-200 text-slate-600'
@@ -64,7 +71,7 @@ const REFRESH_MS = 8000;
                   <p class="text-xl font-bold tabular-nums text-brand-700">{{ s.visites }}</p>
                   <p class="text-xs text-slate-400">passage{{ s.visites > 1 ? 's' : '' }}</p>
                 </div>
-              </div>
+              </a>
             } @empty {
               <div class="card p-6 text-center">
                 <app-icon name="users" class="mx-auto h-8 w-8 text-slate-300" />

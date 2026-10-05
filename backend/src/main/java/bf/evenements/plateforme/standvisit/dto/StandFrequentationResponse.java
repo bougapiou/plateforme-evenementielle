@@ -7,5 +7,7 @@ public record StandFrequentationResponse(
         String numero,
         String standTypeNom,
         String exposantNom,
-        long visites) {
+        long visites,
+        long visitesIdentifiees,
+        long visitesAnonymes) {
 }

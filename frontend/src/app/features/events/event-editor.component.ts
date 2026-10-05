@@ -447,21 +447,42 @@ type Tab =
         </ul>
 
         @if (stands().length) {
-          <h3 class="mt-6 font-semibold text-slate-700">Fréquentation des stands</h3>
+          <h3 class="mt-6 font-semibold text-slate-700">Pointage des visiteurs</h3>
           <p class="mt-1 text-sm text-slate-500">
-            Un lien propre à chaque stand, à afficher sur place (affiche ou écran) : les visiteurs
-            y signalent leur passage, sans compte.
-            <a [routerLink]="['/evenements', e.slug, 'frequentation']" target="_blank"
-               class="text-brand-700 hover:underline">Voir le classement public</a>
+            Un lien propre à chaque stand, à afficher sur place (affiche ou écran), ou la
+            <a [routerLink]="['/evenements', e.slug, 'pointage', 'signaler']" target="_blank"
+               class="text-brand-700 hover:underline">page de sélection libre</a>
+            (le visiteur coche les stands visités) : dans les deux cas, sans compte.
+            <a [routerLink]="['/evenements', e.slug, 'pointage']" target="_blank"
+               class="text-brand-700 hover:underline">Voir les statistiques publiques</a>
           </p>
           <ul class="mt-2 space-y-1 text-sm">
             @for (s of stands(); track s.id) {
               <li class="card flex flex-wrap items-center justify-between gap-2 p-3">
-                <span class="font-medium text-slate-700">Stand {{ s.numero }} · {{ s.standTypeNom }}</span>
-                <a [routerLink]="['/evenements', e.slug, 'stands', s.id, 'passage']" target="_blank"
-                   class="text-xs text-brand-700 hover:underline">
-                  <code>{{ apiOrigin }}/evenements/{{ e.slug }}/stands/{{ s.id }}/passage</code>
-                </a>
+                @if (editingStandId() === s.id) {
+                  <span class="flex flex-wrap items-center gap-2">
+                    <input class="form-input w-32 py-1 text-sm" [(ngModel)]="standNumeroDraft"
+                           name="standNumero" (keyup.enter)="saveStandNumero(s)" />
+                    <button class="text-xs text-brand-700" (click)="saveStandNumero(s)">Enregistrer</button>
+                    <button class="text-xs text-slate-500" (click)="cancelStandNumeroEdit()">Annuler</button>
+                    @if (standNumeroError()) {
+                      <span class="text-xs text-red-600">{{ standNumeroError() }}</span>
+                    }
+                  </span>
+                } @else {
+                  <span class="flex items-center gap-2">
+                    <span class="font-medium text-slate-700">Stand {{ s.numero }} · {{ s.standTypeNom }}</span>
+                    <button class="text-xs text-brand-700" (click)="editStandNumero(s)">Renommer</button>
+                  </span>
+                }
+                <span class="flex flex-wrap items-center gap-2">
+                  <a [routerLink]="['/evenements', e.slug, 'stands', s.id, 'passage']" target="_blank"
+                     class="text-xs text-brand-700 hover:underline">
+                    <code>{{ apiOrigin }}/evenements/{{ e.slug }}/stands/{{ s.id }}/passage</code>
+                  </a>
+                  <a [routerLink]="['/evenements', e.slug, 'pointage', 'stands', s.id]" target="_blank"
+                     class="text-xs text-brand-700 hover:underline">Statistiques</a>
+                </span>
               </li>
             }
           </ul>
@@ -690,6 +711,9 @@ export class EventEditorComponent implements OnDestroy {
   series = signal<EventSeries | null>(null);
   editingStandTypeId = signal<string | null>(null);
   standError = signal<string | null>(null);
+  editingStandId = signal<string | null>(null);
+  standNumeroDraft = '';
+  standNumeroError = signal<string | null>(null);
 
   tab = signal<Tab>('infos');
   tabs: { id: Tab; label: string }[] = [
@@ -983,6 +1007,28 @@ export class EventEditorComponent implements OnDestroy {
       },
       error: (err: HttpErrorResponse) =>
         this.standError.set((err.error as ApiError)?.message ?? 'Suppression impossible.'),
+    });
+  }
+  editStandNumero(s: Stand): void {
+    this.editingStandId.set(s.id);
+    this.standNumeroDraft = s.numero;
+    this.standNumeroError.set(null);
+  }
+  cancelStandNumeroEdit(): void {
+    this.editingStandId.set(null);
+    this.standNumeroError.set(null);
+  }
+  saveStandNumero(s: Stand): void {
+    const numero = this.standNumeroDraft.trim();
+    if (!numero) return;
+    this.standNumeroError.set(null);
+    this.standsService.updateStand(this.id(), s.id, { numero }).subscribe({
+      next: () => {
+        this.editingStandId.set(null);
+        this.standsService.standsForEvent(this.id()).subscribe((x) => this.stands.set(x));
+      },
+      error: (err: HttpErrorResponse) =>
+        this.standNumeroError.set((err.error as ApiError)?.message ?? 'Renommage impossible.'),
     });
   }
 

@@ -15,16 +15,28 @@ export interface SignalerPassagePayload {
   telephone?: string;
 }
 
+export interface SignalerPassagesPayload extends SignalerPassagePayload {
+  standIds: string[];
+}
+
+export interface SignalerPassagesResult {
+  enregistres: number;
+}
+
 export interface StandFrequentation {
   standId: string;
   numero: string;
   standTypeNom: string;
   exposantNom?: string;
   visites: number;
+  visitesIdentifiees: number;
+  visitesAnonymes: number;
 }
 
 export interface Frequentation {
   eventNom: string;
   totalVisites: number;
+  totalIdentifiees: number;
+  totalAnonymes: number;
   stands: StandFrequentation[];
 }

@@ -109,4 +109,5 @@ export class EventsService extends ApiBase {
   liveEvents(): Observable<EventSummary[]> {
     return this.get<EventSummary[]>('/public/live-events');
   }
+
 }

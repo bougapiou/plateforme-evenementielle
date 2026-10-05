@@ -56,7 +56,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST,
                                 "/api/sensors/entry", "/api/sensors/exit").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST,
-                                "/api/public/events/*/stands/*/passage").permitAll()
+                                "/api/public/events/*/stands/*/passage", "/api/public/events/*/passages",
+                                "/api/public/pointage/passages").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
                                 "/api/sensors/ping").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, PUBLIC_GET).permitAll()

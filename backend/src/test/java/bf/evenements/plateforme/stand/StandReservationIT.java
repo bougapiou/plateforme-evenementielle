@@ -213,4 +213,33 @@ class StandReservationIT extends AbstractIntegrationTest {
                 .when().post("/api/stand-reservations")
                 .then().statusCode(201).body("statut", equalTo("RESERVE_TEMP"));
     }
+
+    @Test
+    void organiser_can_rename_a_stand_and_duplicate_or_blank_numero_is_refused() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("sr-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+        String[] ev = publishedEventWithStands(orga, admin);
+        String eventId = ev[0];
+        String slug = ev[1];
+
+        as(orga).body(Map.of("nom", "Standard", "prixMontant", 100000, "quantiteTotale", 2))
+                .when().post("/api/events/" + eventId + "/stand-types").then().statusCode(201);
+        var stands = given().when().get("/api/public/events/" + slug + "/stands")
+                .then().statusCode(200).extract().response();
+        String standId1 = stands.path("[0].id");
+        String numero2 = stands.path("[1].numero");
+
+        as(orga).body(Map.of("numero", "Entrée Nord"))
+                .when().patch("/api/events/" + eventId + "/stands/" + standId1)
+                .then().statusCode(200).body("numero", equalTo("Entrée Nord"));
+
+        as(orga).body(Map.of("numero", numero2))
+                .when().patch("/api/events/" + eventId + "/stands/" + standId1)
+                .then().statusCode(422).body("code", equalTo("STAND_NUMERO_DEJA_UTILISE"));
+
+        as(orga).body(Map.of("numero", "   "))
+                .when().patch("/api/events/" + eventId + "/stands/" + standId1)
+                .then().statusCode(422).body("code", equalTo("STAND_NUMERO_INVALIDE"));
+    }
 }

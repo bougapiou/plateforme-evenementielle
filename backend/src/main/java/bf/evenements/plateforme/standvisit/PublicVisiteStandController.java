@@ -2,6 +2,9 @@ package bf.evenements.plateforme.standvisit;
 
 import bf.evenements.plateforme.standvisit.dto.FrequentationResponse;
 import bf.evenements.plateforme.standvisit.dto.SignalerPassageRequest;
+import bf.evenements.plateforme.standvisit.dto.SignalerPassagesRequest;
+import bf.evenements.plateforme.standvisit.dto.SignalerPassagesResponse;
+import bf.evenements.plateforme.standvisit.dto.StandFrequentationResponse;
 import bf.evenements.plateforme.standvisit.dto.StandInfoResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,9 +21,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Fréquentation des stands : one public page per stand where a visitor signals their passage, and
- * a public live ranking per event. No login — see SecurityConfig for the explicit POST exemption
- * (every other route here is a plain public GET).
+ * Fréquentation des stands : une page publique par stand où un visiteur signale son passage, et un
+ * classement public en direct par événement. Pas de connexion — voir SecurityConfig pour
+ * l'exemption POST explicite (toutes les autres routes ici sont de simples GET publics).
  */
 @RestController
 @RequestMapping("/api/public/events/{slug}")
@@ -44,9 +47,23 @@ public class PublicVisiteStandController {
         service.signaler(slug, standId, request);
     }
 
+    @PostMapping("/passages")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Signaler son passage à plusieurs stands en une fois (identité facultative)")
+    public SignalerPassagesResponse signalerPlusieurs(@PathVariable String slug,
+            @Valid @RequestBody SignalerPassagesRequest request) {
+        return new SignalerPassagesResponse(service.signalerPlusieurs(slug, request));
+    }
+
     @GetMapping("/frequentation")
-    @Operation(summary = "Classement public de fréquentation des stands")
+    @Operation(summary = "Statistiques globales de fréquentation des stands")
     public FrequentationResponse frequentation(@PathVariable String slug) {
         return service.stats(slug);
+    }
+
+    @GetMapping("/stands/{standId}/frequentation")
+    @Operation(summary = "Statistiques de fréquentation d'un seul stand")
+    public StandFrequentationResponse standFrequentation(@PathVariable String slug, @PathVariable UUID standId) {
+        return service.standStats(slug, standId);
     }
 }

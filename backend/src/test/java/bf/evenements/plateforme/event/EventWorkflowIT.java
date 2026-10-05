@@ -99,6 +99,10 @@ class EventWorkflowIT extends AbstractIntegrationTest {
                 .body("programme", hasSize(2))
                 .body("intervenants", hasSize(1))
                 .body("partenaires", hasSize(1));
+
+        // listed among the events offering stands — the fréquentation des stands module
+        given().when().get("/api/public/events-with-stands")
+                .then().statusCode(200).body("slug", hasItem(slug));
     }
 
     @Test

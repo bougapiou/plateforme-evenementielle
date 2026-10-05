@@ -30,7 +30,7 @@ public class Stand extends BaseEntity {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    @Column(nullable = false, length = 40)
+    @Column(nullable = false, length = 200)
     private String numero;
 
     @Column(name = "position_x")
