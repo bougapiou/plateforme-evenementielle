@@ -310,6 +310,13 @@ class _EventManageScreenState extends ConsumerState<EventManageScreen> {
     final live = _publicStatuts.contains(e.statut) && e.statut != 'TERMINE';
     return SectionCard(title: 'Sur place', children: [
       ActionTile(
+        icon: Icons.insights_outlined,
+        title: 'Statistiques & exports',
+        subtitle: "Par jour ou tout l'événement, flux capteurs, listes Excel / Word / PDF",
+        tone: KitTone.blue,
+        onTap: () => _open('/mes-evenements/${e.id}/rapports'),
+      ),
+      ActionTile(
         icon: Icons.badge_outlined,
         title: 'Accréditations et badges',
         subtitle: 'Conférenciers, exposants, presse, staff (QR + PDF)',

@@ -293,6 +293,14 @@ export const routes: Routes = [
           ),
         title: 'Détail des billets',
       },
+      {
+        path: 'rapports',
+        canActivate: [authGuard],
+        data: { permission: 'STATS_OWN_READ' },
+        loadComponent: () =>
+          import('./features/reports/reports.component').then((m) => m.ReportsComponent),
+        title: 'Statistiques & exports',
+      },
     ],
   },
   {

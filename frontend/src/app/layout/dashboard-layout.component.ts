@@ -117,6 +117,7 @@ export class DashboardLayoutComponent {
     { label: 'Contrôle à la porte', path: '/tableau-de-bord/controle', icon: 'scan', permission: 'CHECKIN_SCAN' },
     { label: 'Présence / Flux', path: '/tableau-de-bord/presence', icon: 'present', permission: 'CHECKIN_SCAN', exact: true },
     { label: 'Détail des billets', path: '/tableau-de-bord/presence/billets', icon: 'qr', permission: 'CHECKIN_SCAN' },
+    { label: 'Statistiques & exports', path: '/tableau-de-bord/rapports', icon: 'chart', permission: 'STATS_OWN_READ' },
     { label: 'Mes inscriptions', path: '/tableau-de-bord/inscriptions', icon: 'check' },
     { label: 'Mes billets', path: '/tableau-de-bord/billets', icon: 'ticket' },
     { label: 'Mes stands', path: '/tableau-de-bord/stands', icon: 'building' },
