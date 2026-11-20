@@ -19,6 +19,9 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Overrides Boot 3.3's Lombok (1.18.34), which crashes javac on JDK 24+
+             ("TypeTag :: UNKNOWN"). Still fine for the JDK 21 Docker build. -->
+        <lombok.version>1.18.48</lombok.version>
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
         <testcontainers.version>1.20.4</testcontainers.version>
