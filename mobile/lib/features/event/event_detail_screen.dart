@@ -11,6 +11,7 @@ import '../../core/widgets.dart';
 import '../../data/domain.dart';
 import '../purchase/guest_gate.dart';
 import '../shell/app_shell.dart';
+import 'programme_chart.dart';
 
 class _Bundle {
   final EventDetail event;
@@ -155,7 +156,13 @@ class _Body extends ConsumerWidget {
         if (e.hasActivities && e.programme.isNotEmpty) ...[
           const SizedBox(height: 20),
           _Section('Programme (${e.programme.length} activités)'),
-          ...e.programme.map((a) => _ActivityTile(a, slug: e.slug)),
+          const SizedBox(height: 4),
+          ProgrammeChart(
+            title: e.nom,
+            subtitle: Fmt.rangeShort(e.dateDebut, e.dateFin),
+            activities: e.programme,
+            cardBuilder: (a) => _ActivityTile(a, slug: e.slug),
+          ),
         ],
 
         // --- Intervenants ---
@@ -358,10 +365,26 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
   @override
   Widget build(BuildContext context) {
     final a = widget.a;
-    return Card(
+    final type = activityTypeStyle(a.typeActivite);
+    final slot = a.dateFin != null
+        ? '${Fmt.time(a.dateDebut)} – ${Fmt.time(a.dateFin)}'
+        : Fmt.time(a.dateDebut);
+    final small = Theme.of(context).textTheme.bodySmall;
+    return Container(
       clipBehavior: Clip.antiAlias,
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Column(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F0F172A), blurRadius: 4, offset: Offset(0, 1)),
+        ],
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: type.color, width: 4)),
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (a.imageUrl != null)
@@ -371,6 +394,27 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(children: [
+                  if (slot.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: type.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(slot,
+                          style: TextStyle(
+                              color: type.color, fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  const Spacer(),
+                  Text(type.label.toUpperCase(),
+                      style: const TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 0.8,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8))),
+                ]),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Expanded(
@@ -384,12 +428,12 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text([
-                  if (a.dateDebut != null)
-                    '${Fmt.dateTime(a.dateDebut)}${a.dateFin != null ? ' → ${Fmt.time(a.dateFin)}' : ''}',
-                  if (a.salle != null) 'Salle : ${a.salle}',
-                  if (a.intervenant != null) a.intervenant!,
-                ].join('\n'), style: Theme.of(context).textTheme.bodySmall),
+                if (a.salle != null || a.lieu != null)
+                  Text('Lieu : ${a.salle ?? a.lieu}', style: small),
+                if (a.intervenant != null)
+                  Text('Intervenant : ${a.intervenant}', style: small),
+                if (a.moderateur != null)
+                  Text('Modérateur : ${a.moderateur}', style: small),
                 if (a.description != null) ...[
                   const SizedBox(height: 6),
                   Text(a.description!,
@@ -423,6 +467,7 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
