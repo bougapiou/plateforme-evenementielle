@@ -1,6 +1,8 @@
 package bf.evenements.plateforme.pointage;
 
+import bf.evenements.plateforme.common.exception.ConflictException;
 import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
+import bf.evenements.plateforme.pointage.dto.PointageStandRequest;
 import bf.evenements.plateforme.pointage.dto.PointageStandResponse;
 import bf.evenements.plateforme.pointage.dto.PointageStandStatResponse;
 import bf.evenements.plateforme.pointage.dto.PointageStatsResponse;
@@ -84,6 +86,38 @@ public class PointageService {
         long anonymes = d == null || d.getAnonymes() == null ? 0L : d.getAnonymes();
         return new PointageStandStatResponse(stand.getId(), stand.getNom(),
                 identifiees + anonymes, identifiees, anonymes);
+    }
+
+    /** Admin: adds a new choice at the end of the list. */
+    @Transactional
+    public PointageStandResponse createStand(PointageStandRequest request) {
+        String nom = request.nom().trim();
+        if (standRepository.existsByNomIgnoreCase(nom)) {
+            throw new ConflictException("Un choix porte déjà ce nom.");
+        }
+        PointageStand stand = new PointageStand(nom, standRepository.maxOrdre() + 1);
+        return PointageStandResponse.from(standRepository.save(stand));
+    }
+
+    /** Admin: renames an existing choice. */
+    @Transactional
+    public PointageStandResponse renameStand(UUID standId, PointageStandRequest request) {
+        PointageStand stand = standRepository.findById(standId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Stand", standId));
+        String nom = request.nom().trim();
+        if (standRepository.existsByNomIgnoreCaseAndIdNot(nom, standId)) {
+            throw new ConflictException("Un choix porte déjà ce nom.");
+        }
+        stand.setNom(nom);
+        return PointageStandResponse.from(stand);
+    }
+
+    /** Admin: removes a choice; its recorded passages are deleted with it (FK on delete cascade). */
+    @Transactional
+    public void deleteStand(UUID standId) {
+        PointageStand stand = standRepository.findById(standId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Stand", standId));
+        standRepository.delete(stand);
     }
 
     private static String blankToNull(String s) {

@@ -266,6 +266,16 @@ export const routes: Routes = [
         title: 'Organisateurs',
       },
       {
+        path: 'admin/pointage',
+        canActivate: [authGuard],
+        data: { permission: 'POINTAGE_MANAGE' },
+        loadComponent: () =>
+          import('./features/admin/admin-pointage.component').then(
+            (m) => m.AdminPointageComponent,
+          ),
+        title: 'Pointage des visiteurs',
+      },
+      {
         path: 'admin/evenements',
         canActivate: [authGuard],
         data: { permission: 'EVENT_VALIDATE' },
@@ -292,6 +302,14 @@ export const routes: Routes = [
             (m) => m.TicketFlowComponent,
           ),
         title: 'Détail des billets',
+      },
+      {
+        path: 'rapports',
+        canActivate: [authGuard],
+        data: { permission: 'STATS_OWN_READ' },
+        loadComponent: () =>
+          import('./features/reports/reports.component').then((m) => m.ReportsComponent),
+        title: 'Statistiques & exports',
       },
     ],
   },

@@ -14,6 +14,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { PhoneInputComponent } from '../../shared/phone-input.component';
 import { EventCoverComponent } from '../../shared/event-cover.component';
 import { IconComponent } from '../../shared/icon.component';
+import { ProgrammeChartComponent } from '../../shared/programme-chart.component';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
 import { EventPublic, EventTicket, IdentiteRequise, MyTicket } from '../events/event.models';
 import {
@@ -29,7 +30,7 @@ import { ApiError } from '../../core/models';
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, PhoneInputComponent, EventCoverComponent, IconComponent],
+  imports: [RouterLink, FormsModule, PhoneInputComponent, EventCoverComponent, IconComponent, ProgrammeChartComponent],
   template: `
     @if (event(); as e) {
       <app-event-cover class="h-56 rounded-xl" [nom]="e.nom" [coverUrl]="e.coverUrl" />
@@ -337,24 +338,9 @@ import { ApiError } from '../../core/models';
       @if (e.hasActivities && e.programme.length) {
         <section class="card mt-6 p-5">
           <h2 class="font-semibold text-slate-800">Programme</h2>
-          <ol class="mt-3 space-y-3">
-            @for (a of e.programme; track a.id) {
-              <li class="flex gap-3 text-sm">
-                <span class="w-14 shrink-0 font-semibold text-brand-700">{{ time(a.dateDebut) }}</span>
-                @if (a.imageUrl) {
-                  <img [src]="a.imageUrl" alt="" class="h-14 w-20 shrink-0 rounded-lg object-cover" />
-                }
-                <div>
-                  <p class="font-medium text-slate-800">
-                    {{ a.titre }}
-                    @if (a.acces === 'GRATUIT') {
-                      <span class="badge bg-green-100 text-green-800">Gratuit</span>
-                    } @else if (a.acces === 'PAYANT') {
-                      <span class="badge bg-amber-100 text-amber-800">Payant</span>
-                    }
-                  </p>
-                  <p class="text-slate-400">{{ a.salle }}{{ a.intervenant ? ' · ' + a.intervenant : '' }}</p>
-                  @if (a.description) { <p class="mt-1 text-slate-500">{{ a.description }}</p> }
+          <app-programme-chart class="mt-4" [activities]="e.programme" [title]="e.nom"
+                               [subtitle]="range(e)" [actions]="activityActions" />
+          <ng-template #activityActions let-a>
                   @if (a.acces === 'GRATUIT') {
                     @if (attendedTickets()[a.id]; as t) {
                       <div class="mt-2 flex max-w-sm items-center gap-3 rounded-lg border border-slate-200 p-2">
@@ -382,10 +368,7 @@ import { ApiError } from '../../core/models';
                   @if (attendError() && attendErrorFor() === a.id) {
                     <p class="mt-1 text-sm text-red-700">{{ attendError() }}</p>
                   }
-                </div>
-              </li>
-            }
-          </ol>
+          </ng-template>
         </section>
       }
 

@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 
 import bf.evenements.plateforme.support.AbstractIntegrationTest;
+import bf.evenements.plateforme.support.TestAuth;
 import io.restassured.http.ContentType;
 import java.util.List;
 import java.util.Map;
@@ -64,5 +65,57 @@ class PointageIT extends AbstractIntegrationTest {
     void unknown_stand_stats_is_a_404() {
         given().when().get("/api/public/pointage/stands/" + UUID.randomUUID() + "/stats")
                 .then().statusCode(404);
+    }
+
+    @Test
+    void admin_adds_renames_and_deletes_a_choice() {
+        String admin = TestAuth.adminToken();
+        String nom = "Choix test " + UUID.randomUUID();
+
+        String id = given().auth().oauth2(admin).contentType(ContentType.JSON)
+                .body(Map.of("nom", nom))
+                .when().post("/api/admin/pointage/stands")
+                .then().statusCode(201).body("nom", equalTo(nom))
+                .extract().path("id");
+
+        // duplicate names are refused
+        given().auth().oauth2(admin).contentType(ContentType.JSON)
+                .body(Map.of("nom", nom.toUpperCase()))
+                .when().post("/api/admin/pointage/stands")
+                .then().statusCode(409);
+
+        // the new choice is offered publicly, last in the list
+        List<String> ids = given().when().get("/api/public/pointage/stands")
+                .then().statusCode(200).extract().jsonPath().getList("id");
+        org.hamcrest.MatcherAssert.assertThat(ids.get(ids.size() - 1), equalTo(id));
+
+        given().auth().oauth2(admin).contentType(ContentType.JSON)
+                .body(Map.of("nom", nom + " (renommé)"))
+                .when().put("/api/admin/pointage/stands/" + id)
+                .then().statusCode(200).body("nom", equalTo(nom + " (renommé)"));
+
+        given().contentType(ContentType.JSON).body(Map.of("standIds", List.of(id)))
+                .when().post("/api/public/pointage/passages")
+                .then().statusCode(201);
+
+        given().auth().oauth2(admin)
+                .when().delete("/api/admin/pointage/stands/" + id)
+                .then().statusCode(204);
+
+        given().when().get("/api/public/pointage/stands/" + id + "/stats")
+                .then().statusCode(404);
+    }
+
+    @Test
+    void non_admin_cannot_manage_choices() {
+        String participant = TestAuth.registerAndToken(
+                "pointage-" + UUID.randomUUID() + "@test.bf", "PARTICULIER");
+        given().auth().oauth2(participant).contentType(ContentType.JSON)
+                .body(Map.of("nom", "Interdit"))
+                .when().post("/api/admin/pointage/stands")
+                .then().statusCode(403);
+        given().contentType(ContentType.JSON).body(Map.of("nom", "Interdit"))
+                .when().post("/api/admin/pointage/stands")
+                .then().statusCode(401);
     }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/domain.dart';
 import '../data/organizer_events_repository.dart';
+import '../data/reports_repository.dart';
 import '../data/repositories.dart';
 import 'api_client.dart';
 import 'auth_repository.dart';
@@ -43,6 +44,8 @@ final organizersRepositoryProvider =
     Provider((ref) => OrganizersRepository(ref.watch(apiClientProvider)));
 final organizerEventsRepositoryProvider =
     Provider((ref) => OrganizerEventsRepository(ref.watch(apiClientProvider)));
+final reportsRepositoryProvider =
+    Provider((ref) => ReportsRepository(ref.watch(apiClientProvider)));
 
 /// Event categories (shared, cached for the session).
 final eventCategoriesProvider = FutureProvider<List<EventCategory>>(

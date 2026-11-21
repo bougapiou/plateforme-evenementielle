@@ -23,4 +23,18 @@ export class PointageService extends ApiBase {
   standStats(standId: string): Observable<PointageStandStat> {
     return this.get<PointageStandStat>(`/public/pointage/stands/${standId}/stats`);
   }
+
+  // --- Administration des choix (permission POINTAGE_MANAGE) ---
+  adminStands(): Observable<PointageStand[]> {
+    return this.get<PointageStand[]>('/admin/pointage/stands');
+  }
+  createStand(nom: string): Observable<PointageStand> {
+    return this.http.post<PointageStand>(`${this.base}/admin/pointage/stands`, { nom });
+  }
+  renameStand(id: string, nom: string): Observable<PointageStand> {
+    return this.http.put<PointageStand>(`${this.base}/admin/pointage/stands/${id}`, { nom });
+  }
+  deleteStand(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/admin/pointage/stands/${id}`);
+  }
 }

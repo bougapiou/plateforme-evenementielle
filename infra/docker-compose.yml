@@ -26,8 +26,12 @@ services:
     environment:
       MP_MAX_MESSAGES: 500
 
+  # Optional: the backend only ships the "local" storage provider for now.
+  # MinIO no longer publishes community images on Docker Hub, so this service
+  # is opt-in: `docker compose --profile s3 up -d` (pin a reachable image first).
   minio:
     image: minio/minio:latest
+    profiles: ["s3"]
     container_name: plateforme-minio
     command: server /data --console-address ":9001"
     environment:
