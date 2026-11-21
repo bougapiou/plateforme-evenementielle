@@ -51,6 +51,9 @@ public final class Permissions {
     public static final String NOTIFICATION_MANAGE = "NOTIFICATION_MANAGE";
     public static final String SETTINGS_MANAGE = "SETTINGS_MANAGE";
 
+    // --- Pointage des visiteurs (standalone counting module) ---
+    public static final String POINTAGE_MANAGE = "POINTAGE_MANAGE";
+
     /** Every known permission, used by the seeder. */
     public static final List<String> ALL = List.of(
             USER_READ, USER_MANAGE, ROLE_MANAGE, AUDIT_READ,
@@ -61,5 +64,5 @@ public final class Permissions {
             REGISTRATION_CREATE, REGISTRATION_MANAGE,
             PAYMENT_READ, PAYMENT_MANAGE, COMMISSION_MANAGE,
             CHECKIN_SCAN, STATS_GLOBAL_READ, STATS_OWN_READ,
-            NOTIFICATION_MANAGE, SETTINGS_MANAGE);
+            NOTIFICATION_MANAGE, SETTINGS_MANAGE, POINTAGE_MANAGE);
 }
