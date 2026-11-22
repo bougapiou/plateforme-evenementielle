@@ -213,12 +213,13 @@ type Tab =
               </p>
               <div class="mt-2 max-h-64 overflow-auto">
                 <table class="w-full text-xs">
-                  <thead class="text-left text-slate-500"><tr><th class="pr-2">Ligne</th><th class="pr-2">Titre</th><th class="pr-2">Début</th><th class="pr-2">Salle</th><th>Résultat</th></tr></thead>
+                  <thead class="text-left text-slate-500"><tr><th class="pr-2">Ligne</th><th class="pr-2">Titre</th><th class="pr-2">Début</th><th class="pr-2">Salle</th><th class="pr-2">Accès</th><th>Résultat</th></tr></thead>
                   <tbody>
                     @for (l of rep.lignes; track l.ligne) {
                       <tr class="border-t border-slate-100" [class.bg-red-50]="l.erreurs.length">
                         <td class="pr-2">{{ l.ligne }}</td><td class="pr-2">{{ l.titre || '—' }}</td>
                         <td class="pr-2">{{ l.debut || '—' }}</td><td class="pr-2">{{ l.salle || '—' }}</td>
+                        <td class="pr-2">{{ l.acces || '—' }}</td>
                         <td>{{ l.erreurs.length ? l.erreurs.join(' · ') : (l.activityId ? 'Importée' : 'OK') }}</td>
                       </tr>
                     }

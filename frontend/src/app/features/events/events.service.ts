@@ -18,7 +18,7 @@ export interface ImportReport {
   total: number;
   valides: number;
   importees: number;
-  lignes: { ligne: number; titre?: string; debut?: string; fin?: string; salle?: string; erreurs: string[]; activityId?: string }[];
+  lignes: { ligne: number; titre?: string; debut?: string; fin?: string; salle?: string; acces?: string; erreurs: string[]; activityId?: string }[];
 }
 
 @Injectable({ providedIn: 'root' })
