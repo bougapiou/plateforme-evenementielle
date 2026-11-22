@@ -77,8 +77,9 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public PageResponse<UserSummary> search(String search, UserType type, UserStatus status, String role,
-                                            Pageable pageable) {
+                                            boolean inclureInvites, Pageable pageable) {
         var spec = org.springframework.data.jpa.domain.Specification.allOf(
+                UserSpecifications.comptesSeulement(inclureInvites),
                 UserSpecifications.textSearch(search),
                 UserSpecifications.hasType(type),
                 UserSpecifications.hasStatus(status),

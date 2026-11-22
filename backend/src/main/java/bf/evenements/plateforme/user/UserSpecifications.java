@@ -36,4 +36,9 @@ public final class UserSpecifications {
             return cb.equal(root.join("roles").get("name"), roleName);
         };
     }
+
+    /** Comptes réels uniquement : exclut les comptes « invité » créés par un simple numéro de téléphone. */
+    public static Specification<User> comptesSeulement(boolean inclureInvites) {
+        return inclureInvites ? null : (root, query, cb) -> cb.isFalse(root.get("guest"));
+    }
 }

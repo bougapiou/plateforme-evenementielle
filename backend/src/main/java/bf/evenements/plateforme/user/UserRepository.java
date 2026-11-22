@@ -17,6 +17,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     /** Nombre de comptes portant un rôle (suppression d'un rôle personnalisé). */
     long countByRoles_Id(UUID roleId);
 
+    /** Nombre de comptes réels (hors visiteurs « invités ») portant un rôle — affiché aux admins. */
+    long countByRoles_IdAndGuestFalse(UUID roleId);
+
     /** Reuse an existing phone-only guest session (checkout without an e-mail). */
     Optional<User> findFirstByPhoneAndGuestTrueOrderByCreatedAtDesc(String phone);
 }

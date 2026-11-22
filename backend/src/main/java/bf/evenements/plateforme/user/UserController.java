@@ -61,8 +61,10 @@ public class UserController {
                                           @RequestParam(required = false) UserType type,
                                           @RequestParam(required = false) UserStatus status,
                                           @RequestParam(required = false) String role,
+                                          @RequestParam(defaultValue = "false") boolean invites,
                                           @PageableDefault(size = 20) Pageable pageable) {
-        return userService.search(search, type, status, role, pageable);
+        // Par défaut : seuls les comptes réels (les visiteurs sans compte, créés par téléphone, sont exclus).
+        return userService.search(search, type, status, role, invites, pageable);
     }
 
     @PostMapping

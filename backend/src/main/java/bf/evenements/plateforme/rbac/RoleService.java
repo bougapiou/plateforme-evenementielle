@@ -30,7 +30,7 @@ public class RoleService {
     @Transactional(readOnly = true)
     public List<RoleResponse> listRoles() {
         return roleRepository.findAll(org.springframework.data.domain.Sort.by("name")).stream()
-                .map(r -> RoleResponse.from(r, userRepository.countByRoles_Id(r.getId())))
+                .map(r -> RoleResponse.from(r, userRepository.countByRoles_IdAndGuestFalse(r.getId())))
                 .toList();
     }
 
@@ -57,7 +57,7 @@ public class RoleService {
         role.getPermissions().clear();
         applyPermissions(role, permissions);
         audit("ROLE_PERMISSIONS_UPDATED", role);
-        return RoleResponse.from(role, userRepository.countByRoles_Id(id));
+        return RoleResponse.from(role, userRepository.countByRoles_IdAndGuestFalse(id));
     }
 
     /** Description + permissions d'un rôle personnalisé (le nom, référencé partout, ne change pas). */
@@ -69,7 +69,7 @@ public class RoleService {
         role.getPermissions().clear();
         applyPermissions(role, request.permissions());
         audit("ROLE_UPDATED", role);
-        return RoleResponse.from(role, userRepository.countByRoles_Id(id));
+        return RoleResponse.from(role, userRepository.countByRoles_IdAndGuestFalse(id));
     }
 
     /** Supprime un rôle personnalisé qui n'est attribué à personne. */
