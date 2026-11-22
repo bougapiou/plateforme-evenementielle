@@ -45,11 +45,11 @@ public class RbacSeeder {
                     Permissions.EVENT_READ, Permissions.CHECKIN_SCAN));
 
     private static final Map<String, String> ROLE_DESCRIPTIONS = Map.of(
-            RoleNames.SUPER_ADMIN, "Administrateur de la plateforme (acces total)",
-            RoleNames.ORGANISATEUR, "Cree et gere ses propres evenements",
+            RoleNames.SUPER_ADMIN, "Administrateur de la plateforme (accès total)",
+            RoleNames.ORGANISATEUR, "Crée et gère ses propres événements",
             RoleNames.PARTICIPANT, "Particulier : consultation, inscription, billets",
-            RoleNames.STRUCTURE, "Entreprise / institution : inscriptions et reservation de stands",
-            RoleNames.PERSONNEL_CONTROLE, "Personnel de controle d'acces (scan des QR codes)");
+            RoleNames.STRUCTURE, "Entreprise / institution : inscriptions et réservation de stands",
+            RoleNames.PERSONNEL_CONTROLE, "Personnel de contrôle d'accès (scan des QR codes)");
 
     @EventListener(ApplicationReadyEvent.class)
     @Order(1)
@@ -77,6 +77,7 @@ public class RbacSeeder {
             return r;
         });
         role.setSystemRole(true);
+        role.setDescription(ROLE_DESCRIPTIONS.getOrDefault(name, name));
         // keep system roles authoritative: reset to the declared permission set
         role.getPermissions().clear();
         for (String pName : permissionNames) {

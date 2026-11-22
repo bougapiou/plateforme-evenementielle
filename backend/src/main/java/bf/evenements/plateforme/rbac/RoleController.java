@@ -57,4 +57,18 @@ public class RoleController {
                                           @Valid @RequestBody RoleRequest request) {
         return roleService.updatePermissions(id, request.permissions());
     }
+
+    @PutMapping("/roles/{id}")
+    @Operation(summary = "Modifier un role personnalise (description et permissions)")
+    public RoleResponse update(@PathVariable UUID id,
+                               @Valid @RequestBody bf.evenements.plateforme.rbac.dto.RoleUpdateRequest request) {
+        return roleService.update(id, request);
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/roles/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Supprimer un role personnalise non attribue")
+    public void delete(@PathVariable UUID id) {
+        roleService.delete(id);
+    }
 }

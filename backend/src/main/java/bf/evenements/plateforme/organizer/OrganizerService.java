@@ -101,6 +101,30 @@ public class OrganizerService {
         return OrganizerResponse.from(load(id));
     }
 
+    /**
+     * Compte organisateur créé par un administrateur : le profil organisateur est créé
+     * directement ACTIF (pas de demande à valider), pour que l'organisateur puisse
+     * créer ses événements dès sa première connexion. Sans effet si un profil existe déjà.
+     */
+    @Transactional
+    public void createActiveForAdmin(User user, String nomAffichage) {
+        if (organizerRepository.existsByUserId(user.getId())) {
+            return;
+        }
+        Organizer organizer = new Organizer();
+        organizer.setUser(user);
+        organizer.setNomAffichage(StringUtils.hasText(nomAffichage) ? nomAffichage.trim() : user.getFullName());
+        organizer.setContactEmail(user.getEmail());
+        organizer.setContactTelephone(user.getPhone());
+        organizer.setStatut(OrganizerStatus.ACTIF);
+        organizer.setApprouvePar(currentUser.requireId());
+        organizer.setApprouveLe(Instant.now());
+        organizer = organizerRepository.save(organizer);
+        auditService.record(currentUser.requireId(), currentUser.require().email(),
+                "ORGANIZER_CREATED_BY_ADMIN", "Organizer", organizer.getId().toString(), null,
+                "user=" + user.getEmail());
+    }
+
     @Transactional
     public OrganizerResponse approve(UUID id) {
         Organizer organizer = load(id);

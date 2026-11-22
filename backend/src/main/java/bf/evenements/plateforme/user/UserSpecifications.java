@@ -26,4 +26,14 @@ public final class UserSpecifications {
     public static Specification<User> hasStatus(UserStatus status) {
         return status == null ? null : (root, query, cb) -> cb.equal(root.get("status"), status);
     }
+
+    public static Specification<User> hasRole(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            return null;
+        }
+        return (root, query, cb) -> {
+            query.distinct(true);
+            return cb.equal(root.join("roles").get("name"), roleName);
+        };
+    }
 }

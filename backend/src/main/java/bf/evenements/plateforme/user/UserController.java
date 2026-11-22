@@ -60,8 +60,27 @@ public class UserController {
     public PageResponse<UserSummary> list(@RequestParam(required = false) String search,
                                           @RequestParam(required = false) UserType type,
                                           @RequestParam(required = false) UserStatus status,
+                                          @RequestParam(required = false) String role,
                                           @PageableDefault(size = 20) Pageable pageable) {
-        return userService.search(search, type, status, pageable);
+        return userService.search(search, type, status, role, pageable);
+    }
+
+    @PostMapping
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('" + Permissions.USER_MANAGE + "')")
+    @Operation(summary = "Créer un utilisateur (admin) — mot de passe saisi ou généré")
+    public bf.evenements.plateforme.user.dto.AdminCreateUserResponse create(
+            @Valid @RequestBody bf.evenements.plateforme.user.dto.AdminCreateUserRequest request) {
+        return userService.create(request);
+    }
+
+    @PostMapping("/{id}/password")
+    @PreAuthorize("hasAuthority('" + Permissions.USER_MANAGE + "')")
+    @Operation(summary = "Définir un nouveau mot de passe (admin) — saisi ou généré ; ferme les sessions")
+    public bf.evenements.plateforme.user.dto.AdminSetPasswordResponse setPassword(
+            @PathVariable UUID id,
+            @Valid @RequestBody bf.evenements.plateforme.user.dto.AdminSetPasswordRequest request) {
+        return userService.setPassword(id, request.password());
     }
 
     @GetMapping("/{id}")

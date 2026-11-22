@@ -7,6 +7,8 @@ import bf.evenements.plateforme.common.exception.ResourceNotFoundException;
 import bf.evenements.plateforme.common.security.CurrentUserProvider;
 import bf.evenements.plateforme.rbac.dto.RoleRequest;
 import bf.evenements.plateforme.rbac.dto.RoleResponse;
+import bf.evenements.plateforme.rbac.dto.RoleUpdateRequest;
+import bf.evenements.plateforme.user.UserRepository;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,13 +23,14 @@ public class RoleService {
 
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final UserRepository userRepository;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<RoleResponse> listRoles() {
         return roleRepository.findAll(org.springframework.data.domain.Sort.by("name")).stream()
-                .map(RoleResponse::from)
+                .map(r -> RoleResponse.from(r, userRepository.countByRoles_Id(r.getId())))
                 .toList();
     }
 
@@ -50,16 +53,46 @@ public class RoleService {
 
     @Transactional
     public RoleResponse updatePermissions(UUID id, Set<String> permissions) {
+        Role role = editable(id);
+        role.getPermissions().clear();
+        applyPermissions(role, permissions);
+        audit("ROLE_PERMISSIONS_UPDATED", role);
+        return RoleResponse.from(role, userRepository.countByRoles_Id(id));
+    }
+
+    /** Description + permissions d'un rôle personnalisé (le nom, référencé partout, ne change pas). */
+    @Transactional
+    public RoleResponse update(UUID id, RoleUpdateRequest request) {
+        Role role = editable(id);
+        role.setDescription(request.description() == null || request.description().isBlank()
+                ? null : request.description().trim());
+        role.getPermissions().clear();
+        applyPermissions(role, request.permissions());
+        audit("ROLE_UPDATED", role);
+        return RoleResponse.from(role, userRepository.countByRoles_Id(id));
+    }
+
+    /** Supprime un rôle personnalisé qui n'est attribué à personne. */
+    @Transactional
+    public void delete(UUID id) {
+        Role role = editable(id);
+        long n = userRepository.countByRoles_Id(id);
+        if (n > 0) {
+            throw new BusinessException("ROLE_IN_USE",
+                    "Ce rôle est attribué à " + n + " utilisateur(s) : retirez-le-leur d'abord.");
+        }
+        audit("ROLE_DELETED", role);
+        roleRepository.delete(role);
+    }
+
+    private Role editable(UUID id) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Role", id));
         if (role.isSystemRole()) {
             throw new BusinessException("SYSTEM_ROLE_LOCKED",
-                    "Les permissions d'un role systeme ne sont pas modifiables.");
+                    "Les rôles système ne sont pas modifiables : créez un rôle personnalisé.");
         }
-        role.getPermissions().clear();
-        applyPermissions(role, permissions);
-        audit("ROLE_PERMISSIONS_UPDATED", role);
-        return RoleResponse.from(role);
+        return role;
     }
 
     private void applyPermissions(Role role, Set<String> names) {

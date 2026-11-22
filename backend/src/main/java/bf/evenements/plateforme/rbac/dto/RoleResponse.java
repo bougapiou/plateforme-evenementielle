@@ -10,11 +10,18 @@ public record RoleResponse(
         String name,
         String description,
         boolean systemRole,
-        List<String> permissions) {
+        List<String> permissions,
+        /** Nombre de comptes portant ce rôle. */
+        long utilisateurs) {
 
     public static RoleResponse from(Role role) {
+        return from(role, 0);
+    }
+
+    public static RoleResponse from(Role role, long utilisateurs) {
         return new RoleResponse(
                 role.getId(), role.getName(), role.getDescription(), role.isSystemRole(),
-                role.getPermissions().stream().map(Permission::getName).sorted().toList());
+                role.getPermissions().stream().map(Permission::getName).sorted().toList(),
+                utilisateurs);
     }
 }
