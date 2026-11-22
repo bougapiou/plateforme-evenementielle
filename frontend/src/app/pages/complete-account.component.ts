@@ -63,7 +63,7 @@ import { PasswordInputComponent } from '../shared/password-input.component';
             <div>
               <label class="form-label" for="password">Mot de passe</label>
               <app-password-input inputId="password" formControlName="password" autocomplete="new-password" />
-              <p class="mt-1 text-xs text-slate-400">8 caractères minimum.</p>
+              <p class="mt-1 text-xs text-slate-400">12 caractères minimum, lettres et chiffres ou symboles, pas un mot de passe courant.</p>
             </div>
             <div>
               <label class="form-label" for="confirm">Confirmer le mot de passe</label>
@@ -99,7 +99,7 @@ export class CompleteAccountComponent {
 
   form = this.fb.nonNullable.group({
     email: [''],
-    password: ['', [Validators.required, Validators.minLength(8)]],
+    password: ['', [Validators.required, Validators.minLength(12)]],
     confirm: ['', [Validators.required]],
   });
 

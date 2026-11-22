@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { EventsService } from '../events/events.service';
 import { EventSummary } from '../events/event.models';
-import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { StatusBadgeComponent, statutLabel } from '../../shared/status-badge.component';
 import { formatDateRange } from '../../shared/format';
 
 @Component({
@@ -18,7 +18,7 @@ import { formatDateRange } from '../../shared/format';
              [(ngModel)]="search" (ngModelChange)="reload()" />
       <select class="form-input max-w-xs" [(ngModel)]="statut" (ngModelChange)="reload()">
         <option value="">Tous les statuts</option>
-        @for (s of statuses; track s) { <option [value]="s">{{ s }}</option> }
+        @for (s of statuses; track s) { <option [value]="s">{{ label(s) }}</option> }
       </select>
     </div>
 
@@ -33,6 +33,13 @@ import { formatDateRange } from '../../shared/format';
           </a>
           <div class="flex items-center gap-3">
             <app-status-badge [value]="e.statut" />
+            @if (e.masquePublic) {
+              <span class="badge bg-slate-200 text-slate-700" title="Invisible sur le site public">Masqué</span>
+            }
+            <button class="btn-ghost text-slate-600" (click)="toggleHidden(e)"
+                    [title]="e.masquePublic ? 'Réafficher sur le site public' : 'Événement de test ou doublon : le retirer du site public'">
+              {{ e.masquePublic ? 'Réafficher' : 'Masquer du public' }}
+            </button>
             @if (e.statut === 'SOUMIS') {
               <button class="btn-ghost text-green-700" (click)="act(e, 'validate')">Valider</button>
               <button class="btn-ghost text-red-700" (click)="reject(e)">Refuser</button>
@@ -75,6 +82,15 @@ export class AdminEventsComponent {
 
   constructor() {
     this.reload();
+  }
+
+  label = statutLabel;
+
+  toggleHidden(e: EventSummary): void {
+    this.service.setPublicHidden(e.id, !e.masquePublic).subscribe({
+      next: () => this.reload(),
+      error: (err) => alert(err?.error?.message ?? 'Action impossible.'),
+    });
   }
 
   range = (e: EventSummary) => formatDateRange(e.dateDebut, e.dateFin);

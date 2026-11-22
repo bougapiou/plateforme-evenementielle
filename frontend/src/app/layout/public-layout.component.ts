@@ -77,6 +77,7 @@ import { IconComponent } from '../shared/icon.component';
         <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-slate-500">
           <span>© {{ year }} — Plateforme Nationale de Gestion des Événements · Burkina Faso</span>
           <nav class="flex flex-wrap items-center gap-4">
+            <a routerLink="/confidentialite" class="hover:text-brand-700">Confidentialité</a>
             @if (!auth.isAuthenticated()) {
               <a routerLink="/connexion" class="hover:text-brand-700">Connexion</a>
               <a routerLink="/inscription" class="hover:text-brand-700">Créer un compte</a>

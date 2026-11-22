@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -38,6 +39,84 @@ public class CheckinController {
 
     private final CheckinService checkinService;
     private final EventStaffService staffService;
+    private final ControlService controlService;
+    private final bf.evenements.plateforme.common.config.AppProperties appProperties;
+
+    // --- hors ligne / sur place / affectation / auto-enregistrement ---
+
+    @GetMapping("/checkins/events/{eventId}/offline-pack")
+    @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "')")
+    @Operation(summary = "Télécharger la liste des billets valides (empreintes) pour scanner hors ligne")
+    public ControlService.OfflinePack offlinePack(@PathVariable UUID eventId) {
+        return controlService.offlinePack(eventId);
+    }
+
+    @PostMapping("/checkins/sync")
+    @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "')")
+    @Operation(summary = "Synchroniser des scans réalisés hors ligne (sans doublon grâce à clientRef)")
+    public List<ControlService.SyncResult> sync(@Valid @RequestBody List<@Valid ScanRequest> scans) {
+        return controlService.sync(scans);
+    }
+
+    public record OnSiteRequest(UUID activityId,
+                                @NotBlank @jakarta.validation.constraints.Size(max = 200) String nom,
+                                @NotBlank @jakarta.validation.constraints.Pattern(regexp = "^\\+?[0-9 ]{6,20}$",
+                                        message = "numéro de téléphone invalide") String telephone) {
+    }
+
+    @PostMapping("/checkins/events/{eventId}/sur-place")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "')")
+    @Operation(summary = "Inscription sur place : créer un billet gratuit pour un visiteur et le faire entrer")
+    public ControlService.OnSiteResponse onSite(@PathVariable UUID eventId, @Valid @RequestBody OnSiteRequest r) {
+        return controlService.registerOnSite(eventId, r.activityId(), r.nom(), r.telephone());
+    }
+
+    public record StaffActivitiesRequest(List<UUID> activityIds) {
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/events/{eventId}/staff/{userId}/activities")
+    @PreAuthorize("hasAuthority('" + Permissions.EVENT_UPDATE + "')")
+    @Operation(summary = "Affecter un agent de contrôle à des activités / salles (liste vide = tout l'événement)")
+    public java.util.Set<UUID> assignActivities(@PathVariable UUID eventId, @PathVariable UUID userId,
+                                                @RequestBody StaffActivitiesRequest r) {
+        return controlService.assignActivities(eventId, userId,
+                r.activityIds() == null ? List.of() : r.activityIds());
+    }
+
+    @PostMapping("/events/{eventId}/activities/{activityId}/auto-enregistrement")
+    @PreAuthorize("hasAuthority('" + Permissions.EVENT_UPDATE + "')")
+    @Operation(summary = "Activer / désactiver l'auto-enregistrement par QR affiché à l'entrée de la salle")
+    public ControlService.SelfCheckinConfig selfCheckin(@PathVariable UUID eventId, @PathVariable UUID activityId,
+                                                        @RequestParam boolean actif) {
+        return controlService.configureSelfCheckin(eventId, activityId, actif);
+    }
+
+    @GetMapping(value = "/events/{eventId}/activities/{activityId}/auto-enregistrement/qr.png",
+            produces = MediaType.IMAGE_PNG_VALUE)
+    @PreAuthorize("hasAuthority('" + Permissions.EVENT_UPDATE + "')")
+    @Operation(summary = "QR d'auto-enregistrement à imprimer et afficher à l'entrée de la salle")
+    public ResponseEntity<byte[]> selfCheckinQr(@PathVariable UUID eventId, @PathVariable UUID activityId) {
+        var cfg = controlService.configureSelfCheckin(eventId, activityId, true);
+        String url = appProperties.frontendBaseUrl() + "/presence/" + cfg.jeton();
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG)
+                .body(bf.evenements.plateforme.common.web.QrImages.png(url, 600));
+    }
+
+    @GetMapping("/public/auto-enregistrement/{jeton}")
+    @Operation(summary = "Session ouverte à l'auto-enregistrement (page publique)")
+    public ControlService.SelfCheckinInfo selfCheckinInfo(@PathVariable String jeton) {
+        return controlService.selfCheckinInfo(jeton);
+    }
+
+    public record SelfCheckinRequest(@NotBlank String telephone) {
+    }
+
+    @PostMapping("/public/auto-enregistrement/{jeton}")
+    @Operation(summary = "Confirmer sa présence à une session avec son numéro de téléphone")
+    public ScanResponse selfCheckinConfirm(@PathVariable String jeton, @Valid @RequestBody SelfCheckinRequest r) {
+        return controlService.selfCheckin(jeton, r.telephone());
+    }
 
     @GetMapping("/checkins/events")
     @PreAuthorize("hasAuthority('" + Permissions.CHECKIN_SCAN + "')")
@@ -110,7 +189,7 @@ public class CheckinController {
     @PreAuthorize("hasAuthority('" + Permissions.EVENT_UPDATE + "')")
     @Operation(summary = "Ajouter un membre du personnel de contrôle")
     public StaffView addStaff(@PathVariable UUID eventId, @Valid @RequestBody AddStaffRequest request) {
-        return staffService.add(eventId, request.email());
+        return staffService.add(eventId, request.email(), request.fonction());
     }
 
     @DeleteMapping("/events/{eventId}/staff/{userId}")
@@ -121,6 +200,7 @@ public class CheckinController {
         return ResponseEntity.noContent().build();
     }
 
-    public record AddStaffRequest(@NotBlank @Email String email) {
+    /** {@code fonction}: CONTROLE (default) or PROGRAMME (programme manager). */
+    public record AddStaffRequest(@NotBlank @Email String email, StaffFonction fonction) {
     }
 }

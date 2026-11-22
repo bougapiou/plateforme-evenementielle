@@ -13,6 +13,12 @@ import '../../data/domain.dart';
       'NETWORKING' => (label: 'Networking', color: const Color(0xFFC2410C)),
       'PAUSE' => (label: 'Pause', color: const Color(0xFF64748B)),
       'SPECTACLE' => (label: 'Spectacle', color: const Color(0xFFBE123C)),
+      'KEYNOTE' => (label: 'Keynote', color: const Color(0xFFA16207)),
+      'FORUM' => (label: 'Forum', color: const Color(0xFF6D28D9)),
+      'DEMONSTRATION' => (label: 'Démonstration', color: const Color(0xFF0E7490)),
+      'EXPOSITION' => (label: 'Exposition', color: const Color(0xFF15803D)),
+      'EMISSION_MEDIA' => (label: 'Émission média', color: const Color(0xFFDB2777)),
+      'GALA' => (label: 'Gala', color: const Color(0xFF9F1239)),
       _ => (label: 'Activité', color: const Color(0xFF475569)),
     };
 
@@ -43,19 +49,99 @@ class ProgrammeChart extends StatefulWidget {
 class _ProgrammeChartState extends State<ProgrammeChart> {
   static final _dayFmt = DateFormat('EEEE d MMMM', 'fr');
   final _collapsed = <String>{};
+  String _q = '';
+  String? _salle;
+  String? _type;
+  String? _theme;
 
-  List<(String, DateTime?, List<Activity>)> _days() {
-    final sorted = [...widget.activities]..sort((a, b) {
+  static String _key(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  static String _fold(String? s) => (s ?? '')
+      .toLowerCase()
+      .replaceAll(RegExp('[éèêë]'), 'e')
+      .replaceAll(RegExp('[àâä]'), 'a')
+      .replaceAll(RegExp('[îï]'), 'i')
+      .replaceAll(RegExp('[ôö]'), 'o')
+      .replaceAll(RegExp('[ùûü]'), 'u')
+      .replaceAll('ç', 'c');
+
+  bool _keep(Activity a) {
+    if (_salle != null && (a.salle ?? a.lieu) != _salle) return false;
+    if (_type != null && a.typeActivite != _type) return false;
+    if (_theme != null && a.theme != _theme) return false;
+    if (_q.trim().isNotEmpty) {
+      final hay = _fold([a.titre, a.intervenant, a.moderateur, a.description, a.salle, a.theme].join(' '));
+      if (!hay.contains(_fold(_q.trim()))) return false;
+    }
+    return true;
+  }
+
+  /// Days (key, date, sessions of the day, multi-day sessions running that day).
+  List<(String, DateTime?, List<Activity>, List<Activity>)> _days() {
+    final sorted = [...widget.activities.where(_keep)]..sort((a, b) {
         if (a.dateDebut == null || b.dateDebut == null) return 0;
         return a.dateDebut!.compareTo(b.dateDebut!);
       });
-    final days = <String, (String, DateTime?, List<Activity>)>{};
-    for (final a in sorted) {
-      final d = a.dateDebut?.toLocal();
-      final key = d == null ? '-' : '${d.year}-${d.month}-${d.day}';
-      days.putIfAbsent(key, () => (key, d, <Activity>[])).$3.add(a);
+    final days = <String, (String, DateTime?, List<Activity>, List<Activity>)>{};
+    (String, DateTime?, List<Activity>, List<Activity>) dayOf(DateTime? d) {
+      final key = d == null ? '-' : _key(d);
+      return days.putIfAbsent(key, () => (key, d, <Activity>[], <Activity>[]));
     }
-    return days.values.toList();
+    for (final a in sorted) {
+      final s = a.dateDebut?.toLocal();
+      if (s == null || !a.multiJours) {
+        dayOf(s).$3.add(a);
+        continue;
+      }
+      final e = a.dateFin!.toLocal().subtract(const Duration(milliseconds: 1));
+      for (var d = DateTime(s.year, s.month, s.day);
+          !d.isAfter(DateTime(e.year, e.month, e.day));
+          d = DateTime(d.year, d.month, d.day + 1)) {
+        dayOf(d).$4.add(a);
+      }
+    }
+    return days.values.toList()..sort((x, y) => x.$1.compareTo(y.$1));
+  }
+
+  List<String> _distinct(Iterable<String?> values) =>
+      (values.whereType<String>().where((v) => v.isNotEmpty).toSet().toList()..sort());
+
+  Widget _filters() {
+    final salles = _distinct(widget.activities.map((a) => a.salle ?? a.lieu));
+    final types = _distinct(widget.activities.map((a) => a.typeActivite));
+    final themes = _distinct(widget.activities.map((a) => a.theme));
+    Widget drop(String hint, String? value, List<String> items, String Function(String) label,
+            void Function(String?) onChanged) =>
+        DropdownButton<String?>(
+          value: value,
+          hint: Text(hint),
+          isDense: true,
+          items: [
+            DropdownMenuItem<String?>(value: null, child: Text(hint)),
+            ...items.map((v) => DropdownMenuItem<String?>(value: v, child: Text(label(v)))),
+          ],
+          onChanged: (v) => setState(() => onChanged(v)),
+        );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        TextField(
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            hintText: 'Rechercher (titre, intervenant…)',
+            isDense: true,
+          ),
+          onChanged: (v) => setState(() => _q = v),
+        ),
+        Wrap(spacing: 12, children: [
+          if (salles.length > 1) drop('Toutes les salles', _salle, salles, (v) => v, (v) => _salle = v),
+          if (types.length > 1)
+            drop('Tous les types', _type, types, (v) => activityTypeStyle(v).label, (v) => _type = v),
+          if (themes.isNotEmpty) drop('Tous les thèmes', _theme, themes, (v) => v, (v) => _theme = v),
+        ]),
+      ]),
+    );
   }
 
   @override
@@ -64,7 +150,13 @@ class _ProgrammeChartState extends State<ProgrammeChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.activities.length > 3) _filters(),
         _RootNode(title: widget.title, subtitle: widget.subtitle),
+        if (days.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Text('Aucune activité ne correspond à ces critères.'),
+          ),
         Padding(
           padding: const EdgeInsets.only(left: 16),
           child: Column(children: [
@@ -79,7 +171,7 @@ class _ProgrammeChartState extends State<ProgrammeChart> {
                       label: days[i].$2 == null
                           ? 'Date à préciser'
                           : _capitalize(_dayFmt.format(days[i].$2!)),
-                      count: days[i].$3.length,
+                      count: days[i].$3.length + days[i].$4.length,
                       collapsed: _collapsed.contains(days[i].$1),
                       onTap: () => setState(() {
                         final k = days[i].$1;
@@ -90,6 +182,26 @@ class _ProgrammeChartState extends State<ProgrammeChart> {
                       Padding(
                         padding: const EdgeInsets.only(left: 18),
                         child: Column(children: [
+                          if (days[i].$4.isNotEmpty)
+                            _Branch(
+                              last: days[i].$3.isEmpty,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('EN CONTINU',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          letterSpacing: 0.8,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF15803D))),
+                                  for (final a in days[i].$4)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: widget.cardBuilder(a),
+                                    ),
+                                ],
+                              ),
+                            ),
                           for (var j = 0; j < days[i].$3.length; j++)
                             _Branch(
                               last: j == days[i].$3.length - 1,

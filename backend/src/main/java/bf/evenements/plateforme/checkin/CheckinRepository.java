@@ -63,4 +63,7 @@ public interface CheckinRepository extends JpaRepository<Checkin, UUID> {
     /** All ticket scans (badges excluded) for one activity, oldest first. */
     List<Checkin> findByEventIdAndActivityIdAndTicketIdIsNotNullOrderByScannedAtAsc(
             UUID eventId, UUID activityId);
+
+    /** Offline-scan replay detection. */
+    Optional<Checkin> findFirstByClientRef(String clientRef);
 }

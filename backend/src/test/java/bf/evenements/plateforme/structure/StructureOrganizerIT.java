@@ -96,7 +96,7 @@ class StructureOrganizerIT extends AbstractIntegrationTest {
                 .body("statut", equalTo("ACTIF"));
 
         // after re-login the user carries organiser permissions
-        String refreshedToken = TestAuth.login(email, "Secret123");
+        String refreshedToken = TestAuth.login(email, "Secret123!Pne");
         given().header("Authorization", "Bearer " + refreshedToken)
                 .when().get("/api/users/me")
                 .then().statusCode(200)

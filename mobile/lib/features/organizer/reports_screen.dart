@@ -145,21 +145,55 @@ class _StatsTabState extends ConsumerState<_StatsTab>
                   trailing: Text(Fmt.money(r.parJour[i].$2.revenus)),
                 ),
               ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Rapport de bilan (PDF)'),
+              onPressed: () async {
+                try {
+                  await fetchAndPresentDocument(ref.read(apiClientProvider),
+                      path: '/reports/events/${widget.eventId}/bilan.pdf', filename: 'bilan-evenement.pdf');
+                } on ApiException catch (e) {
+                  if (context.mounted) showSnack(context, e.message, error: true);
+                }
+              },
+            ),
             if (r.parActivite.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
                 'Par activité',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
+              const Text(
+                'Taux de présence = personnes uniques scannées ÷ billets émis pour la session.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
               for (final a in r.parActivite)
                 ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
+                  isThreeLine: true,
                   title: Text(a.titre),
-                  subtitle: Text(Fmt.dateTime(a.debut)),
+                  subtitle: Text(
+                    '${Fmt.dateTime(a.debut)}${a.salle != null ? ' · ${a.salle}' : ''}\n'
+                    '${a.inscrits} inscrit(s)${a.surPlace > 0 ? ' dont ${a.surPlace} sur place' : ''}'
+                    '${a.capacite != null ? ' · capacité ${a.capacite}' : ''}'
+                    '${a.tauxRemplissage != null ? ' (${a.tauxRemplissage!.toStringAsFixed(0)} %)' : ''}',
+                  ),
                   trailing: Text(
-                    '${a.entrees} entrées\n${a.uniques} pers.',
+                    '${a.uniques} présent(s)\n'
+                    '${a.tauxPresence != null ? '${a.tauxPresence!.toStringAsFixed(0)} %' : '—'}',
                     textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: a.tauxPresence == null
+                          ? null
+                          : a.tauxPresence! >= 75
+                              ? const Color(0xFF15803D)
+                              : a.tauxPresence! < 50
+                                  ? const Color(0xFFB91C1C)
+                                  : null,
+                    ),
                   ),
                 ),
             ],

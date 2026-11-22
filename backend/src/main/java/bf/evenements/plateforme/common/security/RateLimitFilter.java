@@ -32,37 +32,62 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Value("${app.security.rate-limit-per-minute:20}")
     private int maxRequests;
 
+    /** Registrations / orders / free-ticket claims per IP and minute (anti-bot). */
+    @Value("${app.security.signup-rate-limit-per-minute:10}")
+    private int maxSignups;
+
     private final SecurityErrorWriter errorWriter;
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
 
     private record Window(Instant start, AtomicInteger count) {
     }
 
+    private static boolean isAuthCall(String uri) {
+        return uri.equals("/api/auth/login")
+                || uri.equals("/api/auth/register")
+                || uri.equals("/api/auth/guest")
+                || uri.equals("/api/auth/guest-quick")
+                || uri.equals("/api/auth/guest-lookup")
+                || uri.equals("/api/auth/password/forgot")
+                || uri.equals("/api/auth/password/reset")
+                || uri.startsWith("/api/auth/mfa/")
+                || uri.startsWith("/api/auth/otp/");
+    }
+
+    /** Sign-up-like calls a bot would hammer: registrations, orders, free tickets. */
+    private static boolean isSignupCall(String uri) {
+        return uri.startsWith("/api/registrations")
+                || uri.equals("/api/ticket-orders")
+                || (uri.startsWith("/api/activities/") && uri.endsWith("/attend"))
+                || (uri.startsWith("/api/public/") && uri.contains("/attend"))
+                || uri.startsWith("/api/public/auto-enregistrement/");
+    }
+
+    private int limitFor(String uri) {
+        if (isAuthCall(uri)) {
+            return maxRequests;
+        }
+        return isSignupCall(uri) ? maxSignups : 0;
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        if (maxRequests <= 0) {
-            return true;
-        }
-        String uri = request.getRequestURI();
-        return !("POST".equals(request.getMethod())
-                && (uri.equals("/api/auth/login")
-                        || uri.equals("/api/auth/register")
-                        || uri.equals("/api/auth/guest-quick")
-                        || uri.equals("/api/auth/guest-lookup")
-                        || uri.equals("/api/auth/password/forgot")
-                        || uri.equals("/api/auth/password/reset")));
+        return !"POST".equals(request.getMethod()) || limitFor(request.getRequestURI()) <= 0;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String key = HttpUtils.clientIp(request) + ":" + request.getRequestURI();
+        String uri = request.getRequestURI();
+        // Sign-up calls share one bucket per IP (all events / tickets together).
+        String key = HttpUtils.clientIp(request) + ":" + (isSignupCall(uri) ? "signup" : uri);
+        int max = limitFor(uri);
         Instant now = Instant.now();
         Window window = windows.compute(key, (k, existing) ->
                 (existing == null || now.isAfter(existing.start().plus(WINDOW)))
                         ? new Window(now, new AtomicInteger(0)) : existing);
 
-        if (window.count().incrementAndGet() > maxRequests) {
+        if (window.count().incrementAndGet() > max) {
             response.setHeader("Retry-After", String.valueOf(WINDOW.getSeconds()));
             errorWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED",
                     "Trop de tentatives. Réessayez dans une minute.");

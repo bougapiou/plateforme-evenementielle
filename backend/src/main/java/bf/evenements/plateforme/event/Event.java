@@ -103,6 +103,10 @@ public class Event extends BaseEntity {
     @Column(name = "validation_inscription", nullable = false)
     private boolean validationInscription = false;
 
+    /** Hidden from the public site (test or duplicate events), whatever its status. */
+    @Column(name = "masque_public", nullable = false)
+    private boolean masquePublic = false;
+
     @Column(name = "inscription_debut")
     private Instant inscriptionDebut;
 

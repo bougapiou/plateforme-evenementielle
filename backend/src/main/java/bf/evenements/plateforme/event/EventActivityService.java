@@ -35,7 +35,47 @@ public class EventActivityService {
     public List<ActivityResponse> list(UUID eventId) {
         eventService.loadManaged(eventId);
         return activityRepository.findByEventIdOrderByDateDebutAscOrdreAsc(eventId).stream()
-                .map(ActivityResponse::from).toList();
+                .map(ActivityResponse::forManager).toList();
+    }
+
+    /** Two sessions in the same room whose time slots overlap. */
+    public record Conflict(String salle, UUID activiteA, String titreA, UUID activiteB, String titreB,
+                           java.time.Instant debut) {
+    }
+
+    /**
+     * Room conflicts of the programme (ORG-05): same room (case and accents
+     * ignored), overlapping slots. A session without end is taken as 1 hour.
+     */
+    @Transactional(readOnly = true)
+    public List<Conflict> conflicts(UUID eventId) {
+        eventService.loadManaged(eventId);
+        List<EventActivity> all = activityRepository.findByEventIdOrderByDateDebutAscOrdreAsc(eventId).stream()
+                .filter(a -> a.getSalle() != null && !a.getSalle().isBlank()).toList();
+        java.util.List<Conflict> out = new java.util.ArrayList<>();
+        for (int i = 0; i < all.size(); i++) {
+            for (int j = i + 1; j < all.size(); j++) {
+                EventActivity a = all.get(i);
+                EventActivity b = all.get(j);
+                if (!roomKey(a.getSalle()).equals(roomKey(b.getSalle()))) {
+                    continue;
+                }
+                if (a.getDateDebut().isBefore(end(b)) && b.getDateDebut().isBefore(end(a))) {
+                    out.add(new Conflict(a.getSalle(), a.getId(), a.getTitre(), b.getId(), b.getTitre(),
+                            b.getDateDebut().isAfter(a.getDateDebut()) ? b.getDateDebut() : a.getDateDebut()));
+                }
+            }
+        }
+        return out;
+    }
+
+    private static java.time.Instant end(EventActivity a) {
+        return a.getDateFin() != null ? a.getDateFin() : a.getDateDebut().plus(java.time.Duration.ofHours(1));
+    }
+
+    private static String roomKey(String salle) {
+        return java.text.Normalizer.normalize(salle, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").replaceAll("\\s+", " ").trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     @Transactional
@@ -46,7 +86,7 @@ public class EventActivityService {
         apply(activity, request, eventId);
         activity = activityRepository.save(activity); // needs an id for the ticket link
         syncAccess(activity, request.resolvedAcces());
-        return ActivityResponse.from(activity);
+        return ActivityResponse.forManager(activity);
     }
 
     @Transactional
@@ -55,7 +95,7 @@ public class EventActivityService {
         EventActivity activity = load(eventId, activityId);
         apply(activity, request, eventId);
         syncAccess(activity, request.resolvedAcces());
-        return ActivityResponse.from(activity);
+        return ActivityResponse.forManager(activity);
     }
 
     @Transactional
@@ -122,6 +162,10 @@ public class EventActivityService {
         return activity;
     }
 
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
+    }
+
     private void apply(EventActivity a, ActivityRequest r, UUID eventId) {
         a.setTitre(r.titre().trim());
         a.setDescription(r.description());
@@ -133,6 +177,9 @@ public class EventActivityService {
         a.setIntervenant(r.intervenant());
         a.setModerateur(r.moderateur());
         a.setImageUrl(r.imageUrl());
+        a.setTheme(blankToNull(r.theme()));
+        a.setFormat(r.format() == null ? ActivityFormat.SUR_PLACE : r.format());
+        a.setLienDiffusion(a.getFormat() == ActivityFormat.SUR_PLACE ? null : blankToNull(r.lienDiffusion()));
         a.setCapacite(r.capacite());
         if (r.ordre() != null) {
             a.setOrdre(r.ordre());

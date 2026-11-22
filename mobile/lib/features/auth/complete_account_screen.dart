@@ -104,10 +104,10 @@ class _CompleteAccountScreenState extends ConsumerState<CompleteAccountScreen> {
               controller: _password,
               decoration: const InputDecoration(
                 labelText: 'Mot de passe',
-                helperText: '8 caractères minimum',
+                helperText: '12 caractères minimum',
               ),
               validator: (v) =>
-                  (v == null || v.length < 8) ? '8 caractères minimum' : null,
+                  (v == null || v.length < 12) ? '12 caractères minimum' : null,
             ),
             const SizedBox(height: 12),
             PasswordField(

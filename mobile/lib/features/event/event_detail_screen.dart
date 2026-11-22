@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../core/agenda.dart';
+import '../../core/config.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/documents.dart';
@@ -67,9 +71,26 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   void _refresh() => setState(() => _future = _load());
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    Agenda.load();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Détail de l\'événement')),
+      appBar: AppBar(title: const Text('Détail de l\'événement'), actions: [
+        IconButton(
+          tooltip: 'Partager sur WhatsApp',
+          icon: const Icon(Icons.share),
+          // The /partage link shows the event's title, date and cover in the preview.
+          onPressed: () {
+            final link = '${AppConfig.apiOrigin}/partage/evenements/${widget.slug}';
+            launchUrl(Uri.parse('https://wa.me/?text=${Uri.encodeComponent(link)}'),
+                mode: LaunchMode.externalApplication);
+          },
+        ),
+      ]),
       body: FutureView<_Bundle>(
         future: _future,
         onRetry: _refresh,
@@ -157,6 +178,22 @@ class _Body extends ConsumerWidget {
           const SizedBox(height: 20),
           _Section('Programme (${e.programme.length} activités)'),
           const SizedBox(height: 4),
+          ValueListenableBuilder<Set<String>>(
+            valueListenable: Agenda.starred,
+            builder: (context, starred, _) {
+              final mine = e.programme.where((a) => starred.contains(a.id)).toList();
+              if (mine.isEmpty) return const SizedBox.shrink();
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.star, color: Color(0xFFD97706)),
+                  title: Text('Mon programme (${mine.length} session(s))'),
+                  subtitle: const Text('Ajouter au calendrier du téléphone (.ics)'),
+                  trailing: const Icon(Icons.event_available),
+                  onTap: () => Agenda.export('mon-programme-${e.slug}.ics', Agenda.ics(e.nom, e.lieu, mine)),
+                ),
+              );
+            },
+          ),
           ProgrammeChart(
             title: e.nom,
             subtitle: Fmt.rangeShort(e.dateDebut, e.dateFin),
@@ -342,11 +379,66 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
   bool _joined = false;
   String? _error;
 
+  String? _lien;
+
+  /// Visitor without an account: name + phone are enough (guest session).
+  Future<bool> _guestSignIn() async {
+    final nom = TextEditingController();
+    final tel = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("S'inscrire à cette session"),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Pas besoin de compte : votre nom et votre téléphone suffisent.'),
+          TextField(controller: nom, decoration: const InputDecoration(labelText: 'Nom et prénom')),
+          TextField(
+              controller: tel,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: 'Téléphone')),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => ctx.push('/confidentialite'),
+            child: const Text('Confidentialité et mentions légales', style: TextStyle(fontSize: 12)),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => ctx.push('/connexion'), child: const Text("J'ai un compte")),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Continuer')),
+        ],
+      ),
+    );
+    if (ok != true) return false;
+    final phone = tel.text.trim();
+    if (nom.text.trim().isEmpty || !RegExp(r'^\+?[0-9 ]{6,20}$').hasMatch(phone)) {
+      setState(() => _error = 'Renseignez votre nom et un numéro de téléphone valide.');
+      return false;
+    }
+    await ref.read(authControllerProvider.notifier)
+        .guestSession(firstName: '', lastName: nom.text.trim(), phone: phone);
+    return true;
+  }
+
+  Future<void> _loadDiffusion() async {
+    setState(() => _error = null);
+    try {
+      final lien = await ref.read(ticketsRepositoryProvider).activityDiffusion(widget.a.id);
+      if (mounted) setState(() => _lien = lien);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    }
+  }
+
   Future<void> _participate() async {
     final signedIn = ref.read(authControllerProvider).valueOrNull != null;
     if (!signedIn) {
-      context.push('/connexion');
-      return;
+      try {
+        if (!await _guestSignIn()) return;
+      } on ApiException catch (e) {
+        if (mounted) setState(() => _error = e.message);
+        return;
+      }
     }
     setState(() {
       _busy = true;
@@ -366,9 +458,13 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
   Widget build(BuildContext context) {
     final a = widget.a;
     final type = activityTypeStyle(a.typeActivite);
-    final slot = a.dateFin != null
-        ? '${Fmt.time(a.dateDebut)} – ${Fmt.time(a.dateFin)}'
-        : Fmt.time(a.dateDebut);
+    final slot = a.multiJours
+        ? 'Du ${DateFormat('d MMM', 'fr').format(a.dateDebut!.toLocal())} au '
+            '${DateFormat('d MMM', 'fr').format(a.dateFin!.toLocal())} · '
+            '${Fmt.time(a.dateDebut)} – ${Fmt.time(a.dateFin)}'
+        : a.dateFin != null
+            ? '${Fmt.time(a.dateDebut)} – ${Fmt.time(a.dateFin)}'
+            : Fmt.time(a.dateDebut);
     final small = Theme.of(context).textTheme.bodySmall;
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -427,9 +523,32 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
                       const _AccessChip('Payant', Color(0xFFB45309)),
                   ],
                 ),
+                if (a.theme != null || a.enLigne)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Wrap(spacing: 6, children: [
+                      if (a.theme != null) _AccessChip(a.theme!, const Color(0xFF0369A1)),
+                      if (a.enLigne)
+                        _AccessChip(a.format == 'EN_LIGNE' ? 'En ligne' : 'Hybride',
+                            const Color(0xFFA21CAF)),
+                    ]),
+                  ),
                 const SizedBox(height: 4),
                 if (a.salle != null || a.lieu != null)
                   Text('Lieu : ${a.salle ?? a.lieu}', style: small),
+                ValueListenableBuilder<Set<String>>(
+                  valueListenable: Agenda.starred,
+                  builder: (context, starred, _) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                      icon: Icon(starred.contains(a.id) ? Icons.star : Icons.star_border,
+                          size: 18, color: const Color(0xFFD97706)),
+                      label: Text(starred.contains(a.id) ? 'Dans mon programme' : 'Ajouter à mon programme'),
+                      onPressed: () => Agenda.toggle(a.id),
+                    ),
+                  ),
+                ),
                 if (a.intervenant != null)
                   Text('Intervenant : ${a.intervenant}', style: small),
                 if (a.moderateur != null)
@@ -448,9 +567,9 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
                             .bodySmall
                             ?.copyWith(color: const Color(0xFF16A34A)))
                   else
-                    OutlinedButton(
+                    FilledButton.tonal(
                       onPressed: _busy ? null : _participate,
-                      child: Text(_busy ? 'Un instant…' : 'Participer (billet gratuit)'),
+                      child: Text(_busy ? 'Un instant…' : "S'inscrire (billet gratuit)"),
                     ),
                   if (_error != null)
                     Padding(
@@ -462,6 +581,22 @@ class _ActivityTileState extends ConsumerState<_ActivityTile> {
                   const SizedBox(height: 6),
                   Text('Billet requis — voir la billetterie ci-dessous.',
                       style: Theme.of(context).textTheme.bodySmall),
+                ],
+                if (a.enLigne) ...[
+                  const SizedBox(height: 6),
+                  if (_lien != null)
+                    TextButton.icon(
+                      icon: const Icon(Icons.live_tv),
+                      label: const Text('Rejoindre la diffusion'),
+                      onPressed: () => launchUrl(Uri.parse(_lien!), mode: LaunchMode.externalApplication),
+                    )
+                  else
+                    TextButton(
+                      onPressed: _loadDiffusion,
+                      child: const Text('Obtenir le lien de diffusion'),
+                    ),
+                  if (_error != null && !a.gratuit)
+                    Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
                 ],
               ],
             ),

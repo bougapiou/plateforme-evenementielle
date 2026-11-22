@@ -149,6 +149,19 @@ export const routes: Routes = [
           import('./features/public/find-ticket.component').then((m) => m.FindTicketComponent),
         title: 'Retrouver mon billet',
       },
+      {
+        // Auto-enregistrement : QR affiché à l'entrée d'une salle.
+        path: 'presence/:jeton',
+        loadComponent: () =>
+          import('./features/public/self-checkin.component').then((m) => m.SelfCheckinComponent),
+        title: 'Confirmer ma présence',
+      },
+      {
+        path: 'confidentialite',
+        loadComponent: () =>
+          import('./features/public/privacy.component').then((m) => m.PrivacyComponent),
+        title: 'Confidentialité et mentions légales',
+      },
     ],
   },
   {
@@ -244,6 +257,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/admin/admin-users.component').then((m) => m.AdminUsersComponent),
         title: 'Utilisateurs',
+      },
+      {
+        path: 'admin/audit',
+        canActivate: [authGuard],
+        data: { permission: 'AUDIT_READ' },
+        loadComponent: () =>
+          import('./features/admin/admin-audit.component').then((m) => m.AdminAuditComponent),
+        title: "Journal d'audit",
       },
       {
         path: 'admin/structures',

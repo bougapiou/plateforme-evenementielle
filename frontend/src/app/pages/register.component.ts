@@ -50,7 +50,7 @@ import { PhoneInputComponent } from '../shared/phone-input.component';
           <div>
             <label class="form-label" for="password">Mot de passe</label>
             <app-password-input inputId="password" formControlName="password" autocomplete="new-password" />
-            <p class="mt-1 text-xs text-slate-400">8 caractères minimum.</p>
+            <p class="mt-1 text-xs text-slate-400">12 caractères minimum, lettres et chiffres ou symboles, pas un mot de passe courant.</p>
           </div>
           <div>
             <label class="form-label" for="confirm">Confirmer le mot de passe</label>
@@ -88,7 +88,7 @@ export class RegisterComponent {
     email: ['', [Validators.required, Validators.email]],
     phone: ['', [Validators.required, Validators.pattern(/^\+?[0-9 ]{6,20}$/)]],
     type: ['PARTICULIER' as UserType],
-    password: ['', [Validators.required, Validators.minLength(8)]],
+    password: ['', [Validators.required, Validators.minLength(12)]],
     confirm: ['', [Validators.required]],
   });
 

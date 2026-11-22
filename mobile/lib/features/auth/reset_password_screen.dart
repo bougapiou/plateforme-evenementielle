@@ -76,7 +76,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               const SizedBox(height: 8),
               Text(
                 'Collez le code reçu par e-mail, puis choisissez un nouveau mot '
-                'de passe (8 caractères minimum).',
+                'de passe (12 caractères minimum, lettres et chiffres).',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -94,8 +94,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               PasswordField(
                 controller: _password,
                 decoration: const InputDecoration(labelText: 'Mot de passe'),
-                validator: (v) => (v == null || v.length < 8)
-                    ? '8 caractères minimum'
+                validator: (v) => (v == null || v.length < 12)
+                    ? '12 caractères minimum'
                     : null,
               ),
               const SizedBox(height: 12),

@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class EventController {
 
     private final EventService eventService;
+    private final EventDuplicationService duplicationService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -154,5 +155,22 @@ public class EventController {
     @Operation(summary = "Annuler un événement (admin)")
     public EventResponse cancel(@PathVariable UUID id) {
         return eventService.cancel(id);
+    }
+
+    @PostMapping("/{id}/visibility")
+    @PreAuthorize("hasAuthority('" + Permissions.EVENT_VALIDATE + "')")
+    @Operation(summary = "Masquer / réafficher un événement sur le site public (événement de test, doublon)")
+    public EventResponse visibility(@PathVariable UUID id, @RequestParam boolean masque) {
+        return eventService.setPublicHidden(id, masque);
+    }
+
+    @PostMapping("/{id}/dupliquer")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('" + Permissions.EVENT_CREATE + "')")
+    @Operation(summary = "Créer l'édition suivante : copie programme, billets, intervenants et partenaires (dates décalées)")
+    public EventResponse duplicate(@PathVariable UUID id,
+                                   @RequestBody(required = false) EventDuplicationService.DuplicateRequest request) {
+        return duplicationService.duplicate(id,
+                request == null ? new EventDuplicationService.DuplicateRequest(null, null) : request);
     }
 }

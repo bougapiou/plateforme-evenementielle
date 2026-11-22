@@ -34,4 +34,18 @@ public class EventStaff extends BaseEntity {
 
     @Column(name = "ajoute_par")
     private UUID ajoutePar;
+
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private StaffFonction fonction = StaffFonction.CONTROLE;
+
+    /**
+     * Activities (rooms / time slots) this agent controls. Empty = the whole
+     * event; otherwise the scanner only offers these activities.
+     */
+    @jakarta.persistence.ManyToMany
+    @jakarta.persistence.JoinTable(name = "event_staff_activities",
+            joinColumns = @JoinColumn(name = "event_staff_id"),
+            inverseJoinColumns = @JoinColumn(name = "activity_id"))
+    private java.util.Set<bf.evenements.plateforme.event.EventActivity> activities = new java.util.LinkedHashSet<>();
 }

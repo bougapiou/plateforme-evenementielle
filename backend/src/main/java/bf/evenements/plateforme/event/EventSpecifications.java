@@ -60,6 +60,18 @@ public final class EventSpecifications {
                 : (root, query, cb) -> cb.lessThanOrEqualTo(root.get("dateDebut"), to);
     }
 
+    /**
+     * Showcase filter for the public site: drops events flagged as hidden
+     * (tests, duplicates) and those finished for more than {@code finishedDays}.
+     */
+    public static Specification<Event> publicShowcase(Instant now, int finishedDays) {
+        Instant cutoff = now.minus(java.time.Duration.ofDays(finishedDays));
+        return (root, query, cb) -> cb.and(
+                cb.isFalse(root.get("masquePublic")),
+                cb.or(cb.notEqual(root.get("statut"), EventStatus.TERMINE),
+                        cb.greaterThanOrEqualTo(root.get("dateFin"), cutoff)));
+    }
+
     public static Specification<Event> textSearch(String term) {
         if (term == null || term.isBlank()) {
             return null;

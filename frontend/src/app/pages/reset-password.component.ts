@@ -28,7 +28,7 @@ import { PasswordInputComponent } from '../shared/password-input.component';
           </div>
           <a routerLink="/connexion" class="btn-primary mt-4 inline-flex">Se connecter</a>
         } @else {
-          <p class="mt-1 text-sm text-slate-500">Choisissez un mot de passe (8 caractères minimum).</p>
+          <p class="mt-1 text-sm text-slate-500">Choisissez un mot de passe (12 caractères minimum, lettres et chiffres ou symboles).</p>
           <form class="mt-6 space-y-4" [formGroup]="form" (ngSubmit)="submit()">
             <div>
               <label class="form-label" for="password">Mot de passe</label>
@@ -63,7 +63,7 @@ export class ResetPasswordComponent {
   error = signal<string | null>(null);
 
   form = this.fb.nonNullable.group({
-    password: ['', [Validators.required, Validators.minLength(8)]],
+    password: ['', [Validators.required, Validators.minLength(12)]],
     confirm: ['', [Validators.required]],
   });
 

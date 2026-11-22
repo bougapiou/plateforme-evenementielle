@@ -56,6 +56,7 @@ public class CheckinService {
     private final bf.evenements.plateforme.sensor.PassageCapteurRepository passageRepository;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
+    private final bf.evenements.plateforme.user.UserRepository userRepository;
 
     /** States in which entry control makes sense. */
     private static final Set<EventStatus> SCANNABLE = Set.of(
@@ -93,17 +94,53 @@ public class CheckinService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Événement", eventId));
         requireControl(event, currentUser.requireId());
+        var allowed = assignedActivities(event, currentUser.requireId());
         return activityRepository.findByEventIdOrderByDateDebutAscOrdreAsc(eventId).stream()
+                .filter(a -> allowed.isEmpty() || allowed.contains(a.getId()))
                 .map(ActivityResponse::from).toList();
     }
 
+    /** Offline metadata of the scan being processed (channel, device id, scan time). */
+    private record ScanMeta(CheckinCanal canal, String clientRef, Instant scannedAt) {
+    }
+
+    private static final ThreadLocal<ScanMeta> META = new ThreadLocal<>();
+
+    /** How far back an offline scan may be dated when synchronised. */
+    private static final java.time.Duration MAX_OFFLINE_AGE = java.time.Duration.ofDays(3);
+
     @Transactional
     public ScanResponse scan(ScanRequest request) {
+        return scan(request, CheckinCanal.SCAN);
+    }
+
+    /**
+     * Scans with an explicit channel. For offline scans the device time is kept
+     * (clamped to the last {@link #MAX_OFFLINE_AGE}) and {@code clientRef} makes
+     * a replay return nothing new.
+     */
+    @Transactional
+    public ScanResponse scan(ScanRequest request, CheckinCanal canal) {
+        Instant at = Instant.now();
+        if (request.scannedAt() != null && request.scannedAt().isBefore(at)
+                && request.scannedAt().isAfter(at.minus(MAX_OFFLINE_AGE))) {
+            at = request.scannedAt();
+        }
+        META.set(new ScanMeta(canal, request.clientRef(), at));
+        try {
+            return doScan(request);
+        } finally {
+            META.remove();
+        }
+    }
+
+    private ScanResponse doScan(ScanRequest request) {
         UUID me = currentUser.requireId();
         Event event = eventRepository.findById(request.eventId())
                 .orElseThrow(() -> ResourceNotFoundException.of("Événement", request.eventId()));
         requireControl(event, me);
         CheckinDirection sens = request.resolvedSens();
+        requireAssignedActivity(event, me, request.activityId());
 
         EventActivity activity = null;
         if (request.activityId() != null) {
@@ -170,7 +207,7 @@ public class CheckinService {
                     CheckinResult.VALIDE, reentree ? "Ré-entrée" : null,
                     new ScanResponse(CheckinResult.VALIDE, CheckinDirection.ENTREE, reentree,
                             reentree ? "Ré-entrée" : "Bienvenue", nom, activiteNom, pNom, catNom, num,
-                            Instant.now(), null));
+                            now(), null));
         }
         // SORTIE
         if (!inside) {
@@ -248,14 +285,21 @@ public class CheckinService {
                 : "Accès " + accr.fonctionLabel();
         return recordAccr(event, activity, sens, me, accr, CheckinResult.VALIDE, null,
                 ScanResponse.of(CheckinResult.VALIDE, sens, message, nom, activiteNom, pNom, label,
-                        num, Instant.now(), null));
+                        num, now(), null));
     }
 
     @Transactional(readOnly = true)
     public PageResponse<CheckinView> list(UUID eventId, Pageable pageable) {
         requireOrganiser(eventId);
-        return PageResponse.of(checkinRepository.findByEventIdOrderByScannedAtDesc(eventId, pageable),
-                CheckinView::from);
+        var page = checkinRepository.findByEventIdOrderByScannedAtDesc(eventId, pageable);
+        var agentIds = page.getContent().stream().map(Checkin::getScannedBy)
+                .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        Map<UUID, String> agents = new java.util.HashMap<>();
+        userRepository.findAllById(agentIds).forEach(u -> agents.put(u.getId(), u.getFullName()));
+        Map<UUID, EventActivity> acts = new java.util.HashMap<>();
+        activityRepository.findByEventIdOrderByDateDebutAscOrdreAsc(eventId).forEach(a -> acts.put(a.getId(), a));
+        return PageResponse.of(page, c -> CheckinView.from(c, agents.get(c.getScannedBy()),
+                c.getActivityId() == null ? null : acts.get(c.getActivityId())));
     }
 
     @Transactional(readOnly = true)
@@ -424,8 +468,13 @@ public class CheckinService {
         checkin.setTicketId(ticketId);
         checkin.setAccreditationId(accreditationId);
         checkin.setResultat(resultat);
-        checkin.setScannedAt(Instant.now());
+        ScanMeta meta = META.get();
+        checkin.setScannedAt(meta != null ? meta.scannedAt() : Instant.now());
         checkin.setDetail(detail);
+        if (meta != null) {
+            checkin.setCanal(meta.canal());
+            checkin.setClientRef(meta.clientRef());
+        }
         checkinRepository.save(checkin);
         auditService.record(scannedBy, currentUser.current().map(u -> u.email()).orElse(null),
                 "CHECKIN_SCAN", "Checkin", checkin.getId().toString(), null,
@@ -447,6 +496,38 @@ public class CheckinService {
                                     String detail, ScanResponse response) {
         return record(event, activity, sens, scannedBy, null, null, accr.getId(), resultat, detail,
                 response);
+    }
+
+    private static Instant now() {
+        ScanMeta meta = META.get();
+        return meta != null ? meta.scannedAt() : Instant.now();
+    }
+
+    /**
+     * Activities a staff member is restricted to (rooms / time slots). Empty =
+     * no restriction (organiser, admin, or agent assigned to the whole event).
+     */
+    public java.util.Set<UUID> assignedActivities(Event event, UUID userId) {
+        if (event.isOwnedBy(userId) || currentUser.hasAuthority(Permissions.EVENT_VALIDATE)) {
+            return java.util.Set.of();
+        }
+        return staffRepository.findByEventIdAndUserId(event.getId(), userId)
+                .map(s -> s.getActivities().stream().map(EventActivity::getId)
+                        .collect(java.util.stream.Collectors.toSet()))
+                .orElse(java.util.Set.of());
+    }
+
+    private void requireAssignedActivity(Event event, UUID userId, UUID activityId) {
+        var allowed = assignedActivities(event, userId);
+        if (!allowed.isEmpty() && (activityId == null || !allowed.contains(activityId))) {
+            throw new AccessDeniedException(
+                    "Vous êtes affecté à d'autres salles : choisissez une de vos activités.");
+        }
+    }
+
+    /** Owner, assigned control staff or admin of the event — else access denied. */
+    public void requireControlOf(Event event) {
+        requireControl(event, currentUser.requireId());
     }
 
     private void requireControl(Event event, UUID userId) {
@@ -474,12 +555,15 @@ public class CheckinService {
         }
     }
 
+    /** One line of the scan log: who scanned, where (activity / room), when, through which channel. */
     public record CheckinView(UUID id, UUID ticketId, UUID activityId, CheckinResult resultat,
                               CheckinDirection sens, Instant scannedAt, UUID scannedBy,
-                              String detail) {
-        static CheckinView from(Checkin c) {
+                              String detail, String agentNom, String activiteTitre, String salle,
+                              CheckinCanal canal) {
+        static CheckinView from(Checkin c, String agentNom, EventActivity a) {
             return new CheckinView(c.getId(), c.getTicketId(), c.getActivityId(), c.getResultat(),
-                    c.getSens(), c.getScannedAt(), c.getScannedBy(), c.getDetail());
+                    c.getSens(), c.getScannedAt(), c.getScannedBy(), c.getDetail(), agentNom,
+                    a == null ? null : a.getTitre(), a == null ? null : a.getSalle(), c.getCanal());
         }
     }
 }

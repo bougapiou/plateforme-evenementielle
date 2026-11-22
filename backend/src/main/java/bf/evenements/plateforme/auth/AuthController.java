@@ -40,6 +40,27 @@ public class AuthController {
         return authService.register(request, HttpUtils.clientIp(http));
     }
 
+    @PostMapping("/mfa/verify")
+    @Operation(summary = "Connexion, étape 2 : code de l'application d'authentification")
+    public AuthResponse mfaVerify(@Valid @RequestBody bf.evenements.plateforme.auth.dto.MfaRequests.Code request,
+                                  HttpServletRequest http) {
+        return authService.verifyMfa(request.mfaToken(), request.code(), HttpUtils.clientIp(http));
+    }
+
+    @PostMapping("/mfa/setup")
+    @Operation(summary = "Double authentification obligatoire : obtenir le secret / QR à scanner")
+    public bf.evenements.plateforme.auth.dto.MfaRequests.Setup mfaSetup(
+            @Valid @RequestBody bf.evenements.plateforme.auth.dto.MfaRequests.Token request) {
+        return authService.setupMfa(request.mfaToken());
+    }
+
+    @PostMapping("/mfa/activate")
+    @Operation(summary = "Double authentification obligatoire : confirmer avec un premier code et se connecter")
+    public AuthResponse mfaActivate(@Valid @RequestBody bf.evenements.plateforme.auth.dto.MfaRequests.Code request,
+                                    HttpServletRequest http) {
+        return authService.activateMfa(request.mfaToken(), request.code(), HttpUtils.clientIp(http));
+    }
+
     @PostMapping("/guest")
     @Operation(summary = "Ouvrir une session invité (achat / inscription sans compte)")
     public AuthResponse guest(@Valid @RequestBody GuestSessionRequest request,
@@ -53,6 +74,25 @@ public class AuthController {
     public AuthResponse guestQuick(@Valid @RequestBody GuestQuickSessionRequest request,
                                    HttpServletRequest http) {
         return authService.guestSessionQuick(request.phone(), HttpUtils.clientIp(http));
+    }
+
+    public record OtpRequest(@jakarta.validation.constraints.NotBlank
+                             @jakarta.validation.constraints.Pattern(regexp = "^\\+?[0-9 ]{6,20}$",
+                                     message = "numero de telephone invalide") String phone,
+                             String code) {
+    }
+
+    @PostMapping("/otp/request")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Mes billets sans mot de passe : recevoir un code par SMS")
+    public void otpRequest(@Valid @RequestBody OtpRequest request, HttpServletRequest http) {
+        authService.requestTicketOtp(request.phone(), HttpUtils.clientIp(http));
+    }
+
+    @PostMapping("/otp/verify")
+    @Operation(summary = "Mes billets sans mot de passe : valider le code reçu par SMS")
+    public AuthResponse otpVerify(@Valid @RequestBody OtpRequest request, HttpServletRequest http) {
+        return authService.verifyTicketOtp(request.phone(), request.code(), HttpUtils.clientIp(http));
     }
 
     @PostMapping("/guest-lookup")

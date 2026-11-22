@@ -46,4 +46,11 @@ public class Ticket extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private TicketStatus statut = TicketStatus.EMISE;
+
+    /** Issued at the door by a control agent (on-site registration). */
+    @Column(name = "sur_place", nullable = false)
+    private boolean surPlace = false;
+
+    @Column(name = "participant_telephone", length = 30)
+    private String participantTelephone;
 }

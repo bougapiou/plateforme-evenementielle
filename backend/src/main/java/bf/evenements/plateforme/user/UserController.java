@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserService userService;
+    private final bf.evenements.plateforme.auth.AuthService authService;
 
     @GetMapping("/me")
     @Operation(summary = "Profil de l'utilisateur connecte")
@@ -52,6 +53,28 @@ public class UserController {
     public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/mfa/setup")
+    @Operation(summary = "Activer la double authentification : secret / QR à scanner")
+    public bf.evenements.plateforme.auth.dto.MfaRequests.Setup mfaSetup() {
+        return authService.setupMfaForCurrentUser();
+    }
+
+    @PostMapping("/me/mfa/activate")
+    @Operation(summary = "Activer la double authentification : confirmer avec un premier code")
+    public ResponseEntity<Void> mfaActivate(@RequestBody java.util.Map<String, String> body,
+                                            jakarta.servlet.http.HttpServletRequest http) {
+        authService.activateMfaForCurrentUser(body.get("code"),
+                bf.evenements.plateforme.common.web.HttpUtils.clientIp(http));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/security/reset")
+    @PreAuthorize("hasAuthority('" + Permissions.USER_MANAGE + "')")
+    @Operation(summary = "Réinitialiser la double authentification et déverrouiller un compte (admin)")
+    public UserResponse resetSecurity(@PathVariable UUID id) {
+        return userService.resetSecurity(id);
     }
 
     @GetMapping

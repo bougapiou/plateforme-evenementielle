@@ -9,8 +9,24 @@ class AuthRepository {
 
   AuthRepository(this._api, this._store);
 
+  /// Password step. Throws [MfaRequiredException] when a second factor is needed.
   Future<AuthResponse> login(String email, String password) =>
       _post('/auth/login', {'email': email, 'password': password});
+
+  Future<AuthResponse> mfaVerify(String mfaToken, String code) =>
+      _post('/auth/mfa/verify', {'mfaToken': mfaToken, 'code': code});
+
+  Future<AuthResponse> mfaActivate(String mfaToken, String code) =>
+      _post('/auth/mfa/activate', {'mfaToken': mfaToken, 'code': code});
+
+  Future<MfaSetup> mfaSetup(String mfaToken) async {
+    try {
+      final res = await _api.dio.post('/auth/mfa/setup', data: {'mfaToken': mfaToken});
+      return MfaSetup.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _api.toApiException(e);
+    }
+  }
 
   Future<AuthResponse> register({
     required String firstName,
@@ -48,6 +64,19 @@ class AuthRepository {
   /// number, no name collected.
   Future<AuthResponse> guestLookup(String phone) =>
       _post('/auth/guest-lookup', {'phone': phone});
+
+  /// « Mes billets » step 1: an SMS code is sent if this number holds tickets.
+  Future<void> ticketOtpRequest(String phone) async {
+    try {
+      await _api.dio.post('/auth/otp/request', data: {'phone': phone});
+    } on DioException catch (e) {
+      throw _api.toApiException(e);
+    }
+  }
+
+  /// Step 2: the code opens the session holding the tickets.
+  Future<AuthResponse> ticketOtpVerify(String phone, String code) =>
+      _post('/auth/otp/verify', {'phone': phone, 'code': code});
 
   Future<AuthResponse> guestSessionQuick(String phone) =>
       _post('/auth/guest-quick', {'phone': phone});
@@ -108,7 +137,11 @@ class AuthRepository {
   Future<AuthResponse> _post(String path, Map<String, dynamic> body) async {
     try {
       final res = await _api.dio.post(path, data: body);
-      final auth = AuthResponse.fromJson(res.data as Map<String, dynamic>);
+      final data = res.data as Map<String, dynamic>;
+      if (data['mfa'] != null) {
+        throw MfaRequiredException(data['mfa'] as String, data['mfaToken'] as String? ?? '');
+      }
+      final auth = AuthResponse.fromJson(data);
       await _store.save(auth);
       return auth;
     } on DioException catch (e) {

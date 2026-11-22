@@ -98,7 +98,7 @@ public class TicketOrderService {
             if (free && qty > 1) {
                 qty = 1; // one free ticket per person, always
             }
-            if (free) {
+            if (free && ticket.getPortee() == TicketScope.EVENEMENT) {
                 freeQty += qty;
             }
             if (!ticket.onSale(now)) {
@@ -133,7 +133,8 @@ public class TicketOrderService {
             total = total.add(ticket.getPrixMontant().multiply(BigDecimal.valueOf(qty)));
         }
 
-        // At most one free ticket per person and per event (all free categories combined).
+        // At most one free event-wide ticket per person and per event (free session
+        // tickets are limited per category: one per session).
         if (freeQty > 0
                 && ticketEntityRepository.countFreeTicketsForUserAndEvent(buyer.getId(), event.getId())
                         + freeQty > 1) {
@@ -154,6 +155,50 @@ public class TicketOrderService {
             confirmPaymentInternal(order);
         }
         return order;
+    }
+
+    /**
+     * Issues one free ticket at the door (control agent, on-site registration),
+     * outside the registration window, marked « sur place ». Capacity applies.
+     */
+    @Transactional
+    public Ticket issueOnSite(EventTicket category, User holder, String nom, String telephone) {
+        EventTicket ticket = ticketRepository.findByIdForUpdate(category.getId()).orElseThrow();
+        if (ticket.getPrixMontant().signum() != 0) {
+            throw new BusinessException("ON_SITE_PAID", "Seuls les billets gratuits peuvent être émis sur place.");
+        }
+        if (ticket.quantiteRestante() <= 0) {
+            throw new BusinessException("QUOTA_EXCEEDED", "Complet : plus de place pour « " + ticket.getNom() + " ».");
+        }
+        TicketOrder order = new TicketOrder();
+        order.setEvent(ticket.getEvent());
+        order.setUser(holder);
+        order.setAcheteurNom(nom);
+        order.setAcheteurEmail(null);
+        order.setReference(References.unique("CMD", 8, orderRepository::existsByReference));
+        TicketOrderLine line = new TicketOrderLine();
+        line.setEventTicket(ticket);
+        line.setQuantite(1);
+        line.setPrixUnitaire(BigDecimal.ZERO);
+        order.addLine(line);
+        order.setDevise(ticket.getDevise());
+        order.setMontantTotal(BigDecimal.ZERO);
+        order.setStatut(TicketOrderStatus.PAYEE);
+        order.setPayeLe(Instant.now());
+        order.setExpireLe(Instant.now());
+        order = orderRepository.save(order);
+
+        ticket.setQuantiteVendue(ticket.getQuantiteVendue() + 1);
+        Ticket t = new Ticket();
+        t.setOrder(order);
+        t.setEventTicket(ticket);
+        t.setEvent(ticket.getEvent());
+        t.setNumero(References.unique("TCK", 10, ticketEntityRepository::existsByNumero));
+        t.setParticipantNom(nom);
+        t.setParticipantTelephone(telephone);
+        t.setSurPlace(true);
+        t.setStatut(TicketStatus.EMISE);
+        return ticketEntityRepository.save(t);
     }
 
     // ------------------------------------------------------------- reads

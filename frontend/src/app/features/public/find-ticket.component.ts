@@ -71,17 +71,30 @@ interface EventGroup {
         </p>
 
         <form class="card mt-4 space-y-4 p-5" (ngSubmit)="submit()">
-          <div>
-            <label class="form-label">Téléphone *</label>
-            <app-phone-input [(ngModel)]="phone" name="telephone" />
-          </div>
+          @if (!codeSent()) {
+            <div>
+              <label class="form-label">Téléphone *</label>
+              <app-phone-input [(ngModel)]="phone" name="telephone" />
+            </div>
+          } @else {
+            <p class="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">
+              Si ce numéro a des billets, un code à 6 chiffres vient de lui être envoyé par SMS
+              (valable 10 minutes).
+            </p>
+            <div>
+              <label class="form-label" for="otp">Code reçu par SMS *</label>
+              <input id="otp" class="form-input max-w-48 text-center font-mono text-xl tracking-[0.3em]"
+                     inputmode="numeric" autocomplete="one-time-code" maxlength="7" [(ngModel)]="code" name="code" />
+            </div>
+            <button type="button" class="text-xs text-brand-700 underline" (click)="resend()">Renvoyer un code</button>
+          }
 
           @if (error()) {
             <p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ error() }}</p>
           }
 
           <button type="submit" class="btn-primary w-full sm:w-auto" [disabled]="submitting()">
-            {{ submitting() ? 'Recherche…' : 'Retrouver mes billets' }}
+            {{ submitting() ? 'Un instant…' : codeSent() ? 'Valider le code' : 'Retrouver mes billets' }}
           </button>
           <p class="text-xs text-slate-400">
             Déjà un compte avec mot de passe ?
@@ -106,6 +119,9 @@ export class FindTicketComponent {
 
   dt = (iso: string) => formatDateTime(iso);
 
+  codeSent = signal(false);
+  code = '';
+
   submit(): void {
     const phone = this.phone.trim();
     if (!/^\+?[0-9 ]{6,20}$/.test(phone)) {
@@ -114,43 +130,74 @@ export class FindTicketComponent {
     }
     this.submitting.set(true);
     this.error.set(null);
+    if (this.codeSent()) {
+      this.auth.ticketOtpVerify(phone, this.code.trim()).subscribe({
+        next: () => this.loadTickets(),
+        error: (err: HttpErrorResponse) => {
+          this.submitting.set(false);
+          this.error.set((err.error as ApiError)?.message ?? 'Code incorrect.');
+        },
+      });
+      return;
+    }
     this.auth.guestLookup(phone).subscribe({
-      next: () => {
-        this.ticketsService.myTickets().subscribe({
-          next: (tickets) => {
-            this.submitting.set(false);
-            const groups = new Map<string, EventGroup>();
-            for (const t of tickets) {
-              const g = groups.get(t.eventId);
-              if (g) {
-                g.tickets.push(t);
-              } else {
-                groups.set(t.eventId, {
-                  eventId: t.eventId, eventNom: t.eventNom,
-                  eventDateDebut: t.eventDateDebut, lieu: t.lieu, tickets: [t],
-                });
-              }
-            }
-            if (groups.size === 0) {
-              this.error.set('Aucun billet trouvé pour ce numéro.');
-              return;
-            }
-            this.events.set([...groups.values()]);
-          },
-          error: () => {
-            this.submitting.set(false);
-            this.error.set('Aucun billet trouvé pour ce numéro.');
-          },
-        });
-      },
+      next: () => this.loadTickets(),
       error: (err: HttpErrorResponse) => {
-        this.submitting.set(false);
         const body = err.error as ApiError | undefined;
+        if (body?.code === 'OTP_REQUIRED') {
+          this.resend();
+          return;
+        }
+        this.submitting.set(false);
         this.error.set(
           body?.code === 'ACCOUNT_EXISTS'
             ? `${body.message} Utilisez « Connectez-vous » ci-dessous.`
             : (body?.message ?? 'Aucun billet trouvé pour ce numéro.'),
         );
+      },
+    });
+  }
+
+  /** Asks the server to send (again) a code by SMS. */
+  resend(): void {
+    this.submitting.set(true);
+    this.auth.ticketOtpRequest(this.phone.trim()).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.codeSent.set(true);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.submitting.set(false);
+        this.error.set((err.error as ApiError)?.message ?? "Le code n'a pas pu être envoyé.");
+      },
+    });
+  }
+
+  private loadTickets(): void {
+    this.ticketsService.myTickets().subscribe({
+      next: (tickets) => {
+        this.submitting.set(false);
+        const groups = new Map<string, EventGroup>();
+        for (const t of tickets) {
+          const g = groups.get(t.eventId);
+          if (g) {
+            g.tickets.push(t);
+          } else {
+            groups.set(t.eventId, {
+              eventId: t.eventId, eventNom: t.eventNom,
+              eventDateDebut: t.eventDateDebut, lieu: t.lieu, tickets: [t],
+            });
+          }
+        }
+        if (groups.size === 0) {
+          this.error.set('Aucun billet trouvé pour ce numéro.');
+          return;
+        }
+        this.events.set([...groups.values()]);
+      },
+      error: () => {
+        this.submitting.set(false);
+        this.error.set('Aucun billet trouvé pour ce numéro.');
       },
     });
   }
@@ -190,6 +237,8 @@ export class FindTicketComponent {
     this.downloaded.set(false);
     this.events.set(null);
     this.phone = '';
+    this.code = '';
+    this.codeSent.set(false);
     this.error.set(null);
   }
 }

@@ -163,7 +163,7 @@ class VisiteStandIT extends AbstractIntegrationTest {
                 .when().post("/api/structures").then().statusCode(201).extract().path("id");
         as(admin).body(Map.of("statut", "VERIFIEE"))
                 .when().patch("/api/structures/" + structureId + "/status").then().statusCode(200);
-        structToken = TestAuth.login("vs2-struct-" + n + "@example.bf", "Secret123");
+        structToken = TestAuth.login("vs2-struct-" + n + "@example.bf", "Secret123!Pne");
 
         String reservationId = as(structToken)
                 .body(Map.of("eventId", eventId, "standId", standId, "structureId", structureId))

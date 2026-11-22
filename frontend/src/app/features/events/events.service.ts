@@ -13,6 +13,14 @@ import {
   Speaker,
 } from './event.models';
 
+/** Result of a programme import (one line per row of the file). */
+export interface ImportReport {
+  total: number;
+  valides: number;
+  importees: number;
+  lignes: { ligne: number; titre?: string; debut?: string; fin?: string; salle?: string; acces?: string; erreurs: string[]; activityId?: string }[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class EventsService extends ApiBase {
   categories(): Observable<EventCategory[]> {
@@ -44,6 +52,11 @@ export class EventsService extends ApiBase {
     return this.http.post<EventDetail>(`${this.base}/events/${id}/${action}`, body);
   }
 
+  /** Admin: hide / show an event on the public showcase (test or duplicate events). */
+  setPublicHidden(id: string, masque: boolean): Observable<EventDetail> {
+    return this.http.post<EventDetail>(`${this.base}/events/${id}/visibility`, {}, { params: { masque } });
+  }
+
   /** QR code (PNG) linking to the event's public page — to print or display on site. */
   qrBlob(id: string): Observable<Blob> {
     return this.http.get(`${this.base}/events/${id}/qr.png`, { responseType: 'blob' });
@@ -60,6 +73,16 @@ export class EventsService extends ApiBase {
   }
   deleteActivity(eventId: string, id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/events/${eventId}/activities/${id}`);
+  }
+  /** Programme import from the Excel / CSV template; `simulation` = preview only. */
+  importActivities(eventId: string, file: File, simulation: boolean): Observable<ImportReport> {
+    const form = new FormData();
+    form.append('fichier', file);
+    return this.http.post<ImportReport>(`${this.base}/events/${eventId}/activities/import`, form,
+      { params: { simulation } });
+  }
+  importTemplate(eventId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/events/${eventId}/activities/import/modele.xlsx`, { responseType: 'blob' });
   }
 
   speakers(eventId: string): Observable<Speaker[]> {

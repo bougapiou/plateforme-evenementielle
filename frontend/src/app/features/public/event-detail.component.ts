@@ -16,7 +16,7 @@ import { EventCoverComponent } from '../../shared/event-cover.component';
 import { IconComponent } from '../../shared/icon.component';
 import { ProgrammeChartComponent } from '../../shared/programme-chart.component';
 import { Stand, StandReservation, StandType } from '../stands/stand.models';
-import { EventPublic, EventTicket, IdentiteRequise, MyTicket } from '../events/event.models';
+import { Activity, EventPublic, EventTicket, IdentiteRequise, MyTicket } from '../events/event.models';
 import {
   formatDateRange,
   formatDateTime,
@@ -27,6 +27,8 @@ import {
 import { AuthService } from '../../core/auth.service';
 import { ApiError } from '../../core/models';
 
+import { statutLabel } from '../../shared/status-badge.component';
+import { buildIcs, downloadIcs, googleCalendarUrl, loadAgenda, saveAgenda } from '../../shared/agenda';
 @Component({
   selector: 'app-event-detail',
   standalone: true,
@@ -46,6 +48,14 @@ import { ApiError } from '../../core/models';
            class="mt-1 inline-block text-sm text-brand-700 hover:underline">
           Présence en direct →
         </a>
+        <span class="ml-3 inline-flex gap-3 text-sm">
+          <a [href]="whatsappUrl(e)" target="_blank" rel="noopener" class="text-green-700 hover:underline">
+            Partager sur WhatsApp
+          </a>
+          <button type="button" class="text-brand-700 hover:underline" (click)="copyShareLink(e)">
+            {{ copied() ? 'Lien copié ✓' : 'Copier le lien' }}
+          </button>
+        </span>
       </div>
 
       <!-- Raccourci "en un clic" : uniquement le cas le plus simple (billet
@@ -95,7 +105,7 @@ import { ApiError } from '../../core/models';
         @if (registration(); as r) {
           <div class="mt-3 rounded-lg bg-slate-50 p-4 text-sm">
             <p class="font-medium text-slate-700">Inscription {{ r.reference }}</p>
-            <p class="text-slate-500">Statut : <span class="font-semibold">{{ r.statut }}</span></p>
+            <p class="text-slate-500">Statut : <span class="font-semibold">{{ statutLabel(r.statut) }}</span></p>
             @if (r.ticketOrderStatut === 'EN_ATTENTE') {
               <p class="mt-1 text-xs text-amber-700">Finalisez le paiement pour valider vos billets.</p>
               <button class="btn-primary mt-3" (click)="pay(r)">Payer (paiement simulé)</button>
@@ -197,27 +207,56 @@ import { ApiError } from '../../core/models';
               </p>
             } @else if (tickets().length) {
               <div>
-                <p class="form-label">Billets</p>
-                <table class="w-full max-w-lg text-sm">
+                @if (sessionTickets().length) {
+                  <p class="text-xs text-slate-500">
+                    Astuce : cochez les sessions qui vous intéressent, ici ou depuis le programme
+                    (bouton « S'inscrire »). Un seul formulaire suffit pour toutes.
+                  </p>
+                }
+                @for (g of ticketGroups(); track g.label) {
+                <p class="form-label mt-3">{{ g.label }}</p>
+                <table class="w-full max-w-2xl text-sm">
                   <tbody class="divide-y divide-slate-100">
-                    @for (t of tickets(); track t.id) {
-                      <tr>
+                    @for (t of g.tickets; track t.id) {
+                      <tr [class.bg-brand-50]="(qty()[t.id] || 0) > 0">
                         <td class="py-2">
+                          @if (t.activites.length && t.activites[0].dateDebut) {
+                            <span class="mr-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">
+                              {{ sessionWhen(t) }}
+                            </span>
+                          }
                           {{ t.nom }}
-                          <span class="text-xs text-slate-400">· {{ t.quantiteRestante }} dispo</span>
+                          @if (t.quantiteRestante <= 0) {
+                            <span class="badge bg-red-100 text-red-800">Complet</span>
+                          } @else {
+                            <span class="text-xs text-slate-400">· {{ t.quantiteRestante }} place{{ t.quantiteRestante > 1 ? 's' : '' }} restante{{ t.quantiteRestante > 1 ? 's' : '' }}</span>
+                          }
                         </td>
                         <td class="py-2 text-right font-semibold"
                             [class.text-slate-400]="!t.prixMontant">{{ prix(t.prixMontant) }}</td>
                         <td class="py-2 pl-3 text-right">
-                          <input type="number" min="0" [max]="maxFor(t)" class="form-input w-16"
-                                 [ngModel]="qty()[t.id] || 0" (ngModelChange)="setQty(t.id, $event)" />
+                          @if (maxFor(t) <= 1) {
+                            <input type="checkbox" class="h-5 w-5" [disabled]="t.quantiteRestante <= 0"
+                                   [attr.aria-label]="'Choisir ' + t.nom"
+                                   [ngModel]="(qty()[t.id] || 0) > 0" (ngModelChange)="setQty(t.id, $event ? 1 : 0)" />
+                          } @else {
+                            <input type="number" min="0" [max]="maxFor(t)" class="form-input w-16"
+                                   [attr.aria-label]="'Quantité ' + t.nom"
+                                   [ngModel]="qty()[t.id] || 0" (ngModelChange)="setQty(t.id, $event)" />
+                          }
                         </td>
                       </tr>
                     }
                   </tbody>
                 </table>
+                }
               </div>
             }
+            <p class="text-xs text-slate-500">
+              Vos nom et téléphone servent uniquement à émettre vos billets et à contrôler l'accès.
+              <a routerLink="/confidentialite" target="_blank" class="font-semibold text-brand-700 underline">
+                Politique de confidentialité et mentions légales</a>.
+            </p>
             @if (error()) { <p class="text-sm text-red-700">{{ error() }}</p> }
             <button class="btn-primary" [disabled]="submitting()" (click)="submit()">
               {{ singleFreeTicket() ? 'Obtenir mon billet'
@@ -247,7 +286,7 @@ import { ApiError } from '../../core/models';
             <div class="mt-3 rounded-lg bg-slate-50 p-4 text-sm">
               <p class="font-medium text-slate-700">
                 Réservation {{ sr.numeroReservation }} — Stand {{ sr.standNumero }} —
-                <span class="font-semibold">{{ sr.statut }}</span>
+                <span class="font-semibold">{{ statutLabel(sr.statut) }}</span>
               </p>
               @if (sr.statut === 'RESERVE_TEMP') {
                 <p class="mt-1 text-xs text-amber-700">Stand bloqué jusqu'à {{ dt(sr.dateLimitePaiement) }}.</p>
@@ -339,9 +378,22 @@ import { ApiError } from '../../core/models';
         <section class="card mt-6 p-5">
           <h2 class="font-semibold text-slate-800">Programme</h2>
           <app-programme-chart class="mt-4" [activities]="e.programme" [title]="e.nom"
-                               [subtitle]="range(e)" [actions]="activityActions" />
+                               [subtitle]="range(e)" [actions]="activityActions" [filters]="true" />
           <ng-template #activityActions let-a>
-                  @if (a.acces === 'GRATUIT') {
+                  @if (!registration() && ticketsFor(a.id).length) {
+                    @if (isSelected(a.id)) {
+                      <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                        <span class="badge bg-green-100 text-green-800">✓ Ajoutée à votre inscription</span>
+                        <button type="button" class="text-slate-500 underline" (click)="unselectActivity(a.id)">Retirer</button>
+                      </div>
+                    } @else if (soldOut(a.id)) {
+                      <span class="badge mt-2 bg-red-100 text-red-800">Complet</span>
+                    } @else {
+                      <button type="button" class="btn-primary mt-2 px-3 py-1 text-xs" (click)="selectActivity(a.id)">
+                        S'inscrire{{ priceFor(a.id) }}
+                      </button>
+                    }
+                  } @else if (a.acces === 'GRATUIT') {
                     @if (attendedTickets()[a.id]; as t) {
                       <div class="mt-2 flex max-w-sm items-center gap-3 rounded-lg border border-slate-200 p-2">
                         @if (ticketQr()[t.id]; as qr) {
@@ -357,14 +409,27 @@ import { ApiError } from '../../core/models';
                       </div>
                     } @else if (auth.isAuthenticated()) {
                       <button class="btn-ghost mt-1 text-brand-700" [disabled]="attending()"
-                              (click)="attend(a.id)">Participer (billet gratuit)</button>
-                    } @else {
-                      <a routerLink="/connexion" [queryParams]="{ redirect: '/evenements/' + slug() }"
-                         class="mt-1 inline-block text-brand-700">Connectez-vous pour participer</a>
+                              (click)="attend(a.id)">S'inscrire à cette session (billet gratuit)</button>
                     }
-                  } @else if (a.acces === 'PAYANT') {
-                    <p class="mt-1 text-xs text-slate-500">Billet requis — voir la billetterie plus haut.</p>
                   }
+                  @if (a.format && a.format !== 'SUR_PLACE') {
+                    @if (diffusion()[a.id]; as lien) {
+                      <a [href]="lien" target="_blank" rel="noopener" class="mt-1 inline-block text-xs font-semibold text-fuchsia-700 underline">
+                        Rejoindre la diffusion en ligne →
+                      </a>
+                    } @else if (auth.isAuthenticated()) {
+                      <button type="button" class="mt-1 block text-xs text-fuchsia-700 underline" (click)="loadDiffusion(a.id)">
+                        Obtenir le lien de diffusion
+                      </button>
+                    } @else {
+                      <p class="mt-1 text-xs text-slate-500">Lien de diffusion envoyé après inscription.</p>
+                    }
+                  }
+                  <button type="button" class="mt-1 block text-xs font-medium"
+                          [class.text-amber-600]="inAgenda(a.id)" [class.text-slate-500]="!inAgenda(a.id)"
+                          [attr.aria-pressed]="inAgenda(a.id)" (click)="toggleAgenda(a.id)">
+                    {{ inAgenda(a.id) ? '★ Dans mon programme' : '☆ Ajouter à mon programme' }}
+                  </button>
                   @if (attendError() && attendErrorFor() === a.id) {
                     <p class="mt-1 text-sm text-red-700">{{ attendError() }}</p>
                   }
@@ -372,39 +437,86 @@ import { ApiError } from '../../core/models';
         </section>
       }
 
+      @if (agendaSessions().length) {
+        <section class="card mt-6 p-5" id="mon-programme">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="font-semibold text-slate-800">Mon programme ({{ agendaSessions().length }})</h2>
+            <button type="button" class="btn-primary" (click)="exportAgenda(e)">Exporter (.ics)</button>
+          </div>
+          <p class="mt-1 text-xs text-slate-500">
+            Le fichier .ics s'ouvre dans Google Agenda, Outlook ou le calendrier de votre téléphone,
+            avec un rappel 30 minutes avant chaque session.
+          </p>
+          <ul class="mt-3 divide-y divide-slate-100 text-sm">
+            @for (a of agendaSessions(); track a.id) {
+              <li class="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span>
+                  <b>{{ dt(a.dateDebut) }}</b> · {{ a.titre }}
+                  <span class="text-slate-500">{{ a.salle ? '· ' + a.salle : '' }}</span>
+                </span>
+                <span class="flex gap-3 text-xs">
+                  <a [href]="googleUrl(a, e)" target="_blank" rel="noopener" class="text-brand-700">Google Agenda</a>
+                  <button type="button" class="text-slate-500" (click)="toggleAgenda(a.id)">Retirer</button>
+                </span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       @if (e.intervenants.length) {
-        <section class="card mt-6 p-5">
+        <section class="card mt-6 p-5" id="intervenants">
           <h2 class="font-semibold text-slate-800">Intervenants</h2>
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             @for (s of e.intervenants; track s.id) {
-              <div class="flex items-start gap-3 rounded-lg border border-slate-100 p-3 text-sm">
+              <button type="button" class="flex items-start gap-3 rounded-lg border border-slate-100 p-3 text-left text-sm hover:border-brand-300"
+                      [attr.aria-expanded]="openSpeaker() === s.id"
+                      (click)="openSpeaker.set(openSpeaker() === s.id ? null : s.id)">
                 @if (s.photoUrl) {
-                  <img [src]="s.photoUrl" alt="" class="h-11 w-11 shrink-0 rounded-full object-cover" />
+                  <img [src]="s.photoUrl" [alt]="'Photo de ' + s.nom" class="h-14 w-14 shrink-0 rounded-full object-cover" />
                 }
-                <div>
+                <div class="min-w-0">
                   <p class="font-medium text-slate-800">{{ s.nom }}</p>
-                  <p class="text-slate-400">{{ s.titre }}{{ s.organisation ? ' · ' + s.organisation : '' }}</p>
-                  @if (s.bio) { <p class="mt-1 text-slate-500">{{ s.bio }}</p> }
+                  <p class="text-slate-500">{{ s.titre }}{{ s.organisation ? ' · ' + s.organisation : '' }}</p>
+                  @if (openSpeaker() === s.id) {
+                    @if (s.bio) { <p class="mt-2 whitespace-pre-line text-slate-600">{{ s.bio }}</p> }
+                    <p class="mt-2 text-xs font-semibold uppercase text-slate-500">Ses sessions</p>
+                    @for (a of sessionsOf(s, e); track a.id) {
+                      <p class="text-xs text-slate-700">{{ dt(a.dateDebut) }} · {{ a.titre }}{{ a.salle ? ' · ' + a.salle : '' }}</p>
+                    } @empty {
+                      <p class="text-xs text-slate-400">Aucune session liée.</p>
+                    }
+                  } @else {
+                    <p class="mt-1 text-xs text-brand-700">{{ sessionsOf(s, e).length }} session(s) — voir la fiche</p>
+                  }
                 </div>
-              </div>
+              </button>
             }
           </div>
         </section>
       }
 
       @if (e.partenaires.length) {
-        <section class="card mt-6 p-5">
+        <section class="card mt-6 p-5" id="partenaires">
           <h2 class="font-semibold text-slate-800">Partenaires</h2>
-          <ul class="mt-3 flex flex-wrap items-center gap-3 text-sm">
-            @for (p of e.partenaires; track p.id) {
-              <li class="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2">
-                @if (p.logoUrl) {
-                  <img [src]="p.logoUrl" alt="" class="h-8 w-12 object-contain" />
-                }
-                <span class="text-slate-600">{{ p.nom }}</span>
-              </li>
-            }
-          </ul>
+          @for (g of partnerGroups(e); track g.label) {
+            <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ g.label }}</p>
+            <ul class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+              @for (p of g.items; track p.id) {
+                <li class="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2">
+                  @if (p.logoUrl) {
+                    <img [src]="p.logoUrl" [alt]="'Logo ' + p.nom" class="object-contain"
+                         [class.h-14]="g.big" [class.w-24]="g.big" [class.h-8]="!g.big" [class.w-12]="!g.big" />
+                  }
+                  @if (p.siteWeb) {
+                    <a [href]="p.siteWeb" target="_blank" rel="noopener" class="text-slate-700 hover:underline">{{ p.nom }}</a>
+                  } @else {
+                    <span class="text-slate-700">{{ p.nom }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          }
         </section>
       }
 
@@ -422,6 +534,18 @@ import { ApiError } from '../../core/models';
       </section>
 
       <p class="mt-6"><a routerLink="/" class="text-sm text-brand-700">← Tous les événements</a></p>
+
+      @if (!registration() && selectedSessions() > 0) {
+        <div class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+          <div class="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-slate-700">
+              <b>{{ selectedSessions() }}</b> session{{ selectedSessions() > 1 ? 's' : '' }} choisie{{ selectedSessions() > 1 ? 's' : '' }}
+              — un seul formulaire pour toutes.
+            </p>
+            <button type="button" class="btn-primary" (click)="goToForm()">Finaliser mon inscription</button>
+          </div>
+        </div>
+      }
     } @else if (loadError()) {
       <p class="py-16 text-center text-slate-500">{{ loadError() }}</p>
     } @else {
@@ -438,6 +562,7 @@ export class EventDetailComponent implements OnDestroy {
   private paymentsService = inject(PaymentsService);
   private sanitizer = inject(DomSanitizer);
   auth = inject(AuthService);
+  statutLabel = statutLabel;
 
   slug = input.required<string>();
   event = signal<EventPublic | null>(null);
@@ -519,6 +644,7 @@ export class EventDetailComponent implements OnDestroy {
       this.events.publicBySlug(slug).subscribe({
         next: (e) => {
           this.event.set(e);
+          this.agenda.set(loadAgenda(e.id));
           this.standMode.set(e.standsParticuliers ? 'particulier' : 'structure');
         },
         error: () => this.loadError.set("Cet événement n'est pas disponible."),
@@ -557,6 +683,126 @@ export class EventDetailComponent implements OnDestroy {
   prix = (n?: number) => priceLabel(n);
   maxFor = (t: EventTicket) => Math.min(t.quantiteRestante, t.limiteParUtilisateur);
   standsOfType = (typeId: string) => this.stands().filter((s) => s.standTypeId === typeId);
+
+  // --- Partage (PART-08): the /partage link carries the event's Open Graph preview.
+  copied = signal(false);
+  shareUrl = (e: EventPublic) => `${location.origin}/partage/evenements/${e.slug}`;
+  whatsappUrl = (e: EventPublic) =>
+    `https://wa.me/?text=${encodeURIComponent(e.nom + ' — ' + this.range(e) + ' ' + this.shareUrl(e))}`;
+  copyShareLink(e: EventPublic): void {
+    navigator.clipboard?.writeText(this.shareUrl(e)).then(() => {
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2500);
+    });
+  }
+
+  // --- Mon programme (PART-02) ---
+  agenda = signal<string[]>([]);
+  agendaSessions = computed(() => {
+    const ids = new Set(this.agenda());
+    return (this.event()?.programme ?? []).filter((a) => ids.has(a.id))
+      .sort((a, b) => a.dateDebut.localeCompare(b.dateDebut));
+  });
+  inAgenda = (id: string) => this.agenda().includes(id);
+  toggleAgenda(id: string): void {
+    const e = this.event();
+    if (!e) return;
+    const next = this.inAgenda(id) ? this.agenda().filter((x) => x !== id) : [...this.agenda(), id];
+    this.agenda.set(next);
+    saveAgenda(e.id, next);
+  }
+  exportAgenda(e: EventPublic): void {
+    downloadIcs(`mon-programme-${e.slug}.ics`, buildIcs(e.nom, e.lieu, this.agendaSessions()));
+  }
+  googleUrl = (a: Activity, e: EventPublic) => googleCalendarUrl(a, e.lieu);
+
+  // --- Intervenants & partenaires (PART-06) ---
+  openSpeaker = signal<string | null>(null);
+  sessionsOf(s: { id: string; nom: string }, e: EventPublic): Activity[] {
+    const name = s.nom.toLowerCase();
+    return e.programme.filter((a) => a.speakerId === s.id
+      || (a.intervenant ?? '').toLowerCase().includes(name) || (a.moderateur ?? '').toLowerCase().includes(name));
+  }
+  private static readonly LEVELS: [string, string, boolean][] = [
+    ['PLATINE', 'Partenaires platine', true], ['OR', 'Partenaires or', true], ['ARGENT', 'Partenaires argent', false],
+    ['BRONZE', 'Partenaires bronze', false], ['PARTENAIRE_INSTITUTIONNEL', 'Partenaires institutionnels', false],
+    ['PARTENAIRE_MEDIA', 'Partenaires médias', false], ['PARTENAIRE', 'Partenaires', false],
+  ];
+  partnerGroups(e: EventPublic) {
+    const groups = EventDetailComponent.LEVELS
+      .map(([code, label, big]) => ({ label, big, items: e.partenaires.filter((p) => p.niveau === code) }))
+      .filter((g) => g.items.length);
+    const other = e.partenaires.filter((p) => !p.niveau || !EventDetailComponent.LEVELS.some(([c]) => c === p.niveau));
+    return other.length ? [...groups, { label: 'Partenaires', big: false, items: other }] : groups;
+  }
+
+  /** Activity-scoped categories, grouped apart from event-wide ones. */
+  sessionTickets = computed(() => this.tickets().filter((t) => t.portee === 'ACTIVITE' && t.activites.length));
+  ticketGroups = computed(() => {
+    const general = this.tickets().filter((t) => !(t.portee === 'ACTIVITE' && t.activites.length));
+    const sessions = [...this.sessionTickets()].sort((a, b) =>
+      (a.activites[0].dateDebut ?? '').localeCompare(b.activites[0].dateDebut ?? ''),
+    );
+    return [
+      ...(general.length ? [{ label: sessions.length ? "Accès à l'événement" : 'Billets', tickets: general }] : []),
+      ...(sessions.length ? [{ label: 'Billets par session', tickets: sessions }] : []),
+    ];
+  });
+  /** Number of sessions picked so far (activity-scoped categories with a quantity). */
+  selectedSessions = computed(() => this.sessionTickets().filter((t) => (this.qty()[t.id] || 0) > 0).length);
+  diffusion = signal<Record<string, string>>({});
+
+  private static readonly WHEN = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+
+  /** « jeu. 26 nov., 09:00 · Salle Kilimandjaro » for a session ticket. */
+  sessionWhen(t: EventTicket): string {
+    const a = t.activites[0];
+    if (!a?.dateDebut) return '';
+    return EventDetailComponent.WHEN.format(new Date(a.dateDebut)) + (a.salle ? ' · ' + a.salle : '');
+  }
+
+  ticketsFor(activityId: string): EventTicket[] {
+    return this.tickets()
+      .filter((t) => t.portee === 'ACTIVITE' && t.activites.some((a) => a.id === activityId))
+      .sort((a, b) => (a.prixMontant || 0) - (b.prixMontant || 0));
+  }
+  isSelected(activityId: string): boolean {
+    return this.ticketsFor(activityId).some((t) => (this.qty()[t.id] || 0) > 0);
+  }
+  soldOut(activityId: string): boolean {
+    return this.ticketsFor(activityId).every((t) => t.quantiteRestante <= 0);
+  }
+  priceFor(activityId: string): string {
+    const t = this.ticketsFor(activityId).find((x) => x.quantiteRestante > 0);
+    return t && t.prixMontant ? ' — ' + formatFcfa(t.prixMontant) : '';
+  }
+  /** « S'inscrire » on a session: pre-select its (cheapest available) ticket in the form. */
+  selectActivity(activityId: string): void {
+    const t = this.ticketsFor(activityId).find((x) => x.quantiteRestante > 0);
+    if (!t) return;
+    this.setQty(t.id, 1);
+    if (this.selectedSessions() === 1) this.goToForm();
+  }
+  unselectActivity(activityId: string): void {
+    const next = { ...this.qty() };
+    this.ticketsFor(activityId).forEach((t) => delete next[t.id]);
+    this.qty.set(next);
+  }
+  goToForm(): void {
+    document.getElementById('participer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  loadDiffusion(activityId: string): void {
+    this.attendError.set(null);
+    this.ticketsService.activityDiffusion(activityId).subscribe({
+      next: (d) => this.diffusion.set({ ...this.diffusion(), [activityId]: d.lien }),
+      error: (err: HttpErrorResponse) => {
+        this.attendErrorFor.set(activityId);
+        this.attendError.set((err.error as ApiError)?.message ?? 'Lien indisponible.');
+      },
+    });
+  }
 
   setQty(id: string, value: number): void {
     this.qty.set({ ...this.qty(), [id]: Math.max(0, Math.floor(value || 0)) });

@@ -53,6 +53,12 @@ export class TicketsService extends ApiBase {
   attendActivity(activityId: string): Observable<IssuedTicket> {
     return this.http.post<IssuedTicket>(`${this.base}/activities/${activityId}/attend`, {});
   }
+  /** Broadcast link of an online / hybrid session — only for people holding access. */
+  activityDiffusion(activityId: string): Observable<{ activityId: string; titre: string; format: string; lien: string }> {
+    return this.http.get<{ activityId: string; titre: string; format: string; lien: string }>(
+      `${this.base}/activities/${activityId}/diffusion`,
+    );
+  }
   myOrders(): Observable<Page<TicketOrder>> {
     return this.get<Page<TicketOrder>>('/ticket-orders/my', { size: 50 });
   }

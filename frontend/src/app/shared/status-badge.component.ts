@@ -38,6 +38,29 @@ const STYLES: Record<string, string> = {
   UTILISE: 'bg-slate-100 text-slate-500',
 };
 
+/** Human-readable French labels for status codes (events, orders, payments…). */
+const LABELS: Record<string, string> = {
+  EN_ATTENTE: 'En attente', VERIFIEE: 'Vérifiée', ACTIF: 'Actif', ACTIF_USER: 'Actif',
+  SUSPENDUE: 'Suspendue', SUSPENDU: 'Suspendu', DESACTIVE: 'Désactivé', APPROUVE: 'Approuvé',
+  BROUILLON: 'Brouillon', SOUMIS: 'Soumis', VALIDE: 'Validé', REFUSE: 'Refusé', PUBLIE: 'Publié',
+  INSCRIPTIONS_OUVERTES: 'Inscriptions ouvertes', INSCRIPTIONS_FERMEES: 'Inscriptions fermées',
+  EN_COURS: 'En cours', TERMINE: 'Terminé', ANNULE: 'Annulé',
+  REUSSI: 'Réussi', PAYEE: 'Payée', PAYE: 'Payé', CONFIRME: 'Confirmé', CONFIRMEE: 'Confirmée',
+  ECHOUE: 'Échoué', EXPIRE: 'Expiré', EXPIREE: 'Expirée', ANNULEE: 'Annulée', REFUSEE: 'Refusée',
+  REMBOURSE: 'Remboursé', RESERVE_TEMP: 'Blocage temporaire', ATTENTE_PAIEMENT: 'Attente de paiement',
+  EMISE: 'Valide', UTILISE: 'Utilisé', DISPONIBLE: 'Disponible', RESERVE: 'Réservé', OCCUPE: 'Occupé',
+  EN_ATTENTE_PAIEMENT: 'Attente de paiement', INITIE: 'Initié', REVOQUE: 'Révoqué', ACTIVE: 'Active',
+};
+
+/** French label of a status code; unknown codes are prettified ("A_B" → "A b"). */
+export function statutLabel(code: string | null | undefined): string {
+  if (!code) return '—';
+  const known = LABELS[code];
+  if (known) return known;
+  const s = code.replace(/_/g, ' ').toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 @Component({
   selector: 'app-status-badge',
   standalone: true,
@@ -51,6 +74,6 @@ export class StatusBadgeComponent {
   }
 
   label(): string {
-    return this.value().replace(/_/g, ' ').toLowerCase();
+    return statutLabel(this.value());
   }
 }

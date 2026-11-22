@@ -71,12 +71,36 @@ app:
     allowed-origins: ${CORS_ORIGINS:http://localhost:[*],http://127.0.0.1:[*]}
   security:
     rate-limit-per-minute: ${RATE_LIMIT_PER_MINUTE:20}
+    # Registrations / ticket orders / free-ticket claims per IP and minute (anti-bot).
+    signup-rate-limit-per-minute: ${SIGNUP_RATE_LIMIT_PER_MINUTE:10}
+    password-min-length: ${PASSWORD_MIN_LENGTH:12}
+    # Failed log-ins before a temporary lock, and the lock duration.
+    login-max-failures: ${LOGIN_MAX_FAILURES:5}
+    login-lock-duration: ${LOGIN_LOCK_DURATION:PT15M}
+    # « Retrouver mon billet » requires a code received by SMS (needs app.sms in production).
+    ticket-lookup-otp: ${TICKET_LOOKUP_OTP:true}
+    mfa:
+      # Roles that must use an authenticator app (TOTP). Empty = optional for everyone.
+      required-roles: ${MFA_REQUIRED_ROLES:SUPER_ADMIN,ORGANISATEUR}
     jwt:
       # Base64-encoded 256-bit secret. Override in production via APP_JWT_SECRET.
       secret: ${APP_JWT_SECRET:Y2hhbmdlLW1lLXRoaXMtaXMtYS1kZXYtb25seS1zZWNyZXQtMzJieXRlcyE=}
       access-token-ttl: PT15M
       refresh-token-ttl: P7D
       issuer: plateforme-evenementielle
+  sms:
+    # log (dev: codes written to the logs) | http (JSON POST to the operator / aggregator gateway)
+    provider: ${SMS_PROVIDER:log}
+    from: ${SMS_FROM:PNE}
+    http:
+      url: ${SMS_HTTP_URL:}
+      token: ${SMS_HTTP_TOKEN:}
+  data:
+    # Participants' personal data are anonymised this many months after the event (0 = never).
+    retention-months: ${DATA_RETENTION_MONTHS:12}
+  public:
+    # Finished events stay on the public showcase this many days after their end.
+    finished-visibility-days: ${PUBLIC_FINISHED_DAYS:30}
   storage:
     provider: ${STORAGE_PROVIDER:local}
     local:

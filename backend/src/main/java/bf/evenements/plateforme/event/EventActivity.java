@@ -70,6 +70,26 @@ public class EventActivity extends BaseEntity {
     @Column(length = 255)
     private String moderateur;
 
+    /** Theme / track the session belongs to (free text, used as a public filter). */
+    @Column(length = 120)
+    private String theme;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ActivityFormat format = ActivityFormat.SUR_PLACE;
+
+    /** Teams / Zoom / YouTube link — only disclosed to people holding access. */
+    @Column(name = "lien_diffusion", length = 500)
+    private String lienDiffusion;
+
+    /** Backup mode: participants confirm their presence by scanning the room's QR. */
+    @Column(name = "auto_enregistrement", nullable = false)
+    private boolean autoEnregistrement = false;
+
+    /** Opaque token encoded in the room's self check-in QR. */
+    @Column(name = "auto_jeton", length = 40)
+    private String autoJeton;
+
     /** Optional illustration for the activity (URL to an uploaded image). */
     @Column(name = "image_url", length = 500)
     private String imageUrl;

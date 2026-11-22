@@ -38,6 +38,11 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.mail.port", () -> "3025");
         // rate limiter off for integration tests (many auth calls from 127.0.0.1)
         registry.add("app.security.rate-limit-per-minute", () -> "0");
+        registry.add("app.security.signup-rate-limit-per-minute", () -> "0");
+        // second factor is exercised by its own test (MfaIT), not by every login
+        registry.add("app.security.mfa.required-roles", () -> "");
+        // plain phone lookup kept for the existing tests; the SMS code flow has OtpIT
+        registry.add("app.security.ticket-lookup-otp", () -> "false");
         // Tests always exercise the sandbox provider (pay-sandbox/simulate),
         // no matter what a developer's local .env has PAYMENT_PROVIDER set to.
         registry.add("app.payment.provider", () -> "sandbox");

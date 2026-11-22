@@ -29,9 +29,18 @@ public class AuditController {
     @Operation(summary = "Consulter les journaux d'activite (admin)")
     public PageResponse<AuditLogResponse> list(@RequestParam(required = false) String action,
                                                @RequestParam(required = false) UUID actorId,
+                                               @RequestParam(required = false) String q,
+                                               @RequestParam(required = false)
+                                               @org.springframework.format.annotation.DateTimeFormat(
+                                                       iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                                               java.time.LocalDate du,
+                                               @RequestParam(required = false)
+                                               @org.springframework.format.annotation.DateTimeFormat(
+                                                       iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                                               java.time.LocalDate au,
                                                @PageableDefault(size = 30, sort = "createdAt",
                                                        direction = Sort.Direction.DESC)
                                                Pageable pageable) {
-        return auditService.search(action, actorId, pageable);
+        return auditService.search(action, actorId, q, du, au, pageable);
     }
 }

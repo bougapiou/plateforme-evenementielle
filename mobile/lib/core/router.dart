@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'providers.dart';
 import '../features/auth/login_screen.dart';
+import '../features/legal/privacy_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/auth/complete_account_screen.dart';
 import '../features/auth/forgot_password_screen.dart';
@@ -56,6 +57,7 @@ const _publicPrefixes = [
   '/scanner-qr',
   '/retrouver-billet',
   '/presence-en-direct',
+  '/confidentialite',
 ];
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -76,6 +78,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/connexion', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/confidentialite', builder: (_, __) => const PrivacyScreen()),
       GoRoute(path: '/inscription', builder: (_, __) => const RegisterScreen()),
       GoRoute(
         path: '/finaliser-compte',

@@ -46,7 +46,7 @@ public class ReportService {
     /** Figures for {@code jour} (or the whole event when null), plus the per-day and per-activity breakdowns. */
     @Transactional(readOnly = true)
     public EventReport eventReport(UUID eventId, @Nullable LocalDate jour) {
-        Event event = eventService.loadManaged(eventId);
+        Event event = eventService.loadForStats(eventId);
         List<LocalDate> days = eventDays(event);
         Instant from = jour == null ? Instant.EPOCH : startOf(jour);
         Instant to = jour == null ? Instant.parse("9999-01-01T00:00:00Z") : startOf(jour.plusDays(1));
@@ -57,6 +57,49 @@ public class ReportService {
                 .toList();
         return new EventReport(event.getId(), event.getNom(), event.getDateDebut(), event.getDateFin(),
                 jour, days, totals, perDay, activities(eventId, from, to));
+    }
+
+    /** Downloadable file of the per-activity table (STAT-02). */
+    public record TableExport(String filename, String contentType, byte[] content) {
+    }
+
+    private static final java.time.format.DateTimeFormatter HOUR = java.time.format.DateTimeFormatter
+            .ofPattern("dd/MM/yyyy HH:mm", java.util.Locale.FRENCH).withZone(ZONE);
+
+    /** The « Par activité » table as CSV (Excel-friendly) or .xlsx. */
+    @Transactional(readOnly = true)
+    public TableExport activityTable(UUID eventId, @Nullable LocalDate jour, boolean excel) {
+        EventReport report = eventReport(eventId, jour);
+        List<String> headers = List.of("Activité", "Début", "Fin", "Salle", "Inscrits", "Dont sur place",
+                "Présents uniques", "Taux de présence (%)", "Capacité", "Taux de remplissage (%)",
+                "Entrées", "Sorties", "Auto-enregistrés", "Durée moyenne (min)");
+        List<List<String>> rows = report.parActivite().stream().map(a -> java.util.Arrays.asList(
+                a.titre(), HOUR.format(a.dateDebut()), a.dateFin() == null ? "" : HOUR.format(a.dateFin()),
+                a.salle() == null ? "" : a.salle(), String.valueOf(a.inscrits()),
+                String.valueOf(a.inscritsSurPlace()), String.valueOf(a.visiteursUniques()),
+                num(a.tauxPresence()), a.capacite() == null ? "" : String.valueOf(a.capacite()),
+                num(a.tauxRemplissage()), String.valueOf(a.entrees()), String.valueOf(a.sorties()),
+                String.valueOf(a.autoEnregistres()),
+                a.dureeMoyenneMinutes() == null ? "" : String.valueOf(a.dureeMoyenneMinutes())))
+                .toList();
+        String base = "statistiques-activites-" + fileSlug(report.evenement())
+                + (jour == null ? "" : "-" + jour);
+        String title = "Statistiques par activité — " + report.evenement() + (jour == null ? "" : " — " + jour);
+        return excel
+                ? new TableExport(base + ".xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        TableFileWriter.xlsx("Par activité", title, headers, rows))
+                : new TableExport(base + ".csv", "text/csv; charset=UTF-8", TableFileWriter.csv(headers, rows));
+    }
+
+    private static String num(@Nullable Double d) {
+        return d == null ? "" : String.valueOf(d);
+    }
+
+    private static String fileSlug(String s) {
+        return java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").replaceAll("[^A-Za-z0-9]+", "-")
+                .replaceAll("(^-|-$)", "").toLowerCase(java.util.Locale.ROOT);
     }
 
     private Metrics metrics(UUID eventId, Instant from, Instant to) {
@@ -95,23 +138,75 @@ public class ReportService {
                 rs.getLong("capteur_entrees"), rs.getLong("capteur_sorties"), rs.getLong("visites_stands")));
     }
 
+    /**
+     * One line per session: registered people (tickets scoped to it), unique
+     * people actually let in, attendance rate, on-site registrations, capacity
+     * and fill rate, plus entries / exits and the self check-in share.
+     */
     private List<ActivityMetrics> activities(UUID eventId, Instant from, Instant to) {
         return jdbc.query("""
-                select a.id, a.titre, a.date_debut,
-                       count(c.id) filter (where c.sens = 'ENTREE') as entrees,
-                       count(c.id) filter (where c.sens = 'SORTIE') as sorties,
-                       count(distinct coalesce(c.ticket_id, c.accreditation_id))
-                         filter (where c.sens = 'ENTREE') as uniques
+                with inscrits as (
+                    select eta.activity_id,
+                           count(t.id) as inscrits,
+                           count(t.id) filter (where t.sur_place) as sur_place
+                    from event_ticket_activities eta
+                    join tickets t on t.event_ticket_id = eta.event_ticket_id and t.statut <> 'ANNULE'
+                    join event_activities a2 on a2.id = eta.activity_id and a2.event_id = :e
+                    group by eta.activity_id
+                ), passages as (
+                    select c.activity_id,
+                           count(c.id) filter (where c.sens = 'ENTREE') as entrees,
+                           count(c.id) filter (where c.sens = 'SORTIE') as sorties,
+                           count(distinct coalesce(c.ticket_id, c.accreditation_id))
+                             filter (where c.sens = 'ENTREE') as uniques,
+                           count(distinct c.ticket_id)
+                             filter (where c.sens = 'ENTREE' and c.canal = 'AUTO_ENREGISTREMENT') as auto,
+                           avg(extract(epoch from s.scanned_at - c.scanned_at))
+                             filter (where c.sens = 'ENTREE' and s.id is not null) as duree_moy
+                    from checkins c
+                    left join lateral (
+                        select x.id, x.scanned_at from checkins x
+                        where x.activity_id = c.activity_id and x.sens = 'SORTIE' and x.resultat = 'VALIDE'
+                          and x.scanned_at > c.scanned_at
+                          and coalesce(x.ticket_id, x.accreditation_id) = coalesce(c.ticket_id, c.accreditation_id)
+                        order by x.scanned_at limit 1
+                    ) s on c.sens = 'ENTREE'
+                    where c.event_id = :e and c.activity_id is not null and c.resultat = 'VALIDE'
+                      and c.scanned_at >= :f and c.scanned_at < :t
+                    group by c.activity_id
+                )
+                select a.id, a.titre, a.date_debut, a.date_fin, a.salle, a.capacite,
+                       coalesce(i.inscrits, 0) as inscrits, coalesce(i.sur_place, 0) as sur_place,
+                       coalesce(p.entrees, 0) as entrees, coalesce(p.sorties, 0) as sorties,
+                       coalesce(p.uniques, 0) as uniques, coalesce(p.auto, 0) as auto,
+                       p.duree_moy
                 from event_activities a
-                left join checkins c on c.activity_id = a.id and c.resultat = 'VALIDE'
-                     and c.scanned_at >= :f and c.scanned_at < :t
+                left join inscrits i on i.activity_id = a.id
+                left join passages p on p.activity_id = a.id
                 where a.event_id = :e
-                group by a.id, a.titre, a.date_debut, a.ordre
                 order by a.date_debut, a.ordre
-                """, params(eventId, from, to), (rs, i) -> new ActivityMetrics(
-                rs.getObject("id", UUID.class), rs.getString("titre"),
-                rs.getTimestamp("date_debut").toInstant(),
-                rs.getLong("entrees"), rs.getLong("sorties"), rs.getLong("uniques")));
+                """, params(eventId, from, to), (rs, i) -> {
+            long inscrits = rs.getLong("inscrits");
+            long uniques = rs.getLong("uniques");
+            Integer capacite = (Integer) rs.getObject("capacite");
+            java.sql.Timestamp fin = rs.getTimestamp("date_fin");
+            double duree = rs.getDouble("duree_moy");
+            Long dureeMinutes = rs.wasNull() ? null : Math.round(duree / 60.0);
+            return new ActivityMetrics(
+                    rs.getObject("id", UUID.class), rs.getString("titre"),
+                    rs.getTimestamp("date_debut").toInstant(), fin == null ? null : fin.toInstant(),
+                    rs.getString("salle"),
+                    rs.getLong("entrees"), rs.getLong("sorties"), uniques,
+                    inscrits, rs.getLong("sur_place"), rs.getLong("auto"),
+                    rate(uniques, inscrits), capacite,
+                    capacite == null || capacite <= 0 ? null : rate(inscrits, capacite),
+                    dureeMinutes);
+        });
+    }
+
+    /** Percentage with one decimal, null when the denominator is 0. */
+    private static Double rate(long num, long den) {
+        return den <= 0 ? null : Math.round(num * 1000.0 / den) / 10.0;
     }
 
     // ------------------------------------------------------------------- flux
@@ -123,7 +218,7 @@ public class ReportService {
     @Transactional(readOnly = true)
     public FluxReport flux(UUID eventId, Granularite granularite, @Nullable LocalDate jour,
                            @Nullable UUID capteurId) {
-        Event event = eventService.loadManaged(eventId);
+        Event event = eventService.loadForStats(eventId);
         List<LocalDate> days = eventDays(event);
 
         List<Bucket> buckets = new ArrayList<>();
@@ -301,8 +396,16 @@ public class ReportService {
     public record DayMetrics(LocalDate jour, Metrics valeurs) {
     }
 
-    public record ActivityMetrics(UUID id, String titre, Instant dateDebut,
-                                  long entrees, long sorties, long visiteursUniques) {
+    /**
+     * Per-session figures. {@code tauxPresence} = unique people let in / tickets
+     * issued for the session (%); {@code tauxRemplissage} = tickets / capacity (%).
+     */
+    public record ActivityMetrics(UUID id, String titre, Instant dateDebut, @Nullable Instant dateFin,
+                                  @Nullable String salle,
+                                  long entrees, long sorties, long visiteursUniques,
+                                  long inscrits, long inscritsSurPlace, long autoEnregistres,
+                                  @Nullable Double tauxPresence, @Nullable Integer capacite,
+                                  @Nullable Double tauxRemplissage, @Nullable Long dureeMoyenneMinutes) {
     }
 
     /** {@code jour} null = the whole event. */

@@ -13,7 +13,18 @@ export type EventStatus =
 
 export type ActivityType =
   | 'CEREMONIE' | 'CONFERENCE' | 'PANEL' | 'ATELIER' | 'FORMATION'
-  | 'TABLE_RONDE' | 'NETWORKING' | 'PAUSE' | 'SPECTACLE' | 'AUTRE';
+  | 'TABLE_RONDE' | 'NETWORKING' | 'PAUSE' | 'SPECTACLE'
+  | 'DEMONSTRATION' | 'FORUM' | 'KEYNOTE' | 'EMISSION_MEDIA' | 'EXPOSITION' | 'GALA'
+  | 'AUTRE';
+
+/** Where a session takes place. */
+export type ActivityFormat = 'SUR_PLACE' | 'EN_LIGNE' | 'HYBRIDE';
+
+export const ACTIVITY_FORMAT_LABELS: Record<ActivityFormat, string> = {
+  SUR_PLACE: 'Sur place',
+  EN_LIGNE: 'En ligne',
+  HYBRIDE: 'Hybride',
+};
 
 export type PartnerLevel =
   | 'PLATINE' | 'OR' | 'ARGENT' | 'BRONZE' | 'PARTENAIRE'
@@ -45,6 +56,8 @@ export interface EventSummary {
   organizerNom: string;
   standsActifs: boolean;
   statut: EventStatus;
+  /** Hidden from the public showcase by an admin (test or duplicate event). */
+  masquePublic?: boolean;
 }
 
 export interface EventDetail extends EventSummary {
@@ -123,6 +136,11 @@ export interface Activity {
   speakerId?: string;
   capacite?: number;
   ordre: number;
+  /** Theme / track (public filter). */
+  theme?: string;
+  format?: ActivityFormat;
+  /** Broadcast link — only present in the organiser's view. */
+  lienDiffusion?: string;
 }
 
 export interface Speaker {
@@ -182,7 +200,7 @@ export interface EventTicket {
   /** Free categories only: false means claiming it needs no name/e-mail form. */
   formulaireRequis: boolean;
   identiteRequise: IdentiteRequise;
-  activites: { id: string; titre: string }[];
+  activites: { id: string; titre: string; dateDebut?: string; dateFin?: string; salle?: string }[];
 }
 
 export interface EventTicketPayload {
@@ -235,6 +253,14 @@ export interface MyTicket {
 }
 
 export const ACTIVITY_TYPES: ActivityType[] = [
-  'CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION',
-  'TABLE_RONDE', 'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE',
+  'CEREMONIE', 'KEYNOTE', 'CONFERENCE', 'PANEL', 'TABLE_RONDE', 'FORUM', 'ATELIER',
+  'FORMATION', 'DEMONSTRATION', 'EXPOSITION', 'EMISSION_MEDIA', 'NETWORKING', 'SPECTACLE',
+  'GALA', 'PAUSE', 'AUTRE',
 ];
+
+export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
+  CEREMONIE: 'Cérémonie', CONFERENCE: 'Conférence', PANEL: 'Panel', ATELIER: 'Atelier',
+  FORMATION: 'Formation', TABLE_RONDE: 'Table ronde', NETWORKING: 'Networking', PAUSE: 'Pause',
+  SPECTACLE: 'Spectacle', DEMONSTRATION: 'Démonstration', FORUM: 'Forum', KEYNOTE: 'Keynote',
+  EMISSION_MEDIA: 'Émission média', EXPOSITION: 'Exposition', GALA: 'Gala', AUTRE: 'Autre',
+};

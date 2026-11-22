@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { CheckinDirection, CheckinService, ScanResponse } from './checkin.service';
 import { Activity, EventSummary } from '../events/event.models';
 import { IconComponent } from '../../shared/icon.component';
+import { PhoneInputComponent } from '../../shared/phone-input.component';
+import { HttpErrorResponse } from '@angular/common/http';
 import { formatDateTime } from '../../shared/format';
 
 declare const window: Window & { BarcodeDetector?: any };
@@ -10,7 +12,7 @@ declare const window: Window & { BarcodeDetector?: any };
 @Component({
   selector: 'app-scanner',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, PhoneInputComponent],
   template: `
     <h1 class="text-xl font-bold text-slate-800">Contrôle à la porte</h1>
 
@@ -87,6 +89,26 @@ declare const window: Window & { BarcodeDetector?: any };
                    [(ngModel)]="manualToken" (keyup.enter)="submit(manualToken)" />
             <button class="btn-primary" (click)="submit(manualToken)">Valider</button>
           </div>
+          <label class="mt-3 flex items-center gap-2 text-xs text-slate-500">
+            <input type="checkbox" [(ngModel)]="sound" /> Signal sonore à chaque scan
+          </label>
+
+          <details class="mt-4 rounded-lg border border-slate-200 p-3" [open]="onSiteOpen()">
+            <summary class="cursor-pointer text-sm font-semibold text-slate-700" (click)="onSiteOpen.set(!onSiteOpen()); $event.preventDefault()">
+              Visiteur non inscrit ? Inscription sur place
+            </summary>
+            <div class="mt-3 grid gap-2">
+              <input class="form-input" placeholder="Nom et prénom" [(ngModel)]="walkInName" />
+              <app-phone-input [(ngModel)]="walkInPhone" />
+              @if (onSiteError()) { <p class="text-sm text-red-700">{{ onSiteError() }}</p> }
+              <button type="button" class="btn-primary" [disabled]="onSiteBusy()" (click)="registerOnSite()">
+                {{ onSiteBusy() ? 'Un instant…' : 'Créer le billet et faire entrer' }}
+              </button>
+              <p class="text-xs text-slate-400">
+                Billet gratuit {{ activityId ? 'de cette activité' : "de l'événement" }}, marqué « sur place » dans les statistiques.
+              </p>
+            </div>
+          </details>
         </div>
 
         <div class="card p-4">
@@ -208,20 +230,86 @@ export class ScannerComponent implements OnDestroy {
       .subscribe((s) => this.stats.set(s));
   }
 
+  sound = true;
+  walkInName = '';
+  walkInPhone = '';
+  onSiteOpen = signal(false);
+  onSiteBusy = signal(false);
+  onSiteError = signal<string | null>(null);
+  private audio?: AudioContext;
+  /** Same QR seen again within this delay by the camera loop is ignored. */
+  private lastToken = '';
+  private lastTokenAt = 0;
+
   submit(token: string): void {
     const t = (token || '').trim();
     if (!t || !this.eventId) return;
+    const now = Date.now();
+    if (t === this.lastToken && now - this.lastTokenAt < 3000) return;
+    this.lastToken = t;
+    this.lastTokenAt = now;
     this.checkin.scan(t, this.eventId, this.activityId || undefined, this.sens).subscribe({
       next: (r) => {
-        this.last.set(r);
+        this.show(r);
         this.manualToken = '';
         this.refreshStats();
       },
-      error: () => this.last.set({
+      error: (err: HttpErrorResponse) => this.show({
         resultat: 'INVALIDE', sens: this.sens, reentree: false,
-        message: 'Erreur réseau', eventNom: '',
+        message: err.status === 403 ? (err.error?.message ?? 'Non autorisé pour cette salle') : 'Erreur réseau',
+        eventNom: '',
       }),
     });
+  }
+
+  registerOnSite(): void {
+    const nom = this.walkInName.trim();
+    const tel = this.walkInPhone.trim();
+    if (!nom || !/^\+?[0-9 ]{6,20}$/.test(tel)) {
+      this.onSiteError.set('Renseignez le nom et un numéro de téléphone valide.');
+      return;
+    }
+    this.onSiteBusy.set(true);
+    this.onSiteError.set(null);
+    this.checkin.onSite(this.eventId, { activityId: this.activityId || undefined, nom, telephone: tel }).subscribe({
+      next: (res) => {
+        this.onSiteBusy.set(false);
+        this.walkInName = '';
+        this.walkInPhone = '';
+        this.show({ ...res.scan, message: `Inscrit sur place — billet ${res.numeroBillet}` });
+        this.refreshStats();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.onSiteBusy.set(false);
+        this.onSiteError.set(err.error?.message ?? 'Inscription impossible.');
+      },
+    });
+  }
+
+  /** Shows the result with a colour, a sound and a vibration (green / orange / red). */
+  private show(r: ScanResponse): void {
+    this.last.set(r);
+    navigator.vibrate?.(r.resultat === 'VALIDE' ? 80 : [120, 60, 120]);
+    if (!this.sound) return;
+    try {
+      this.audio ??= new AudioContext();
+      const tones: [number, number][] = r.resultat === 'VALIDE' ? [[880, 0.12]]
+        : r.resultat === 'DEJA_UTILISE' ? [[520, 0.12], [520, 0.12]] : [[220, 0.45]];
+      let at = this.audio.currentTime;
+      for (const [freq, dur] of tones) {
+        const osc = this.audio.createOscillator();
+        const gain = this.audio.createGain();
+        osc.frequency.value = freq;
+        osc.type = r.resultat === 'INVALIDE' ? 'square' : 'sine';
+        gain.gain.value = 0.15;
+        osc.connect(gain).connect(this.audio.destination);
+        osc.start(at);
+        osc.stop(at + dur);
+        at += dur + 0.08;
+      }
+    } catch {
+      /* audio unavailable */
+    }
   }
 
   async toggleCamera(): Promise<void> {

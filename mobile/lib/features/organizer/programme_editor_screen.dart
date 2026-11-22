@@ -197,6 +197,9 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
   final _intervenant = TextEditingController();
   final _moderateur = TextEditingController();
   final _capacite = TextEditingController();
+  final _theme = TextEditingController();
+  final _lien = TextEditingController();
+  String _format = 'SUR_PLACE';
   String? _type;
   String _acces = 'SANS_BILLET';
   DateTime? _debut;
@@ -218,6 +221,9 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
       _capacite.text = a.capacite?.toString() ?? '';
       _type = a.typeActivite;
       _acces = a.acces;
+      _theme.text = a.theme ?? '';
+      _lien.text = a.lienDiffusion ?? '';
+      _format = a.format;
       _debut = a.dateDebut?.toLocal();
       _fin = a.dateFin?.toLocal();
       _imageUrl = a.imageUrl;
@@ -226,7 +232,7 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
 
   @override
   void dispose() {
-    for (final c in [_titre, _description, _salle, _intervenant, _moderateur, _capacite]) {
+    for (final c in [_titre, _description, _salle, _intervenant, _moderateur, _capacite, _theme, _lien]) {
       c.dispose();
     }
     super.dispose();
@@ -266,6 +272,9 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
       if (_moderateur.text.trim().isNotEmpty) 'moderateur': _moderateur.text.trim(),
       if (_capacite.text.trim().isNotEmpty) 'capacite': int.tryParse(_capacite.text.trim()),
       if (_imageUrl != null) 'imageUrl': _imageUrl,
+      if (_theme.text.trim().isNotEmpty) 'theme': _theme.text.trim(),
+      'format': _format,
+      if (_format != 'SUR_PLACE' && _lien.text.trim().isNotEmpty) 'lienDiffusion': _lien.text.trim(),
     };
     try {
       await ref.read(organizerEventsRepositoryProvider).saveActivity(
@@ -360,6 +369,30 @@ class _ActivitySheetState extends ConsumerState<_ActivitySheet> {
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(labelText: 'Capacité'),
         ),
+        TextField(
+          controller: _theme,
+          decoration: const InputDecoration(labelText: 'Thème / piste (ex : IA, Cybersécurité)'),
+        ),
+        DropdownButtonFormField<String>(
+          value: _format,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Format'),
+          items: const [
+            DropdownMenuItem(value: 'SUR_PLACE', child: Text('Sur place')),
+            DropdownMenuItem(value: 'EN_LIGNE', child: Text('En ligne')),
+            DropdownMenuItem(value: 'HYBRIDE', child: Text('Hybride (sur place + diffusion)')),
+          ],
+          onChanged: (v) => setState(() => _format = v ?? 'SUR_PLACE'),
+        ),
+        if (_format != 'SUR_PLACE')
+          TextField(
+            controller: _lien,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'Lien de diffusion (Teams, Zoom, YouTube…)',
+              helperText: 'Visible seulement par les personnes inscrites.',
+            ),
+          ),
         TextField(
           controller: _description,
           maxLines: 3,

@@ -4,6 +4,7 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AuthResponse,
+  MfaSetup,
   CompleteRegistrationPayload,
   GuestSessionPayload,
   RegisterPayload,
@@ -37,10 +38,36 @@ export class AuthService {
     return localStorage.getItem(REFRESH_KEY);
   }
 
+  /** Password step. When `res.mfa` is set no session is opened yet: continue with the second factor. */
   login(email: string, password: string): Observable<AuthResponse> {
     return this.http
       .post<AuthResponse>(`${this.base}/auth/login`, { email, password })
+      .pipe(tap((res) => { if (!res.mfa) this.persist(res); }));
+  }
+
+  mfaVerify(mfaToken: string, code: string): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.base}/auth/mfa/verify`, { mfaToken, code })
       .pipe(tap((res) => this.persist(res)));
+  }
+
+  mfaSetup(mfaToken: string): Observable<MfaSetup> {
+    return this.http.post<MfaSetup>(`${this.base}/auth/mfa/setup`, { mfaToken });
+  }
+
+  mfaActivate(mfaToken: string, code: string): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.base}/auth/mfa/activate`, { mfaToken, code })
+      .pipe(tap((res) => this.persist(res)));
+  }
+
+  /** Voluntary enrolment from the profile. */
+  myMfaSetup(): Observable<MfaSetup> {
+    return this.http.post<MfaSetup>(`${this.base}/users/me/mfa/setup`, {});
+  }
+
+  myMfaActivate(code: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/users/me/mfa/activate`, { code });
   }
 
   register(payload: RegisterPayload): Observable<AuthResponse> {
@@ -77,6 +104,18 @@ export class AuthService {
   guestLookup(phone: string): Observable<AuthResponse> {
     return this.http
       .post<AuthResponse>(`${this.base}/auth/guest-lookup`, { phone })
+      .pipe(tap((res) => this.persist(res)));
+  }
+
+  /** « Mes billets » without password, step 1: a code is sent by SMS if this number holds tickets. */
+  ticketOtpRequest(phone: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/auth/otp/request`, { phone });
+  }
+
+  /** Step 2: the code opens the session holding the tickets. */
+  ticketOtpVerify(phone: string, code: string): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${this.base}/auth/otp/verify`, { phone, code })
       .pipe(tap((res) => this.persist(res)));
   }
 

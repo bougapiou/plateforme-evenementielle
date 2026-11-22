@@ -10,6 +10,7 @@ import bf.evenements.plateforme.event.dto.SpeakerResponse;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -27,6 +28,14 @@ public class PublicEventService {
     private final SpeakerRepository speakerRepository;
     private final PartnerRepository partnerRepository;
 
+    /** Finished events stay on the public showcase this many days after their end. */
+    @Value("${app.public.finished-visibility-days:30}")
+    private int finishedVisibilityDays = 30;
+
+    private Specification<Event> showcase() {
+        return EventSpecifications.publicShowcase(Instant.now(), finishedVisibilityDays);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<EventSummary> search(@Nullable String search, @Nullable String categorySlug,
                                              @Nullable String ville, @Nullable Instant from,
@@ -35,6 +44,7 @@ public class PublicEventService {
                 EventSpecifications.statusIn(java.util.List.of(
                         EventStatus.PUBLIE, EventStatus.INSCRIPTIONS_OUVERTES,
                         EventStatus.INSCRIPTIONS_FERMEES, EventStatus.EN_COURS, EventStatus.TERMINE)),
+                showcase(),
                 EventSpecifications.textSearch(search),
                 EventSpecifications.categorySlug(categorySlug),
                 EventSpecifications.inCity(ville),
@@ -46,7 +56,8 @@ public class PublicEventService {
     /** Events happening right now: the ones whose live attendance is worth showing. */
     @Transactional(readOnly = true)
     public List<EventSummary> live() {
-        return eventRepository.findAll(EventSpecifications.hasStatus(EventStatus.EN_COURS), Sort.by("dateDebut"))
+        return eventRepository.findAll(Specification.allOf(
+                        EventSpecifications.hasStatus(EventStatus.EN_COURS), showcase()), Sort.by("dateDebut"))
                 .stream().limit(50).map(EventSummary::from).toList();
     }
 
@@ -57,7 +68,8 @@ public class PublicEventService {
                 EventSpecifications.statusIn(java.util.List.of(
                         EventStatus.PUBLIE, EventStatus.INSCRIPTIONS_OUVERTES,
                         EventStatus.INSCRIPTIONS_FERMEES, EventStatus.EN_COURS, EventStatus.TERMINE)),
-                EventSpecifications.standsActifs());
+                EventSpecifications.standsActifs(),
+                showcase());
         return eventRepository.findAll(spec, Sort.by("dateDebut"))
                 .stream().limit(50).map(EventSummary::from).toList();
     }
@@ -65,7 +77,7 @@ public class PublicEventService {
     @Transactional(readOnly = true)
     public EventPublicResponse getBySlug(String slug) {
         Event event = eventRepository.findBySlug(slug)
-                .filter(e -> e.getStatut().isPubliclyVisible())
+                .filter(e -> e.getStatut().isPubliclyVisible() && !e.isMasquePublic())
                 .orElseThrow(() -> new ResourceNotFoundException("Événement introuvable : " + slug));
 
         var programme = activityRepository.findByEventIdOrderByDateDebutAscOrdreAsc(event.getId())

@@ -110,7 +110,19 @@ class EventReport {
   final ReportMetrics totaux;
   final List<(String, ReportMetrics)> parJour;
   final List<
-    ({String titre, DateTime? debut, int entrees, int sorties, int uniques})
+    ({
+      String titre,
+      DateTime? debut,
+      String? salle,
+      int entrees,
+      int sorties,
+      int uniques,
+      int inscrits,
+      int surPlace,
+      double? tauxPresence,
+      int? capacite,
+      double? tauxRemplissage,
+    })
   >
   parActivite;
 
@@ -141,6 +153,12 @@ class EventReport {
                   entrees: _i(a['entrees']),
                   sorties: _i(a['sorties']),
                   uniques: _i(a['visiteursUniques']),
+                  salle: a['salle'] as String?,
+                  inscrits: _i(a['inscrits']),
+                  surPlace: _i(a['inscritsSurPlace']),
+                  tauxPresence: (a['tauxPresence'] as num?)?.toDouble(),
+                  capacite: (a['capacite'] as num?)?.toInt(),
+                  tauxRemplissage: (a['tauxRemplissage'] as num?)?.toDouble(),
                 ),
               )
               .toList();

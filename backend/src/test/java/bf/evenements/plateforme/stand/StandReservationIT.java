@@ -40,7 +40,7 @@ class StandReservationIT extends AbstractIntegrationTest {
         String structureId = as(token)
                 .body(Map.of("raisonSociale", "Ese " + email, "typeStructure", "ENTREPRISE"))
                 .when().post("/api/structures").then().statusCode(201).extract().path("id");
-        return new String[] {TestAuth.login(email, "Secret123"), structureId};
+        return new String[] {TestAuth.login(email, "Secret123!Pne"), structureId};
     }
 
     /** Same, but the structure has been verified by an admin. */
@@ -48,7 +48,7 @@ class StandReservationIT extends AbstractIntegrationTest {
         String[] u = structureUser(email);
         as(TestAuth.adminToken()).body(Map.of("statut", "VERIFIEE"))
                 .when().patch("/api/structures/" + u[1] + "/status").then().statusCode(200);
-        return new String[] {TestAuth.login(email, "Secret123"), u[1]};
+        return new String[] {TestAuth.login(email, "Secret123!Pne"), u[1]};
     }
 
     @Test
