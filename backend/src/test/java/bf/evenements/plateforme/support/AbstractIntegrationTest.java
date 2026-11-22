@@ -20,7 +20,11 @@ public abstract class AbstractIntegrationTest {
     public static final PostgreSQLContainer<?> POSTGRES;
 
     static {
+        // Several Spring contexts coexist in the JVM (classes with their own properties),
+        // each holding a full Hikari pool. PostgreSQL's default of 100 connections is
+        // then exhausted and extra clients (e.g. psql in LoadTestCleanupIT) are refused.
         POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
+                .withCommand("postgres", "-c", "max_connections=300")
                 .withReuse(false);
         POSTGRES.start();
     }
@@ -33,6 +37,8 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // small pools: tests do not need the production pool size (DB_POOL_SIZE)
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "10");
         // no SMTP server in tests
         registry.add("spring.mail.host", () -> "localhost");
         registry.add("spring.mail.port", () -> "3025");
