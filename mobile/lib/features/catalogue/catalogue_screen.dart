@@ -150,18 +150,18 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
               title: Semantics(
                 label: 'PNE — Plateforme Nationale des Événements',
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Image.asset('assets/logo_mark.png', height: 30, fit: BoxFit.contain, excludeFromSemantics: true),
-                  Container(width: 1, height: 30, margin: const EdgeInsets.symmetric(horizontal: 10), color: Brand.s300),
+                  Image.asset('assets/logo_mark.png', height: 24, fit: BoxFit.contain, excludeFromSemantics: true),
+                  Container(width: 1, height: 30, margin: const EdgeInsets.symmetric(horizontal: 8), color: Brand.s300),
                   const Flexible(
                     child: ExcludeSemantics(
                       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('Plateforme Nationale',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontFamily: Brand.display, fontWeight: FontWeight.w800, fontSize: 14, height: 1.15, color: Brand.s900)),
+                            maxLines: 2,
+                            softWrap: true,
+                            style: TextStyle(fontFamily: Brand.display, fontWeight: FontWeight.w800, fontSize: 12.5, height: 1.15, color: Brand.s900)),
                         Text('des Événements',
                             maxLines: 1,
-                            style: TextStyle(fontFamily: Brand.display, fontWeight: FontWeight.w500, fontSize: 12.5, height: 1.15, color: Brand.s700)),
+                            style: TextStyle(fontFamily: Brand.display, fontWeight: FontWeight.w500, fontSize: 11.5, height: 1.15, color: Brand.s700)),
                       ]),
                     ),
                   ),
@@ -171,9 +171,14 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                 if (!signedIn)
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: TextButton(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        textStyle: const TextStyle(fontFamily: Brand.display, fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
                       onPressed: () => context.push('/connexion'),
-                      child: const Text('Connexion'),
+                      child: const Text('Se connecter'),
                     ),
                   ),
               ],
@@ -192,47 +197,6 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                     const Surtitre('À la une'),
                     const SizedBox(height: 10),
                     _FeaturedCard(event: une),
-                  ]),
-                ),
-              ),
-
-            // ============ CATÉGORIES ============
-            if (_categories.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 32),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Surtitre('Explorer'),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-                      child: Text('Parcourir par catégorie', style: Theme.of(context).textTheme.headlineSmall),
-                    ),
-                    SizedBox(
-                      height: 92,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _categories.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 10),
-                        itemBuilder: (_, i) {
-                          final c = _categories[i];
-                          final n = _aVenirTous.where((e) => e.categoryNom == c.nom).length;
-                          return _CategoryTile(
-                            nom: c.nom,
-                            icon: _iconeCategorie(c.slug),
-                            compte: n == 0 ? 'Bientôt' : n == 1 ? '1 événement' : '$n événements',
-                            selected: _categorie == c.slug,
-                            onTap: () {
-                              setState(() => _categorie = _categorie == c.slug ? null : c.slug);
-                              _rechercher(scroll: true);
-                            },
-                          );
-                        },
-                      ),
-                    ),
                   ]),
                 ),
               ),
@@ -258,6 +222,38 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                     nPasses: _passesList.length,
                     onChanged: (v) => setState(() => _passes = v),
                   ),
+                  // Catégorie : liste déroulante (évite de faire défiler des tuiles avant les événements)
+                  if (_categories.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      // la clé recrée le champ quand la catégorie change ailleurs (« Tout effacer »)
+                      key: ValueKey(_categorie ?? ''),
+                      initialValue: _categorie ?? '',
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Catégorie',
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: '', child: Text('Toutes les catégories')),
+                        for (final c in _categories)
+                          DropdownMenuItem(
+                            value: c.slug,
+                            child: Row(children: [
+                              Icon(_iconeCategorie(c.slug), size: 18, color: Brand.b700),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(c.nom, overflow: TextOverflow.ellipsis)),
+                              Text(_compteCategorie(c.nom),
+                                  style: const TextStyle(fontSize: 12, color: Brand.s500)),
+                            ]),
+                          ),
+                      ],
+                      onChanged: (v) {
+                        setState(() => _categorie = (v == null || v.isEmpty) ? null : v);
+                        _rechercher();
+                      },
+                    ),
+                  ],
                   if (_filtres) ...[
                     const SizedBox(height: 12),
                     Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -348,7 +344,7 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                     ]),
                   ),
                   const SizedBox(height: 14),
-                  Text('© ${DateTime.now().year} PNE · Service public numérique de l’État',
+                  Text('© ${DateTime.now().year} PNE — Plateforme Nationale des Événements',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Brand.s400)),
                 ]),
               ),
@@ -368,8 +364,6 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 28, 16, 28),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Surtitre('Service public numérique', color: Brand.s300, repere: true),
-            const SizedBox(height: 14),
             Text.rich(
               TextSpan(children: [
                 const TextSpan(text: 'Les grands événements du Burkina Faso, '),
@@ -548,6 +542,11 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
         ),
       ]),
     );
+  }
+
+  String _compteCategorie(String nom) {
+    final n = _aVenirTous.where((e) => e.categoryNom == nom).length;
+    return n == 0 ? 'bientôt' : n == 1 ? '1 événement' : '$n événements';
   }
 
   IconData _iconeCategorie(String slug) {
@@ -759,56 +758,6 @@ class _EventCard extends StatelessWidget {
             ]),
           ),
         ]),
-      ),
-    );
-  }
-}
-
-class _CategoryTile extends StatelessWidget {
-  final String nom;
-  final IconData icon;
-  final String compte;
-  final bool selected;
-  final VoidCallback onTap;
-  const _CategoryTile(
-      {required this.nom, required this.icon, required this.compte, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: selected ? Brand.b600 : Brand.s200, width: selected ? 2 : 1),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Container(
-          width: 168,
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                  color: selected ? Brand.b50 : Brand.s50, borderRadius: BorderRadius.circular(6)),
-              child: Icon(icon, color: Brand.b700, size: 22),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(nom,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: Brand.display, fontWeight: FontWeight.w600, fontSize: 13.5, height: 1.2, color: Brand.s900)),
-                const SizedBox(height: 2),
-                Text(compte, style: const TextStyle(fontSize: 11.5, color: Brand.s600)),
-              ]),
-            ),
-          ]),
-        ),
       ),
     );
   }
