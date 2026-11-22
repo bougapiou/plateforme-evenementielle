@@ -81,10 +81,18 @@ public class EventController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('" + Permissions.EVENT_DELETE + "')")
-    @Operation(summary = "Supprimer un brouillon")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        eventService.delete(id);
+    @Operation(summary = "Supprimer un événement — brouillon (organisateur) ; suppression totale avec force=true (admin)")
+    public ResponseEntity<Void> delete(@PathVariable UUID id,
+                                       @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean force) {
+        eventService.delete(id, force);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/bilan-suppression")
+    @PreAuthorize("hasAuthority('" + Permissions.EVENT_VALIDATE + "')")
+    @Operation(summary = "Ce qu'une suppression totale effacerait (admin)")
+    public EventPurgeService.Bilan bilanSuppression(@PathVariable UUID id) {
+        return eventService.bilanSuppression(id);
     }
 
     @GetMapping(value = "/{id}/qr.png", produces = MediaType.IMAGE_PNG_VALUE)

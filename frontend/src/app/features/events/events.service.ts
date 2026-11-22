@@ -36,8 +36,13 @@ export class EventsService extends ApiBase {
     return this.http.put<EventDetail>(`${this.base}/events/${id}`, payload);
   }
 
-  remove(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.base}/events/${id}`);
+  /** Supprime un événement ; avec force (admin), suppression totale même avec billets et paiements. */
+  remove(id: string, force = false): Observable<void> {
+    return this.http.delete<void>(`${this.base}/events/${id}`, force ? { params: { force: 'true' } } : {});
+  }
+  /** Ce qu'une suppression totale effacerait (admin). */
+  bilanSuppression(id: string): Observable<BilanSuppression> {
+    return this.get<BilanSuppression>(`/events/${id}/bilan-suppression`);
   }
 
   transition(id: string, action: string, body: unknown = {}): Observable<EventDetail> {
@@ -111,4 +116,14 @@ export class EventsService extends ApiBase {
     return this.get<EventSummary[]>('/public/live-events');
   }
 
+}
+
+export interface BilanSuppression {
+  commandes: number;
+  billets: number;
+  inscriptions: number;
+  paiements: number;
+  factures: number;
+  reservationsStands: number;
+  entrees: number;
 }

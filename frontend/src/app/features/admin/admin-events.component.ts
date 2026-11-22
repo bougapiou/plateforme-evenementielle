@@ -104,16 +104,42 @@ export class AdminEventsComponent {
     if (confirm(`Annuler définitivement « ${e.nom} » ?`)) this.act(e, 'cancel');
   }
 
+  /**
+   * Suppression totale (admin) : on montre d'abord ce qui sera effacé. S'il y a des billets,
+   * inscriptions ou paiements, l'admin doit taper SUPPRIMER pour confirmer.
+   */
   confirmDelete(e: EventSummary): void {
-    if (!confirm(`Supprimer définitivement « ${e.nom} » ? Cette action est irréversible.`)) return;
-    this.service.remove(e.id).subscribe({
-      next: () => this.reload(),
-      error: (err) =>
-        alert(
-          err?.error?.code === 'EVENT_HAS_DEPENDENT_DATA'
-            ? err.error.message
-            : (err?.error?.message ?? 'Suppression impossible.'),
-        ),
+    this.service.bilanSuppression(e.id).subscribe({
+      next: (b) => {
+        const lignes: [number, string][] = [
+          [b.billets, 'billet(s)'], [b.commandes, 'commande(s)'], [b.inscriptions, 'inscription(s)'],
+          [b.paiements, 'paiement(s)'], [b.factures, 'facture(s)'], [b.reservationsStands, 'réservation(s) de stand'],
+          [b.entrees, 'entrée(s) scannée(s)'],
+        ];
+        const donnees = lignes.filter(([n]) => n > 0).map(([n, l]) => `• ${n} ${l}`);
+        if (!donnees.length) {
+          if (!confirm(`Supprimer définitivement « ${e.nom} » ? Cette action est irréversible.`)) return;
+        } else {
+          const saisie = prompt(
+            [
+              `SUPPRESSION TOTALE de « ${e.nom} »`,
+              '',
+              'Seront effacés définitivement :',
+              ...donnees,
+              '',
+              'Les personnes concernées seront prévenues. Cette action est irréversible.',
+              '',
+              'Pour confirmer, tapez SUPPRIMER :',
+            ].join('\n'),
+          );
+          if (saisie?.trim().toUpperCase() !== 'SUPPRIMER') return;
+        }
+        this.service.remove(e.id, true).subscribe({
+          next: () => this.reload(),
+          error: (err) => alert(err?.error?.message ?? 'Suppression impossible.'),
+        });
+      },
+      error: (err) => alert(err?.error?.message ?? 'Suppression impossible.'),
     });
   }
 }

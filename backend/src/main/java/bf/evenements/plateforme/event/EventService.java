@@ -52,6 +52,7 @@ public class EventService {
     private final CheckinRepository checkinRepository;
     private final TicketRepository ticketRepository;
     private final InvoiceRepository invoiceRepository;
+    private final EventPurgeService eventPurgeService;
 
     // ---------------------------------------------------------------- CRUD
 
@@ -110,21 +111,59 @@ public class EventService {
 
     @Transactional
     public void delete(UUID id) {
+        delete(id, false);
+    }
+
+    /**
+     * Suppression d'un événement. Un organisateur ne supprime que ses brouillons sans données.
+     * Un administrateur (EVENT_VALIDATE) peut, avec {@code force}, supprimer TOTALEMENT n'importe
+     * quel événement, même avec billets, inscriptions ou paiements : les personnes concernées sont
+     * prévenues, puis tout est effacé (voir {@link EventPurgeService}).
+     */
+    @Transactional
+    public void delete(UUID id, boolean force) {
         Event event = loadForManage(id);
         boolean admin = currentUser.hasAuthority(Permissions.EVENT_VALIDATE);
+        if (force && admin) {
+            var bilan = eventPurgeService.bilan(id);
+            String nom = event.getNom();
+            for (UUID userId : eventPurgeService.personnesConcernees(id)) {
+                notificationService.notify(userId,
+                        bf.evenements.plateforme.notification.NotificationType.EVENEMENT_ANNULE,
+                        "Événement supprimé : " + nom,
+                        "L'événement « " + nom + " » a été supprimé par l'administration de la plateforme. "
+                                + "Les billets, inscriptions et réservations associés ne sont plus valables.",
+                        null);
+            }
+            auditService.record(currentUser.requireId(), currentUser.require().email(),
+                    "EVENT_PURGED", "Event", id.toString(), null,
+                    "nom=" + nom + " statut=" + event.getStatut()
+                            + (bilan.vide() ? "" : " ; données supprimées : " + bilan.resume()));
+            eventPurgeService.purge(id);
+            return;
+        }
         if (!admin && event.getStatut() != EventStatus.BROUILLON
                 && event.getStatut() != EventStatus.REFUSE) {
             throw new BusinessException("EVENT_DELETE_FORBIDDEN",
                     "Seuls les brouillons peuvent être supprimés ; utilisez l'annulation.");
         }
         if (hasDependentData(id)) {
-            throw new BusinessException("EVENT_HAS_DEPENDENT_DATA",
-                    "Cet événement a des billets, inscriptions, paiements ou entrées "
+            throw new BusinessException("EVENT_HAS_DEPENDENT_DATA", admin
+                    ? "Cet événement a des données (" + eventPurgeService.bilan(id).resume()
+                            + ") : confirmez la suppression totale pour tout effacer."
+                    : "Cet événement a des billets, inscriptions, paiements ou entrées "
                             + "enregistrées ; utilisez l'annulation plutôt que la suppression, "
                             + "pour conserver cet historique.");
         }
         audit("EVENT_DELETED", event);
         eventRepository.delete(event);
+    }
+
+    /** Ce qu'une suppression totale effacerait (admin). */
+    @Transactional(readOnly = true)
+    public EventPurgeService.Bilan bilanSuppression(UUID id) {
+        load(id);
+        return eventPurgeService.bilan(id);
     }
 
     /** Anything a super admin's hard delete must never silently wipe. */
