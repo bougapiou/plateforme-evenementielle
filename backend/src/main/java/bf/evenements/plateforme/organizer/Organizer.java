@@ -64,6 +64,21 @@ public class Organizer extends BaseEntity {
     @Column(name = "approuve_le")
     private Instant approuveLe;
 
+    /**
+     * Name shown to the public: the represented structure (with its acronym)
+     * when there is one, otherwise the organiser's display name.
+     */
+    public String getNomPublic() {
+        if (structure != null && structure.getRaisonSociale() != null) {
+            String sigle = structure.getSigle();
+            return sigle != null && !sigle.isBlank()
+                    && !structure.getRaisonSociale().contains(sigle)
+                    ? structure.getRaisonSociale() + " (" + sigle + ")"
+                    : structure.getRaisonSociale();
+        }
+        return nomAffichage;
+    }
+
     public boolean isActive() {
         return statut == OrganizerStatus.ACTIF;
     }

@@ -53,6 +53,6 @@ public record EventPublicResponse(
                 e.getConditionsParticipation(), e.isHasActivities(), e.isStandsActifs(),
                 e.isStandsParticuliers(),
                 e.getInscriptionDebut(), e.getInscriptionFin(), e.getStatut(),
-                e.getOrganizer().getNomAffichage(), programme, speakers, partners);
+                e.getOrganizer().getNomPublic(), programme, speakers, partners);
     }
 }

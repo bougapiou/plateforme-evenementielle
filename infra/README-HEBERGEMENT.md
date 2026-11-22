@@ -160,6 +160,10 @@ Puis dans un navigateur : ouvrir le site, se connecter avec
 
 Ne jamais lancer `docker compose down -v` : l'option `-v` supprime la base.
 
+Sauvegardes **automatiques** quotidiennes avec copie hors serveur, test de
+restauration chronométré, supervision avec alertes SMS / e-mail et liste de
+contrôle « test / production » : voir [`exploitation/README.md`](exploitation/README.md).
+
 ### Changer le schéma de base de données
 
 Les évolutions passent par des migrations Flyway

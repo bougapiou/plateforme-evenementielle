@@ -35,7 +35,19 @@ public record EventTicketResponse(
     public static EventTicketResponse from(EventTicket t) {
         List<Map<String, String>> acts = t.getActivities().stream()
                 .sorted((a, b) -> a.getDateDebut().compareTo(b.getDateDebut()))
-                .map(a -> Map.of("id", a.getId().toString(), "titre", a.getTitre()))
+                .map(a -> {
+                    Map<String, String> m = new java.util.LinkedHashMap<>();
+                    m.put("id", a.getId().toString());
+                    m.put("titre", a.getTitre());
+                    m.put("dateDebut", a.getDateDebut().toString());
+                    if (a.getDateFin() != null) {
+                        m.put("dateFin", a.getDateFin().toString());
+                    }
+                    if (a.getSalle() != null) {
+                        m.put("salle", a.getSalle());
+                    }
+                    return m;
+                })
                 .toList();
         return new EventTicketResponse(
                 t.getId(), t.getEvent().getId(), t.getNom(), t.getDescription(),

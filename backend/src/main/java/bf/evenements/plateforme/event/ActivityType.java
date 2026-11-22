@@ -10,5 +10,11 @@ public enum ActivityType {
     NETWORKING,
     PAUSE,
     SPECTACLE,
+    DEMONSTRATION,
+    FORUM,
+    KEYNOTE,
+    EMISSION_MEDIA,
+    EXPOSITION,
+    GALA,
     AUTRE
 }

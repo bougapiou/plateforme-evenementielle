@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class EventProgramController {
 
     private final EventActivityService activityService;
+    private final ProgrammeImportService importService;
     private final SpeakerService speakerService;
     private final PartnerService partnerService;
 
@@ -52,6 +53,35 @@ public class EventProgramController {
     public ActivityResponse createActivity(@PathVariable UUID eventId,
                                            @Valid @RequestBody ActivityRequest request) {
         return activityService.create(eventId, request);
+    }
+
+    @PostMapping(value = "/activities/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Importer le programme depuis le modèle Excel / CSV (simulation=true : aperçu sans créer)")
+    public ProgrammeImportService.Report importActivities(
+            @PathVariable UUID eventId,
+            @org.springframework.web.bind.annotation.RequestPart("fichier")
+            org.springframework.web.multipart.MultipartFile fichier,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "true") boolean simulation)
+            throws java.io.IOException {
+        activityService.list(eventId); // ownership check
+        return importService.importFile(eventId, fichier.getOriginalFilename(), fichier.getInputStream(), simulation);
+    }
+
+    @GetMapping("/activities/import/modele.xlsx")
+    @Operation(summary = "Modèle Excel d'import du programme")
+    public ResponseEntity<byte[]> importTemplate(@PathVariable UUID eventId) {
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"modele-programme.xlsx\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(importService.template());
+    }
+
+    @GetMapping("/activities/conflicts")
+    @Operation(summary = "Conflits de salle : deux sessions au même moment dans la même salle")
+    public List<EventActivityService.Conflict> conflicts(@PathVariable UUID eventId) {
+        return activityService.conflicts(eventId);
     }
 
     @PutMapping("/activities/{activityId}")

@@ -47,7 +47,7 @@ public class ParticipantFileWriter {
 
     private static List<String> headers(boolean occurrences) {
         List<String> h = new ArrayList<>(List.of("N°", "Nom", "Prénom", "Téléphone", "E-mail",
-                "Référence", "Catégorie", "Statut", "Date"));
+                "Référence", "Catégorie", "Présence / statut", "Date"));
         if (occurrences) {
             h.add("Occurrences");
         }
@@ -65,6 +65,17 @@ public class ParticipantFileWriter {
 
     private static String date(Instant i) {
         return i == null ? "" : DATE.format(i);
+    }
+
+    // -------------------------------------------------------------------- CSV
+
+    /** CSV for Excel (UTF-8 BOM, « ; »): opens with correct accents. */
+    public byte[] csv(List<Row> rows, boolean occurrences) {
+        List<List<String>> data = new ArrayList<>(rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            data.add(cells(i + 1, rows.get(i), occurrences));
+        }
+        return TableFileWriter.csv(headers(occurrences), data);
     }
 
     // ------------------------------------------------------------------ Excel

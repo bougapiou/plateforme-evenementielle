@@ -7,6 +7,7 @@ import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../data/domain.dart';
+import 'offline_store.dart';
 import 'scan_widgets.dart';
 
 class ScannerScreen extends ConsumerStatefulWidget {
@@ -43,11 +44,131 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   String? _error;
   late String _sens = widget.sens;
   Map<String, int> _stats = const {};
+  OfflineStore? _offline;
+  bool _forceOffline = false;
+  bool _syncing = false;
+  bool _sound = true;
 
   @override
   void initState() {
     super.initState();
     _refreshStats();
+    if (OfflineStore.supported) {
+      OfflineStore.load(widget.eventId).then((s) {
+        if (!mounted) return;
+        setState(() => _offline = s);
+        if (s.pending > 0) _sync(silent: true);
+      });
+    }
+  }
+
+  /// Downloads the list of valid tickets so the scanner keeps working without network.
+  Future<void> _preparePack() async {
+    final store = _offline;
+    if (store == null) return;
+    try {
+      final pack = await ref.read(checkinRepositoryProvider).offlinePack(widget.eventId);
+      await store.applyPack(pack);
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Mode hors ligne prêt : ${(pack['billets'] as List).length} billet(s) chargé(s).')));
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
+  /// Sends the offline scans; each one carries a clientRef so a replay is harmless.
+  Future<void> _sync({bool silent = false}) async {
+    final store = _offline;
+    if (store == null || store.pending == 0 || _syncing) return;
+    setState(() => _syncing = true);
+    try {
+      final results = await ref
+          .read(checkinRepositoryProvider)
+          .sync(store.queue.map((q) => q.toJson()).toList());
+      await store.acknowledge(results
+          .where((r) => r['resultat'] != 'ERREUR')
+          .map((r) => r['clientRef'] as String? ?? ''));
+      _refreshStats();
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${results.length} scan(s) synchronisé(s).')));
+      }
+    } on ApiException catch (e) {
+      if (!silent && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  /// Felt and heard answer at the door: short tap + click when valid,
+  /// long buzz + alert when refused.
+  void _feedback(String resultat) {
+    if (resultat == 'VALIDE') {
+      HapticFeedback.mediumImpact();
+      if (_sound) SystemSound.play(SystemSoundType.click);
+    } else {
+      HapticFeedback.vibrate();
+      if (_sound) SystemSound.play(SystemSoundType.alert);
+    }
+  }
+
+  /// Walk-in visitor: creates a free ticket (name + phone) and lets him in.
+  Future<void> _onSiteDialog() async {
+    final nom = TextEditingController();
+    final tel = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Inscription sur place'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(widget.activiteNom ?? 'Entrée générale', style: const TextStyle(fontWeight: FontWeight.w600)),
+          TextField(controller: nom, decoration: const InputDecoration(labelText: 'Nom et prénom')),
+          TextField(
+              controller: tel,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: 'Téléphone')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Créer et faire entrer')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    if (nom.text.trim().isEmpty || !RegExp(r'^\+?[0-9 ]{6,20}$').hasMatch(tel.text.trim())) {
+      setState(() => _error = 'Renseignez le nom et un numéro de téléphone valide.');
+      return;
+    }
+    setState(() {
+      _processing = true;
+      _error = null;
+    });
+    await _controller.stop();
+    try {
+      final (numero, res) = await ref.read(checkinRepositoryProvider).onSite(
+          eventId: widget.eventId, activityId: widget.activityId, nom: nom.text.trim(), telephone: tel.text.trim());
+      _feedback(res.resultat);
+      setState(() => _outcome = ScanOutcome(
+          resultat: res.resultat,
+          sens: res.sens,
+          message: 'Inscrit sur place — billet $numero',
+          participantNom: res.participantNom,
+          categorieNom: res.categorieNom,
+          numeroBillet: numero,
+          activiteNom: res.activiteNom));
+      _refreshStats();
+    } on ApiException catch (e) {
+      _feedback('INVALIDE');
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
   }
 
   Future<void> _refreshStats() async {
@@ -79,24 +200,36 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
       _error = null;
     });
     await _controller.stop();
+    final offline = _offline;
     try {
+      if (_forceOffline && offline != null && offline.hasPack) {
+        final res = await offline.scan(raw,
+            activityId: widget.activityId, activiteNom: widget.activiteNom, sens: _sens);
+        _feedback(res.resultat);
+        setState(() => _outcome = res);
+        return;
+      }
       final res = await ref.read(checkinRepositoryProvider).scan(
             token: raw,
             eventId: widget.eventId,
             activityId: widget.activityId,
             sens: _sens,
           );
-      // a felt answer at the door: a short tap when it is fine, a long buzz when it is not
-      if (res.resultat == 'VALIDE') {
-        HapticFeedback.mediumImpact();
-      } else {
-        HapticFeedback.vibrate();
-      }
+      _feedback(res.resultat);
       setState(() => _outcome = res);
       _refreshStats();
+      if ((offline?.pending ?? 0) > 0) _sync(silent: true);
     } on ApiException catch (e) {
-      HapticFeedback.vibrate();
-      setState(() => _error = e.message);
+      // Network down: fall back on the downloaded list when there is one.
+      if (e.status == 0 && offline != null && offline.hasPack) {
+        final res = await offline.scan(raw,
+            activityId: widget.activityId, activiteNom: widget.activiteNom, sens: _sens);
+        _feedback(res.resultat);
+        setState(() => _outcome = res);
+      } else {
+        _feedback('INVALIDE');
+        setState(() => _error = e.message);
+      }
     } finally {
       if (mounted) setState(() => _processing = false);
     }
@@ -130,6 +263,51 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
           ],
         ),
         actions: [
+          if (_offline != null)
+            PopupMenuButton<String>(
+              tooltip: 'Hors ligne et options',
+              icon: Badge(
+                isLabelVisible: (_offline?.pending ?? 0) > 0,
+                label: Text('${_offline?.pending ?? 0}'),
+                child: Icon(_forceOffline ? Icons.cloud_off : Icons.cloud_done_outlined),
+              ),
+              onSelected: (v) {
+                switch (v) {
+                  case 'pack':
+                    _preparePack();
+                  case 'mode':
+                    setState(() => _forceOffline = !_forceOffline);
+                  case 'sync':
+                    _sync();
+                  case 'son':
+                    setState(() => _sound = !_sound);
+                  case 'surplace':
+                    _onSiteDialog();
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                    value: 'pack',
+                    child: Text(_offline!.hasPack
+                        ? 'Actualiser la liste hors ligne'
+                        : 'Préparer le mode hors ligne')),
+                if (_offline!.hasPack)
+                  CheckedPopupMenuItem(
+                      value: 'mode', checked: _forceOffline, child: const Text('Scanner hors ligne')),
+                PopupMenuItem(
+                    value: 'sync',
+                    enabled: _offline!.pending > 0 && !_syncing,
+                    child: Text('Synchroniser (${_offline!.pending} en attente)')),
+                CheckedPopupMenuItem(value: 'son', checked: _sound, child: const Text('Signal sonore')),
+                const PopupMenuItem(value: 'surplace', child: Text('Inscription sur place')),
+              ],
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.person_add_alt),
+              tooltip: 'Inscription sur place',
+              onPressed: _onSiteDialog,
+            ),
           IconButton(
             icon: const Icon(Icons.flash_on),
             tooltip: 'Lampe',
@@ -176,7 +354,9 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                     ? Colors.white
                     : (_outcome!.resultat == 'VALIDE'
                         ? const Color(0xFF4ADE80)
-                        : const Color(0xFFF87171)),
+                        : _outcome!.resultat == 'DEJA_UTILISE'
+                            ? const Color(0xFFFB923C)
+                            : const Color(0xFFF87171)),
               ),
               if (!showResult)
                 const Padding(

@@ -116,7 +116,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 controller: _password,
                 decoration: const InputDecoration(labelText: 'Mot de passe'),
                 validator: (v) =>
-                    (v == null || v.length < 8) ? '8 caractères minimum' : null,
+                    (v == null || v.length < 12) ? '12 caractères minimum' : null,
               ),
               const SizedBox(height: 12),
               PasswordField(

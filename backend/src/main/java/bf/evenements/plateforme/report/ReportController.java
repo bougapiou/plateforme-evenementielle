@@ -35,6 +35,7 @@ public class ReportController {
 
     private final ReportService reportService;
     private final ParticipantListService participantListService;
+    private final BilanPdfService bilanPdfService;
 
     @GetMapping("/stats")
     @Operation(summary = "Statistiques d'une journée (jour=AAAA-MM-JJ) ou de tout l'événement (sans jour)")
@@ -42,6 +43,30 @@ public class ReportController {
             @PathVariable UUID eventId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate jour) {
         return reportService.eventReport(eventId, jour);
+    }
+
+    @GetMapping("/stats/activites/export")
+    @Operation(summary = "Exporter le tableau « Par activité » en CSV ou Excel (format=CSV|XLSX)")
+    public ResponseEntity<byte[]> exportActivities(
+            @PathVariable UUID eventId,
+            @RequestParam(defaultValue = "XLSX") String format,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate jour) {
+        var file = reportService.activityTable(eventId, jour, !"CSV".equalsIgnoreCase(format));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(file.filename()).build().toString())
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .body(file.content());
+    }
+
+    @GetMapping(value = "/bilan.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "Rapport de bilan PDF (chiffres clés, top 5 des sessions, fréquentation par jour)")
+    public ResponseEntity<byte[]> bilan(@PathVariable UUID eventId) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename("bilan-evenement.pdf").build().toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(bilanPdfService.bilan(eventId));
     }
 
     @GetMapping("/flux")

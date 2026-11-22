@@ -16,7 +16,7 @@ public final class TestAuth {
 
     public static String registerAndToken(String email, String type) {
         return given().contentType(ContentType.JSON)
-                .body(Map.of("email", email, "password", "Secret123",
+                .body(Map.of("email", email, "password", "Secret123!Pne",
                         "firstName", "Test", "lastName", "User",
                         "phone", "+226 70 00 00 00", "type", type))
                 .when().post("/api/auth/register")
@@ -51,6 +51,6 @@ public final class TestAuth {
         given().header("Authorization", "Bearer " + adminToken())
                 .when().post("/api/organizers/" + organizerId + "/approve")
                 .then().statusCode(200);
-        return login(email, "Secret123");
+        return login(email, "Secret123!Pne");
     }
 }

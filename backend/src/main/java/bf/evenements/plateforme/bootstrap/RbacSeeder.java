@@ -42,14 +42,25 @@ public class RbacSeeder {
                     Permissions.EVENT_READ, Permissions.TICKET_PURCHASE, Permissions.STAND_RESERVE,
                     Permissions.REGISTRATION_CREATE, Permissions.STRUCTURE_MANAGE),
             RoleNames.PERSONNEL_CONTROLE, Set.of(
-                    Permissions.EVENT_READ, Permissions.CHECKIN_SCAN));
+                    Permissions.EVENT_READ, Permissions.CHECKIN_SCAN),
+            RoleNames.VALIDEUR, Set.of(
+                    Permissions.EVENT_READ, Permissions.EVENT_VALIDATE, Permissions.STRUCTURE_READ,
+                    Permissions.STATS_GLOBAL_READ),
+            RoleNames.GESTIONNAIRE_PROGRAMME, Set.of(
+                    Permissions.EVENT_READ, Permissions.EVENT_UPDATE, Permissions.TICKET_MANAGE,
+                    Permissions.STATS_OWN_READ, Permissions.CHECKIN_SCAN),
+            RoleNames.LECTEUR_STATISTIQUES, Set.of(
+                    Permissions.EVENT_READ, Permissions.STATS_GLOBAL_READ));
 
     private static final Map<String, String> ROLE_DESCRIPTIONS = Map.of(
             RoleNames.SUPER_ADMIN, "Administrateur de la plateforme (acces total)",
             RoleNames.ORGANISATEUR, "Cree et gere ses propres evenements",
             RoleNames.PARTICIPANT, "Particulier : consultation, inscription, billets",
             RoleNames.STRUCTURE, "Entreprise / institution : inscriptions et reservation de stands",
-            RoleNames.PERSONNEL_CONTROLE, "Personnel de controle d'acces (scan des QR codes)");
+            RoleNames.PERSONNEL_CONTROLE, "Personnel de controle d'acces (scan des QR codes)",
+            RoleNames.VALIDEUR, "Valide ou refuse les evenements soumis",
+            RoleNames.GESTIONNAIRE_PROGRAMME, "Gere le programme d'un evenement delegue par l'organisateur",
+            RoleNames.LECTEUR_STATISTIQUES, "Consulte les statistiques de tous les evenements");
 
     @EventListener(ApplicationReadyEvent.class)
     @Order(1)

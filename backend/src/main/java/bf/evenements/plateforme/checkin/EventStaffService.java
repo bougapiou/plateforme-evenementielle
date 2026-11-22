@@ -35,6 +35,12 @@ public class EventStaffService {
 
     @Transactional
     public StaffView add(UUID eventId, String email) {
+        return add(eventId, email, StaffFonction.CONTROLE);
+    }
+
+    /** Adds a team member: control agent, or programme manager (delegation). */
+    @Transactional
+    public StaffView add(UUID eventId, String email, StaffFonction fonction) {
         Event event = eventService.loadManaged(eventId);
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -46,10 +52,13 @@ public class EventStaffService {
         staff.setEvent(event);
         staff.setUser(user);
         staff.setAjoutePar(currentUser.requireId());
+        staff.setFonction(fonction == null ? StaffFonction.CONTROLE : fonction);
         staff = staffRepository.save(staff);
 
-        if (!user.roleNames().contains(RoleNames.PERSONNEL_CONTROLE)) {
-            roleRepository.findByName(RoleNames.PERSONNEL_CONTROLE).ifPresent(user::addRole);
+        String role = staff.getFonction() == StaffFonction.PROGRAMME
+                ? RoleNames.GESTIONNAIRE_PROGRAMME : RoleNames.PERSONNEL_CONTROLE;
+        if (!user.roleNames().contains(role)) {
+            roleRepository.findByName(role).ifPresent(user::addRole);
         }
         auditService.record(currentUser.requireId(), currentUser.require().email(),
                 "EVENT_STAFF_ADDED", "Event", eventId.toString(), null, "user=" + user.getEmail());
@@ -66,10 +75,14 @@ public class EventStaffService {
                 "EVENT_STAFF_REMOVED", "Event", eventId.toString(), null, "user=" + userId);
     }
 
-    public record StaffView(UUID id, UUID userId, String fullName, String email) {
+    /** {@code activityIds} empty = the agent controls the whole event. */
+    public record StaffView(UUID id, UUID userId, String fullName, String email, List<UUID> activityIds,
+                            StaffFonction fonction) {
         static StaffView from(EventStaff s) {
             return new StaffView(s.getId(), s.getUser().getId(), s.getUser().getFullName(),
-                    s.getUser().getEmail());
+                    s.getUser().getEmail(),
+                    s.getActivities().stream().map(bf.evenements.plateforme.event.EventActivity::getId).toList(),
+                    s.getFonction());
         }
     }
 }

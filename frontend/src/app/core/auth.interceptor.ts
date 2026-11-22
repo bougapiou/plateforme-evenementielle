@@ -14,7 +14,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const isAuthCall = req.url.includes('/auth/login') || req.url.includes('/auth/register') ||
     req.url.includes('/auth/refresh') || req.url.includes('/auth/guest') ||
-    req.url.includes('/auth/password/');
+    req.url.includes('/auth/password/') || req.url.includes('/auth/mfa/') || req.url.includes('/auth/otp/');
 
   const withToken = (token: string | null) =>
     token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;

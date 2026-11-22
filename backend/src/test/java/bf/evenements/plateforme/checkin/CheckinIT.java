@@ -94,7 +94,7 @@ class CheckinIT extends AbstractIntegrationTest {
         TestAuth.registerAndToken(staffEmail, "PARTICULIER");
         as(orga).body(Map.of("email", staffEmail))
                 .when().post("/api/events/" + eventId + "/staff").then().statusCode(201);
-        String staffToken = TestAuth.login(staffEmail, "Secret123");
+        String staffToken = TestAuth.login(staffEmail, "Secret123!Pne");
 
         // buy a second ticket to scan with the staff account
         String buyer2 = TestAuth.registerAndToken("ck-buyer2-" + n + "@example.bf", "PARTICULIER");

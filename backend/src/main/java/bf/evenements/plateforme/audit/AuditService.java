@@ -37,9 +37,20 @@ public class AuditService {
     @Transactional(readOnly = true)
     public PageResponse<AuditLogResponse> search(@Nullable String action, @Nullable UUID actorId,
                                                  Pageable pageable) {
+        return search(action, actorId, null, null, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AuditLogResponse> search(@Nullable String action, @Nullable UUID actorId,
+                                                 @Nullable String q, @Nullable java.time.LocalDate du,
+                                                 @Nullable java.time.LocalDate au, Pageable pageable) {
+        java.time.ZoneId zone = java.time.ZoneId.of("Africa/Ouagadougou");
         var spec = org.springframework.data.jpa.domain.Specification.allOf(
                 AuditLogRepository.hasAction(action),
-                AuditLogRepository.hasActor(actorId));
+                AuditLogRepository.hasActor(actorId),
+                AuditLogRepository.matches(q),
+                AuditLogRepository.between(du == null ? null : du.atStartOfDay(zone).toInstant(),
+                        au == null ? null : au.plusDays(1).atStartOfDay(zone).toInstant()));
         return PageResponse.of(repository.findAll(spec, pageable), AuditLogResponse::from);
     }
 

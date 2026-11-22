@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { ApiError } from '../../core/models';
@@ -10,7 +10,7 @@ import { StandsService } from '../stands/stands.service';
 import { Stand } from '../stands/stand.models';
 import { formatDateTime, formatFcfa, formatTime } from '../../shared/format';
 import {
-  EventReport, ExportFormat, FluxPoint, FluxReport, Granularite, ParticipantCriteria,
+  ActivityMetrics, EventReport, ExportFormat, FluxPoint, FluxReport, Granularite, ParticipantCriteria,
   ParticipantPreview, Perimetre, ReportMetrics, ReportsService, Source,
 } from './reports.service';
 
@@ -125,24 +125,88 @@ const DAY_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numer
             </table>
           </div>
 
-          @if (r.parActivite.length) {
-            <div class="card mt-4 overflow-x-auto p-4">
-              <h3 class="font-semibold text-slate-700">
-                Par activité {{ statsDay() ? '(' + dayLabel(statsDay()!) + ')' : '' }}
-              </h3>
-              <table class="mt-2 w-full text-sm">
-                <thead class="text-left text-xs uppercase text-slate-400">
-                  <tr><th class="py-1 pr-3">Activité</th><th class="pr-3">Début</th>
-                    <th class="pr-3">Entrées</th><th class="pr-3">Sorties</th><th>Personnes uniques</th></tr>
+          <div class="card mt-4 p-4">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+              <h3 class="font-semibold text-slate-700">Comparer avec une autre édition</h3>
+              <select class="form-input max-w-sm" [ngModel]="compareId()" (ngModelChange)="compareWith($event)"
+                      aria-label="Édition à comparer">
+                <option value="">— Choisir un événement —</option>
+                @for (e of events(); track e.id) {
+                  @if (e.id !== eventId()) { <option [value]="e.id">{{ e.nom }}</option> }
+                }
+              </select>
+            </div>
+            @if (compare(); as c) {
+              <table class="mt-3 w-full text-sm">
+                <thead class="text-left text-xs uppercase text-slate-500">
+                  <tr><th class="py-1 pr-3">Indicateur</th><th class="pr-3">{{ r.evenement }}</th>
+                    <th class="pr-3">{{ c.evenement }}</th><th>Évolution</th></tr>
                 </thead>
                 <tbody>
-                  @for (a of r.parActivite; track a.id) {
+                  @for (k of compareRows; track k.key) {
+                    <tr class="border-t border-slate-100">
+                      <td class="py-1.5 pr-3">{{ k.label }}</td>
+                      <td class="pr-3 font-semibold">{{ $any(r.totaux)[k.key] }}</td>
+                      <td class="pr-3">{{ $any(c.totaux)[k.key] }}</td>
+                      <td [class.text-green-700]="delta($any(r.totaux)[k.key], $any(c.totaux)[k.key]) > 0"
+                          [class.text-red-700]="delta($any(r.totaux)[k.key], $any(c.totaux)[k.key]) < 0">
+                        {{ deltaLabel($any(r.totaux)[k.key], $any(c.totaux)[k.key]) }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </div>
+
+          @if (r.parActivite.length) {
+            <div class="card mt-4 overflow-x-auto p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="font-semibold text-slate-700">
+                  Par activité {{ statsDay() ? '(' + dayLabel(statsDay()!) + ')' : '' }}
+                </h3>
+                <div class="flex gap-2">
+                  <button type="button" class="btn-ghost text-brand-700" [disabled]="exporting()"
+                          (click)="downloadActivities('CSV')">CSV</button>
+                  <button type="button" class="btn-ghost text-brand-700" [disabled]="exporting()"
+                          (click)="downloadActivities('XLSX')">Excel</button>
+                  <button type="button" class="btn-primary" [disabled]="exporting()"
+                          (click)="downloadBilan()">Rapport de bilan (PDF)</button>
+                </div>
+              </div>
+              <p class="mt-1 text-xs text-slate-500">
+                Taux de présence = personnes uniques scannées ÷ billets émis pour la session.
+                Cliquez sur un en-tête pour trier.
+              </p>
+              <table class="mt-2 w-full text-sm">
+                <thead class="text-left text-xs uppercase text-slate-500">
+                  <tr>
+                    @for (c of activityColumns; track c.key) {
+                      <th class="cursor-pointer select-none py-1 pr-3 hover:text-brand-700"
+                          [attr.aria-sort]="sortKey() === c.key ? (sortAsc() ? 'ascending' : 'descending') : null"
+                          (click)="sortBy(c.key)">
+                        {{ c.label }}@if (sortKey() === c.key) { {{ sortAsc() ? ' ▲' : ' ▼' }} }
+                      </th>
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (a of sortedActivities(); track a.id) {
                     <tr class="border-t border-slate-100">
                       <td class="py-1.5 pr-3">{{ a.titre }}</td>
                       <td class="pr-3 text-slate-500">{{ dt(a.dateDebut) }}</td>
+                      <td class="pr-3 text-slate-500">{{ a.salle || '—' }}</td>
+                      <td class="pr-3 font-semibold">{{ a.inscrits }}</td>
+                      <td class="pr-3">{{ a.inscritsSurPlace }}</td>
+                      <td class="pr-3 font-semibold">{{ a.visiteursUniques }}</td>
+                      <td class="pr-3" [class.text-red-700]="(a.tauxPresence ?? 100) < 50"
+                          [class.text-green-700]="(a.tauxPresence ?? 0) >= 75">{{ pct(a.tauxPresence) }}</td>
+                      <td class="pr-3">{{ a.capacite ?? '—' }}</td>
+                      <td class="pr-3">{{ pct(a.tauxRemplissage) }}</td>
                       <td class="pr-3">{{ a.entrees }}</td>
                       <td class="pr-3">{{ a.sorties }}</td>
-                      <td>{{ a.visiteursUniques }}</td>
+                      <td class="pr-3">{{ a.autoEnregistres }}</td>
+                      <td>{{ a.dureeMoyenneMinutes != null ? a.dureeMoyenneMinutes + ' min' : '—' }}</td>
                     </tr>
                   }
                 </tbody>
@@ -383,6 +447,7 @@ const DAY_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numer
                 <button type="button" class="btn-primary" [disabled]="exporting() || !shownCount()" (click)="download('XLSX')">Excel</button>
                 <button type="button" class="btn-primary" [disabled]="exporting() || !shownCount()" (click)="download('DOCX')">Word</button>
                 <button type="button" class="btn-primary" [disabled]="exporting() || !shownCount()" (click)="download('PDF')">PDF</button>
+                <button type="button" class="btn-primary" [disabled]="exporting() || !shownCount()" (click)="download('CSV')">CSV</button>
               </div>
             </div>
 
@@ -494,6 +559,98 @@ export class ReportsComponent {
   doublons = signal(true);
   preview = signal<ParticipantPreview | null>(null);
   exporting = signal(false);
+
+  // --- Comparaison entre éditions (STAT-06) ---
+  compareId = signal('');
+  compare = signal<EventReport | null>(null);
+  compareRows = [
+    { key: 'inscriptions', label: 'Inscriptions' }, { key: 'billetsEmis', label: 'Billets émis' },
+    { key: 'visiteursUniques', label: 'Présents (personnes uniques)' }, { key: 'entrees', label: 'Entrées' },
+    { key: 'visitesStands', label: 'Visites de stands' }, { key: 'revenus', label: 'Recettes (FCFA)' },
+  ];
+  compareWith(id: string): void {
+    this.compareId.set(id);
+    this.compare.set(null);
+    if (id) this.reports.stats(id, null).subscribe({ next: (c) => this.compare.set(c), error: () => {} });
+  }
+  delta = (a: number, b: number) => (a ?? 0) - (b ?? 0);
+  deltaLabel(a: number, b: number): string {
+    if (!b) return '—';
+    const pct = Math.round(((a - b) / b) * 100);
+    return (pct > 0 ? '+' : '') + pct + ' %';
+  }
+
+  // « Par activité » table: sortable on every column.
+  activityColumns: { key: keyof ActivityMetrics; label: string }[] = [
+    { key: 'titre', label: 'Activité' }, { key: 'dateDebut', label: 'Début' }, { key: 'salle', label: 'Salle' },
+    { key: 'inscrits', label: 'Inscrits' }, { key: 'inscritsSurPlace', label: 'Sur place' },
+    { key: 'visiteursUniques', label: 'Présents uniques' }, { key: 'tauxPresence', label: 'Taux présence' },
+    { key: 'capacite', label: 'Capacité' }, { key: 'tauxRemplissage', label: 'Remplissage' },
+    { key: 'entrees', label: 'Entrées' }, { key: 'sorties', label: 'Sorties' },
+    { key: 'autoEnregistres', label: 'Auto-enreg.' }, { key: 'dureeMoyenneMinutes', label: 'Durée moy.' },
+  ];
+  sortKey = signal<keyof ActivityMetrics>('dateDebut');
+  sortAsc = signal(true);
+  sortedActivities = computed(() => {
+    const k = this.sortKey();
+    const dir = this.sortAsc() ? 1 : -1;
+    return [...(this.report()?.parActivite ?? [])].sort((a, b) => {
+      const x = a[k] ?? null;
+      const y = b[k] ?? null;
+      if (x === y) return 0;
+      if (x === null) return 1;
+      if (y === null) return -1;
+      return (typeof x === 'number' && typeof y === 'number'
+        ? x - y : String(x).localeCompare(String(y), 'fr')) * dir;
+    });
+  });
+  sortBy(k: keyof ActivityMetrics): void {
+    if (this.sortKey() === k) this.sortAsc.set(!this.sortAsc());
+    else {
+      this.sortKey.set(k);
+      this.sortAsc.set(typeof (this.report()?.parActivite[0]?.[k]) !== 'number');
+    }
+  }
+  pct = (v?: number | null) => (v == null ? '—' : `${v.toLocaleString('fr-FR')} %`);
+
+  /** One-click closing report for the authorities (STAT-04). */
+  downloadBilan(): void {
+    this.exporting.set(true);
+    this.reports.bilan(this.eventId()).subscribe({
+      next: (res) => {
+        this.exporting.set(false);
+        this.saveBlob(res, 'bilan-evenement.pdf');
+      },
+      error: () => {
+        this.exporting.set(false);
+        this.error.set("Le rapport n'a pas pu être généré.");
+      },
+    });
+  }
+
+  downloadActivities(format: 'CSV' | 'XLSX'): void {
+    this.exporting.set(true);
+    this.reports.exportActivities(this.eventId(), this.statsDay(), format).subscribe({
+      next: (res) => {
+        this.exporting.set(false);
+        this.saveBlob(res, `statistiques-activites.${format.toLowerCase()}`);
+      },
+      error: () => {
+        this.exporting.set(false);
+        this.error.set("L'export a échoué.");
+      },
+    });
+  }
+
+  private saveBlob(res: HttpResponse<Blob>, fallback: string): void {
+    const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallback;
+    const url = URL.createObjectURL(res.body!);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   sources = computed(() => SOURCES[this.perimetre()]);
   shownCount = computed(() => {
     const p = this.preview();

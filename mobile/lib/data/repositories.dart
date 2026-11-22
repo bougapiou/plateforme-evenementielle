@@ -276,6 +276,12 @@ class TicketsRepository extends _Base {
         (d) => Ticket.fromJson(d as Map<String, dynamic>),
       );
 
+  /// Broadcast link of an online / hybrid session (only for registered people).
+  Future<String> activityDiffusion(String activityId) => _get(
+        '/activities/$activityId/diffusion',
+        (d) => (d as Map<String, dynamic>)['lien'] as String,
+      );
+
   Future<Paged<TicketOrder>> myOrders({int page = 0}) => _get(
         '/ticket-orders/my',
         (d) => Paged.fromJson(d as Map<String, dynamic>, TicketOrder.fromJson),
@@ -524,6 +530,40 @@ class CheckinRepository extends _Base {
           'token': token,
           'eventId': eventId,
           'sens': sens,
+          if (activityId != null) 'activityId': activityId,
+        },
+      );
+
+  /// Hashes of the valid tickets of an event + who is inside, for offline scanning.
+  Future<Map<String, dynamic>> offlinePack(String eventId) => _get(
+        '/checkins/events/$eventId/offline-pack',
+        (d) => d as Map<String, dynamic>,
+      );
+
+  /// Replays offline scans; returns one result per scan (`clientRef`, `resultat`…).
+  Future<List<Map<String, dynamic>>> sync(List<Map<String, dynamic>> scans) => _post(
+        '/checkins/sync',
+        (d) => (d as List<dynamic>).cast<Map<String, dynamic>>(),
+        body: scans,
+      );
+
+  /// On-site registration: free ticket for a walk-in visitor, let in at once.
+  Future<(String, ScanOutcome)> onSite({
+    required String eventId,
+    String? activityId,
+    required String nom,
+    required String telephone,
+  }) =>
+      _post(
+        '/checkins/events/$eventId/sur-place',
+        (d) {
+          final m = d as Map<String, dynamic>;
+          return (m['numeroBillet'] as String? ?? '',
+              ScanOutcome.fromJson(m['scan'] as Map<String, dynamic>));
+        },
+        body: {
+          'nom': nom,
+          'telephone': telephone,
           if (activityId != null) 'activityId': activityId,
         },
       );

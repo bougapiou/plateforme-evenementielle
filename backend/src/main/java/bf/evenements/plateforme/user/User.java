@@ -60,6 +60,21 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private boolean guest = false;
 
+    /** Consecutive failed log-ins since the last success (reset on success or lock). */
+    @Column(name = "echecs_connexion", nullable = false)
+    private int echecsConnexion = 0;
+
+    /** Temporary lock after too many failed log-ins. */
+    @Column(name = "verrouille_jusqu")
+    private Instant verrouilleJusqu;
+
+    /** Base32 TOTP secret (RFC 6238); set during enrolment, kept once activated. */
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    @Column(name = "totp_actif", nullable = false)
+    private boolean totpActif = false;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",

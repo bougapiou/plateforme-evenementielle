@@ -1,5 +1,6 @@
 package bf.evenements.plateforme.event.dto;
 
+import bf.evenements.plateforme.event.ActivityFormat;
 import bf.evenements.plateforme.event.ActivityAccess;
 import bf.evenements.plateforme.event.ActivityType;
 import jakarta.validation.constraints.NotBlank;
@@ -22,6 +23,9 @@ public record ActivityRequest(
         @Size(max = 255) String intervenant,
         @Size(max = 255) String moderateur,
         @Size(max = 500) String imageUrl,
+        @Size(max = 120) String theme,
+        ActivityFormat format,
+        @Size(max = 500) String lienDiffusion,
         UUID speakerId,
         @PositiveOrZero Integer capacite,
         Integer ordre) {

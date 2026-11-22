@@ -50,8 +50,47 @@ public class JwtService {
                 .compact();
     }
 
-    /** Parses and verifies the token, returning its claims, or throws {@code JwtException}. */
+    /** Lifetime of the intermediate token between the password and the second factor. */
+    private static final long MFA_TTL_SECONDS = 300;
+
+    /**
+     * Short-lived token proving the password step succeeded, exchanged for real
+     * tokens once the second factor is given. {@code purpose} is VERIFY (enrolled
+     * user) or SETUP (enrolment still required). Never accepted as an access token.
+     */
+    public String generateMfaToken(User user, String purpose) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .issuer(issuer)
+                .subject(user.getId().toString())
+                .claim(MFA_CLAIM, purpose)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(MFA_TTL_SECONDS)))
+                .signWith(key)
+                .compact();
+    }
+
+    /** Verifies an MFA token of the given purpose and returns the user id. */
+    public UUID parseMfaToken(String token, String purpose) {
+        Claims claims = verify(token);
+        if (!purpose.equals(claims.get(MFA_CLAIM, String.class))) {
+            throw new io.jsonwebtoken.JwtException("Jeton de double authentification invalide");
+        }
+        return extractUserId(claims);
+    }
+
+    private static final String MFA_CLAIM = "mfa";
+
+    /** Parses and verifies an access token, returning its claims, or throws {@code JwtException}. */
     public Claims parse(String token) {
+        Claims claims = verify(token);
+        if (claims.get(MFA_CLAIM) != null) {
+            throw new io.jsonwebtoken.JwtException("Jeton intermédiaire refusé comme jeton d'accès");
+        }
+        return claims;
+    }
+
+    private Claims verify(String token) {
         return Jwts.parser()
                 .verifyWith(key)
                 .requireIssuer(issuer)

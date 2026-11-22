@@ -34,6 +34,16 @@ export interface AuthResponse {
   tokenType: string;
   expiresIn: number;
   user: UserSummary;
+  /** Second factor needed: VERIFY (enter the code) or SETUP (enrol an authenticator app first). */
+  mfa?: 'VERIFY' | 'SETUP' | null;
+  mfaToken?: string | null;
+}
+
+/** Authenticator-app enrolment data. */
+export interface MfaSetup {
+  secret: string;
+  otpauthUri: string;
+  qrDataUri: string;
 }
 
 export interface RegisterPayload {

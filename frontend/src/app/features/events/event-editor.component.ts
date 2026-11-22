@@ -1,10 +1,10 @@
 import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { EventsService } from './events.service';
-import { Activity, EventCategory, EventDetail, EventTicket, IdentiteRequise, Partner, Speaker } from './event.models';
+import { EventsService, ImportReport } from './events.service';
+import { ACTIVITY_TYPES, ACTIVITY_TYPE_LABELS, Activity, EventCategory, EventDetail, EventTicket, IdentiteRequise, Partner, Speaker } from './event.models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { formatDateTime, formatFcfa, priceLabel } from '../../shared/format';
 import { ApiError } from '../../core/models';
@@ -186,14 +186,96 @@ type Tab =
             pour planifier un programme. Vous pouvez tout de même ajouter des créneaux ci-dessous.
           </p>
         }
+        <div class="card mt-4 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 class="font-semibold text-slate-800">Importer le programme</h3>
+              <p class="text-xs text-slate-500">
+                Remplissez le modèle Excel (une ligne par activité) puis importez-le : les lignes en erreur
+                sont signalées, les autres sont créées.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="btn-ghost text-brand-700" (click)="downloadTemplate()">Modèle Excel</button>
+              <label class="btn-primary cursor-pointer">
+                Choisir un fichier (.xlsx, .csv)
+                <input type="file" class="hidden" accept=".xlsx,.xls,.csv" (change)="previewImport($event)" />
+              </label>
+            </div>
+          </div>
+          @if (importError()) { <p class="mt-2 text-sm text-red-700">{{ importError() }}</p> }
+          @if (importReport(); as rep) {
+            <div class="mt-3 rounded-lg border border-slate-200 p-3 text-sm">
+              <p>
+                <b>{{ rep.total }}</b> ligne(s) · <span class="text-green-700">{{ rep.valides }} valide(s)</span>
+                · <span class="text-red-700">{{ rep.total - rep.valides }} en erreur</span>
+                @if (rep.importees) { · <b class="text-green-700">{{ rep.importees }} importée(s)</b> }
+              </p>
+              <div class="mt-2 max-h-64 overflow-auto">
+                <table class="w-full text-xs">
+                  <thead class="text-left text-slate-500"><tr><th class="pr-2">Ligne</th><th class="pr-2">Titre</th><th class="pr-2">Début</th><th class="pr-2">Salle</th><th>Résultat</th></tr></thead>
+                  <tbody>
+                    @for (l of rep.lignes; track l.ligne) {
+                      <tr class="border-t border-slate-100" [class.bg-red-50]="l.erreurs.length">
+                        <td class="pr-2">{{ l.ligne }}</td><td class="pr-2">{{ l.titre || '—' }}</td>
+                        <td class="pr-2">{{ l.debut || '—' }}</td><td class="pr-2">{{ l.salle || '—' }}</td>
+                        <td>{{ l.erreurs.length ? l.erreurs.join(' · ') : (l.activityId ? 'Importée' : 'OK') }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (!rep.importees && rep.valides && pendingImport) {
+                <button type="button" class="btn-primary mt-3" [disabled]="importing()" (click)="confirmImport()">
+                  Importer {{ rep.valides }} activité(s)
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        @if (roomConflicts().length) {
+          <div class="card mt-4 border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <p class="font-semibold">Conflits de salle</p>
+            <ul class="mt-1 list-disc pl-5">
+              @for (c of roomConflicts(); track c.key) {
+                <li>{{ c.salle }} : « {{ c.a }} » et « {{ c.b }} » se chevauchent ({{ dt(c.at) }})</li>
+              }
+            </ul>
+          </div>
+        }
+
         <form class="card mt-4 grid gap-3 p-4 sm:grid-cols-2" [formGroup]="activityForm"
               (ngSubmit)="saveActivity()">
           <input class="form-input sm:col-span-2" placeholder="Titre de l'activité" formControlName="titre" />
           <select class="form-input" formControlName="typeActivite">
             <option value="">Type…</option>
-            @for (t of activityTypes; track t) { <option [value]="t">{{ t }}</option> }
+            @for (t of activityTypes; track t) { <option [value]="t">{{ typeLabels[t] }}</option> }
           </select>
-          <input class="form-input" placeholder="Salle" formControlName="salle" />
+          <input class="form-input" placeholder="Salle" formControlName="salle" list="salles-connues" />
+          <datalist id="salles-connues">
+            @for (s of knownRooms(); track s) { <option [value]="s"></option> }
+          </datalist>
+          <input class="form-input" placeholder="Thème / piste (ex : IA, Cybersécurité)" formControlName="theme"
+                 list="themes-connus" />
+          <datalist id="themes-connus">
+            @for (t of knownThemes(); track t) { <option [value]="t"></option> }
+          </datalist>
+          <div>
+            <label class="form-label">Format</label>
+            <select class="form-input" formControlName="format">
+              <option value="SUR_PLACE">Sur place</option>
+              <option value="EN_LIGNE">En ligne</option>
+              <option value="HYBRIDE">Hybride (sur place + diffusion)</option>
+            </select>
+          </div>
+          @if (activityForm.value.format !== 'SUR_PLACE') {
+            <div>
+              <label class="form-label">Lien de diffusion (Teams, Zoom, YouTube…)</label>
+              <input class="form-input" type="url" placeholder="https://…" formControlName="lienDiffusion" />
+              <p class="mt-1 text-xs text-slate-400">Visible seulement par les personnes inscrites.</p>
+            </div>
+          }
           <input type="datetime-local" class="form-input" formControlName="dateDebut" />
           <input type="datetime-local" class="form-input" formControlName="dateFin" />
           <div>
@@ -209,6 +291,11 @@ type Tab =
           <input class="form-input" placeholder="Intervenant" formControlName="intervenant" />
           <input class="form-input" placeholder="Modérateur" formControlName="moderateur" />
           <div class="sm:col-span-2">
+            <label class="form-label">Description (affichée sur le programme public)</label>
+            <textarea rows="4" class="form-input" formControlName="description"
+                      placeholder="Résumé du panel, objectifs, public visé… Les retours à la ligne sont conservés."></textarea>
+          </div>
+          <div class="sm:col-span-2">
             <label class="form-label">Visuel de l'activité</label>
             <app-image-upload
               folder="activites"
@@ -220,16 +307,35 @@ type Tab =
             {{ editingActivityId() ? 'Modifier le créneau' : 'Ajouter au programme' }}
           </button>
         </form>
+        @if (bulk().size) {
+          <div class="card sticky top-2 z-10 mt-4 flex flex-wrap items-end gap-2 border-brand-300 bg-brand-50 p-3 text-sm">
+            <p class="w-full font-semibold text-brand-800">{{ bulk().size }} activité(s) sélectionnée(s) — modifier en masse :</p>
+            <input class="form-input max-w-48" placeholder="Nouvelle salle" [(ngModel)]="bulkSalle"
+                   [ngModelOptions]="{ standalone: true }" />
+            <select class="form-input max-w-56" [(ngModel)]="bulkAcces" [ngModelOptions]="{ standalone: true }">
+              <option value="">Accès inchangé</option>
+              <option value="SANS_BILLET">Sans billet</option>
+              <option value="GRATUIT">Gratuit sur billet</option>
+              <option value="PAYANT">Payant</option>
+            </select>
+            <input type="number" min="0" class="form-input max-w-36" placeholder="Capacité" [(ngModel)]="bulkCapacite"
+                   [ngModelOptions]="{ standalone: true }" />
+            <button type="button" class="btn-primary" [disabled]="bulkBusy()" (click)="applyBulk()">Appliquer</button>
+            <button type="button" class="btn-ghost" (click)="clearBulk()">Annuler la sélection</button>
+          </div>
+        }
         <ul class="mt-4 space-y-2">
           @for (a of activities(); track a.id) {
             <li class="card flex items-center gap-3 p-3 text-sm">
+              <input type="checkbox" class="h-4 w-4" [checked]="bulk().has(a.id)" [attr.aria-label]="'Sélectionner ' + a.titre"
+                     (change)="toggleBulk(a.id)" />
               @if (a.imageUrl) {
                 <img [src]="a.imageUrl" alt="" class="h-12 w-16 shrink-0 rounded object-cover" />
               }
               <div class="min-w-0 flex-1">
                 <p class="font-medium text-slate-700">{{ a.titre }}</p>
                 <p class="text-slate-400">
-                  {{ dt(a.dateDebut) }}{{ a.salle ? ' · ' + a.salle : '' }}{{ a.typeActivite ? ' · ' + a.typeActivite : '' }}
+                  {{ dt(a.dateDebut) }}{{ a.salle ? ' · ' + a.salle : '' }}{{ a.typeActivite ? ' · ' + typeLabels[a.typeActivite] : '' }}{{ a.theme ? ' · ' + a.theme : '' }}
                   @if (a.acces === 'GRATUIT') { <span class="badge bg-green-100 text-green-800">Gratuit</span> }
                   @else if (a.acces === 'PAYANT') { <span class="badge bg-amber-100 text-amber-800">Payant</span> }
                 </p>
@@ -554,14 +660,39 @@ type Tab =
             <form class="mt-3 flex gap-2" (ngSubmit)="addStaff()">
               <input class="form-input" placeholder="E-mail d'un utilisateur inscrit"
                      [(ngModel)]="staffEmail" name="staffEmail" />
+              <select class="form-input max-w-48" [(ngModel)]="staffFonction" name="staffFonction"
+                      aria-label="Fonction">
+                <option value="CONTROLE">Agent de contrôle</option>
+                <option value="PROGRAMME">Gestionnaire de programme</option>
+              </select>
               <button type="submit" class="btn-primary">Ajouter</button>
             </form>
             @if (staffError()) { <p class="mt-2 text-sm text-red-700">{{ staffError() }}</p> }
             <ul class="mt-3 divide-y divide-slate-100 text-sm">
               @for (s of staff(); track s.id) {
-                <li class="flex items-center justify-between py-2">
-                  <span>{{ s.fullName }} · {{ s.email }}</span>
-                  <button class="text-xs text-red-600" (click)="removeStaff(s)">Retirer</button>
+                <li class="py-2">
+                  <div class="flex items-center justify-between">
+                    <span>{{ s.fullName }} · {{ s.email }}</span>
+                    <button class="text-xs text-red-600" (click)="removeStaff(s)">Retirer</button>
+                  </div>
+                  @if (activities().length) {
+                    <details class="mt-1">
+                      <summary class="cursor-pointer text-xs text-brand-700">
+                        {{ s.activityIds.length ? 'Affecté à ' + s.activityIds.length + ' activité(s)' : 'Toutes les salles' }}
+                        — modifier
+                      </summary>
+                      <div class="mt-2 grid gap-1">
+                        @for (a of activities(); track a.id) {
+                          <label class="flex items-center gap-2 text-xs">
+                            <input type="checkbox" [checked]="s.activityIds.includes(a.id)"
+                                   (change)="toggleStaffActivity(s, a.id, $any($event.target).checked)" />
+                            {{ a.titre }} <span class="text-slate-400">· {{ dt(a.dateDebut) }}{{ a.salle ? ' · ' + a.salle : '' }}</span>
+                          </label>
+                        }
+                        <p class="text-xs text-slate-400">Aucune case cochée = l'agent contrôle tout l'événement.</p>
+                      </div>
+                    </details>
+                  }
                 </li>
               } @empty { <li class="py-2 text-slate-400">Aucun personnel.</li> }
             </ul>
@@ -570,6 +701,26 @@ type Tab =
               suivre les compteurs de cet événement dans « Présence / Flux ».
             </p>
           </div>
+          @if (activities().length) {
+            <div class="card p-4">
+              <h3 class="font-semibold text-slate-800">Auto-enregistrement (mode de secours)</h3>
+              <p class="mt-1 text-xs text-slate-500">
+                Imprimez le QR d'une session et affichez-le à l'entrée de la salle : le participant le
+                scanne avec son téléphone et confirme sa présence avec son numéro. Ces présences sont
+                comptées à part (« Auto-enreg. ») dans les statistiques.
+              </p>
+              <ul class="mt-3 divide-y divide-slate-100 text-sm">
+                @for (a of activities(); track a.id) {
+                  <li class="flex flex-wrap items-center justify-between gap-2 py-2">
+                    <span>{{ a.titre }} <span class="text-xs text-slate-400">· {{ dt(a.dateDebut) }}</span></span>
+                    <button type="button" class="btn-ghost text-xs text-brand-700" (click)="downloadSelfCheckinQr(a)">
+                      QR de la salle
+                    </button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
 
           <div class="card p-4 lg:col-span-2">
             <h3 class="font-semibold text-slate-800">Capteurs de comptage (laser Arduino / Raspberry)</h3>
@@ -672,6 +823,7 @@ type Tab =
 export class EventEditorComponent implements OnDestroy {
   private fb = inject(FormBuilder);
   private service = inject(EventsService);
+  private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
   private ticketsService = inject(TicketsService);
   private standsService = inject(StandsService);
@@ -698,6 +850,7 @@ export class EventEditorComponent implements OnDestroy {
   staff = signal<StaffMember[]>([]);
   checkins = signal<CheckinView[]>([]);
   staffEmail = '';
+  staffFonction: 'CONTROLE' | 'PROGRAMME' = 'CONTROLE';
   staffError = signal<string | null>(null);
   sensors = signal<SensorView[]>([]);
   sensorName = '';
@@ -728,8 +881,11 @@ export class EventEditorComponent implements OnDestroy {
     { id: 'controle', label: 'Contrôle' },
     { id: 'stats', label: 'Statistiques' },
   ];
-  activityTypes = ['CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION', 'TABLE_RONDE',
-    'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE'];
+  activityTypes = ACTIVITY_TYPES;
+  typeLabels = ACTIVITY_TYPE_LABELS;
+  /** Rooms and themes already used in this programme — suggested while typing. */
+  knownRooms = computed(() => [...new Set(this.activities().map((a) => a.salle).filter((s): s is string => !!s))].sort());
+  knownThemes = computed(() => [...new Set(this.activities().map((a) => a.theme).filter((s): s is string => !!s))].sort());
 
   saving = signal(false);
   error = signal<string | null>(null);
@@ -775,6 +931,10 @@ export class EventEditorComponent implements OnDestroy {
     intervenant: [''],
     moderateur: [''],
     imageUrl: [null as string | null],
+    description: [''],
+    theme: [''],
+    format: ['SUR_PLACE'],
+    lienDiffusion: [''],
   });
   speakerForm = this.fb.nonNullable.group({
     nom: ['', Validators.required], titre: [''], organisation: [''], bio: [''],
@@ -825,6 +985,8 @@ export class EventEditorComponent implements OnDestroy {
       if (!['ANNULE', 'TERMINE'].includes(e.statut))
         a.push({ action: 'cancel', label: 'Annuler (admin)', class: 'btn-ghost text-red-700' });
     }
+    if (this.auth.hasPermission('EVENT_CREATE'))
+      a.push({ action: 'dupliquer', label: "Créer l'édition suivante", class: 'btn-ghost text-brand-700' });
     return a;
   });
 
@@ -913,7 +1075,7 @@ export class EventEditorComponent implements OnDestroy {
   addStaff(): void {
     if (!this.staffEmail.trim()) return;
     this.staffError.set(null);
-    this.checkinService.addStaff(this.id(), this.staffEmail.trim()).subscribe({
+    this.checkinService.addStaff(this.id(), this.staffEmail.trim(), this.staffFonction).subscribe({
       next: () => {
         this.staffEmail = '';
         this.checkinService.staff(this.id()).subscribe((s) => this.staff.set(s));
@@ -922,6 +1084,27 @@ export class EventEditorComponent implements OnDestroy {
         this.staffError.set((err.error as ApiError)?.message ?? 'Ajout impossible.'),
     });
   }
+  toggleStaffActivity(s: StaffMember, activityId: string, on: boolean): void {
+    const ids = on ? [...new Set([...s.activityIds, activityId])] : s.activityIds.filter((x) => x !== activityId);
+    this.checkinService.assignStaffActivities(this.id(), s.userId, ids).subscribe({
+      next: () => this.checkinService.staff(this.id()).subscribe((x) => this.staff.set(x)),
+      error: (err: HttpErrorResponse) =>
+        this.staffError.set((err.error as ApiError)?.message ?? 'Affectation impossible.'),
+    });
+  }
+
+  /** Downloads the room's self check-in QR (and turns the mode on for that session). */
+  downloadSelfCheckinQr(a: Activity): void {
+    this.checkinService.selfCheckinQr(this.id(), a.id).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `auto-enregistrement-${a.titre.replace(/[^A-Za-z0-9]+/g, '-')}.png`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    });
+  }
+
   removeStaff(s: StaffMember): void {
     this.checkinService.removeStaff(this.id(), s.userId).subscribe(() =>
       this.checkinService.staff(this.id()).subscribe((x) => this.staff.set(x)),
@@ -1120,6 +1303,16 @@ export class EventEditorComponent implements OnDestroy {
       if (!motif) return;
       body = { motif };
     }
+    if (action === 'dupliquer') {
+      if (!confirm("Créer l'édition suivante (brouillon, dates décalées d'un an) avec le programme, "
+        + 'les billets, les intervenants et les partenaires ?')) return;
+      this.service.transition(this.id(), action, {}).subscribe({
+        next: (copy) => this.router.navigate(['/tableau-de-bord/evenements', copy.id]),
+        error: (err: HttpErrorResponse) =>
+          this.transitionError.set((err.error as ApiError)?.message ?? 'Duplication impossible.'),
+      });
+      return;
+    }
     this.service.transition(this.id(), action, body).subscribe({
       next: (e) => this.event.set(e),
       error: (err: HttpErrorResponse) =>
@@ -1135,6 +1328,10 @@ export class EventEditorComponent implements OnDestroy {
       titre: v.titre, salle: v.salle || undefined, intervenant: v.intervenant || undefined,
       moderateur: v.moderateur || undefined,
       imageUrl: v.imageUrl || undefined,
+      description: v.description || undefined,
+      theme: v.theme || undefined,
+      format: (v.format || 'SUR_PLACE') as Activity['format'],
+      lienDiffusion: v.format !== 'SUR_PLACE' ? v.lienDiffusion || undefined : undefined,
       typeActivite: (v.typeActivite || undefined) as Activity['typeActivite'],
       acces: (v.acces || 'SANS_BILLET') as Activity['acces'],
       capacite: v.capacite ?? undefined,
@@ -1155,8 +1352,124 @@ export class EventEditorComponent implements OnDestroy {
       dateDebut: toLocal(a.dateDebut), dateFin: toLocal(a.dateFin),
       intervenant: a.intervenant ?? '', moderateur: a.moderateur ?? '',
       imageUrl: a.imageUrl ?? null,
+      description: a.description ?? '', theme: a.theme ?? '',
+      format: a.format ?? 'SUR_PLACE', lienDiffusion: a.lienDiffusion ?? '',
     });
   }
+  // --- modifications en masse (ORG-10) ---
+  bulk = signal<Set<string>>(new Set());
+  bulkBusy = signal(false);
+  bulkSalle = '';
+  bulkAcces = '';
+  bulkCapacite: number | null = null;
+  clearBulk(): void {
+    this.bulk.set(new Set());
+  }
+  toggleBulk(id: string): void {
+    const next = new Set(this.bulk());
+    if (!next.delete(id)) next.add(id);
+    this.bulk.set(next);
+  }
+  /** Applies room / access / capacity to every selected session (one update each). */
+  applyBulk(): void {
+    const chosen = this.activities().filter((a) => this.bulk().has(a.id));
+    if (!chosen.length || (!this.bulkSalle.trim() && !this.bulkAcces && this.bulkCapacite == null)) return;
+    this.bulkBusy.set(true);
+    let left = chosen.length;
+    const errors: string[] = [];
+    for (const a of chosen) {
+      const body: Partial<Activity> = {
+        ...a,
+        salle: this.bulkSalle.trim() || a.salle,
+        acces: (this.bulkAcces || a.acces) as Activity['acces'],
+        capacite: this.bulkCapacite ?? a.capacite,
+      };
+      this.service.saveActivity(this.id(), body, a.id).subscribe({
+        error: (err: HttpErrorResponse) => {
+          errors.push(`${a.titre} : ${(err.error as ApiError)?.message ?? 'échec'}`);
+          done();
+        },
+        complete: () => done(),
+      });
+      const done = () => {
+        if (--left > 0) return;
+        this.bulkBusy.set(false);
+        this.bulk.set(new Set());
+        this.bulkSalle = '';
+        this.bulkAcces = '';
+        this.bulkCapacite = null;
+        if (errors.length) this.error.set(errors.join(' · '));
+        this.service.activities(this.id()).subscribe((x) => this.activities.set(x));
+      };
+    }
+  }
+
+  importReport = signal<ImportReport | null>(null);
+  importError = signal<string | null>(null);
+  importing = signal(false);
+  pendingImport: File | null = null;
+
+  /** Same room (case / accents ignored) and overlapping slots — a session without end counts 1 h. */
+  roomConflicts = computed(() => {
+    const key = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    const end = (a: Activity) => (a.dateFin ? new Date(a.dateFin).getTime() : new Date(a.dateDebut).getTime() + 3600_000);
+    const list = this.activities().filter((a) => a.salle?.trim());
+    const out: { key: string; salle: string; a: string; b: string; at: string }[] = [];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i], b = list[j];
+        if (key(a.salle!) !== key(b.salle!)) continue;
+        if (new Date(a.dateDebut).getTime() < end(b) && new Date(b.dateDebut).getTime() < end(a)) {
+          out.push({ key: a.id + b.id, salle: a.salle!, a: a.titre, b: b.titre,
+            at: a.dateDebut > b.dateDebut ? a.dateDebut : b.dateDebut });
+        }
+      }
+    }
+    return out;
+  });
+
+  downloadTemplate(): void {
+    this.service.importTemplate(this.id()).subscribe((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'modele-programme.xlsx';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    });
+  }
+
+  previewImport(ev: Event): void {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.pendingImport = file;
+    this.importError.set(null);
+    this.importReport.set(null);
+    this.service.importActivities(this.id(), file, true).subscribe({
+      next: (rep) => this.importReport.set(rep),
+      error: (err: HttpErrorResponse) => this.importError.set((err.error as ApiError)?.message ?? 'Fichier illisible.'),
+    });
+  }
+
+  confirmImport(): void {
+    if (!this.pendingImport) return;
+    this.importing.set(true);
+    this.service.importActivities(this.id(), this.pendingImport, false).subscribe({
+      next: (rep) => {
+        this.importing.set(false);
+        this.pendingImport = null;
+        this.importReport.set(rep);
+        this.service.activities(this.id()).subscribe((x) => this.activities.set(x));
+      },
+      error: (err: HttpErrorResponse) => {
+        this.importing.set(false);
+        this.importError.set((err.error as ApiError)?.message ?? 'Import impossible.');
+      },
+    });
+  }
+
   removeActivity(a: Activity): void {
     this.service.deleteActivity(this.id(), a.id).subscribe(() =>
       this.service.activities(this.id()).subscribe((x) => this.activities.set(x)),

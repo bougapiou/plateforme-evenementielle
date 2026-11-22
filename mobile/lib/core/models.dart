@@ -63,6 +63,28 @@ class AuthResponse {
       );
 }
 
+/// The password was right but a second factor is needed before a session opens.
+/// [purpose] is `VERIFY` (enter the authenticator code) or `SETUP` (enrol first).
+class MfaRequiredException implements Exception {
+  final String purpose;
+  final String mfaToken;
+  MfaRequiredException(this.purpose, this.mfaToken);
+}
+
+/// Authenticator-app enrolment data.
+class MfaSetup {
+  final String secret;
+  final String otpauthUri;
+  final String qrDataUri;
+  MfaSetup(this.secret, this.otpauthUri, this.qrDataUri);
+
+  factory MfaSetup.fromJson(Map<String, dynamic> j) => MfaSetup(
+        j['secret'] as String? ?? '',
+        j['otpauthUri'] as String? ?? '',
+        j['qrDataUri'] as String? ?? '',
+      );
+}
+
 class ApiException implements Exception {
   final int status;
   final String code;

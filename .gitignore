@@ -49,3 +49,4 @@ capteur-laser/
 infra/loadtest/tokens.csv
 *.ppk
 *.pem
+infra/exploitation/exploitation.env

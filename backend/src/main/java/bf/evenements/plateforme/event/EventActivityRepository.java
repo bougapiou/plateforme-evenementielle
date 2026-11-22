@@ -9,4 +9,8 @@ public interface EventActivityRepository extends JpaRepository<EventActivity, UU
     List<EventActivity> findByEventIdOrderByDateDebutAscOrdreAsc(UUID eventId);
 
     long countByEventId(UUID eventId);
+
+    boolean existsByAutoJeton(String autoJeton);
+
+    java.util.Optional<EventActivity> findByAutoJeton(String autoJeton);
 }

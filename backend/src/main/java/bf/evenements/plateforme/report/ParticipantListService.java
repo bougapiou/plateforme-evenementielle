@@ -57,7 +57,7 @@ public class ParticipantListService {
         VISITES
     }
 
-    public enum Format { XLSX, DOCX, PDF }
+    public enum Format { XLSX, DOCX, PDF, CSV }
 
     /** {@code du}/{@code au}: local date-times, both optional. {@code doublons}: keep repeated people. */
     public record Criteria(Perimetre perimetre, @Nullable UUID cibleId, Source source,
@@ -98,6 +98,7 @@ public class ParticipantListService {
             case XLSX -> writer.xlsx(title, filters, rows, !c.doublons());
             case DOCX -> writer.docx(title, filters, rows, !c.doublons());
             case PDF -> writer.pdf(title, filters, rows, !c.doublons());
+            case CSV -> writer.csv(rows, !c.doublons());
         };
         auditService.record(currentUser.requireId(), currentUser.require().email(), "PARTICIPANTS_EXPORTED",
                 "Event", eventId.toString(), null,
@@ -109,6 +110,7 @@ public class ParticipantListService {
             case DOCX -> new ExportFile(base + ".docx",
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document", content);
             case PDF -> new ExportFile(base + ".pdf", "application/pdf", content);
+            case CSV -> new ExportFile(base + ".csv", "text/csv; charset=UTF-8", content);
         };
     }
 
@@ -128,16 +130,26 @@ public class ParticipantListService {
             case BILLETS -> """
                     select coalesce(t.participant_nom, case when u.guest then null
                              else nullif(trim(u.first_name || ' ' || u.last_name), '') end) as nom,
-                           null as prenom, u.phone as telephone,
+                           null as prenom, coalesce(t.participant_telephone, u.phone) as telephone,
                            coalesce(t.participant_email,
                              case when u.email like :guest then null else u.email end) as email,
                            t.numero as reference, et.nom as categorie,
-                           case t.statut when 'UTILISE' then 'Utilisé' else 'Émis' end as detail,
+                           (case when ent.premiere is null then 'Absent'
+                                 else 'Présent — entrée ' || to_char(ent.premiere at time zone 'Africa/Ouagadougou',
+                                                                     'DD/MM HH24:MI') end)
+                             || case when t.sur_place then ' (inscrit sur place)' else '' end as detail,
                            t.created_at as quand
                     from tickets t
                     join ticket_orders o on o.id = t.order_id
                     join users u on u.id = o.user_id
                     join event_tickets et on et.id = t.event_ticket_id
+                    left join lateral (
+                        select min(c.scanned_at) as premiere from checkins c
+                        where c.ticket_id = t.id and c.sens = 'ENTREE' and c.resultat = 'VALIDE'
+                          and ((cast(:cible as uuid) is null and c.activity_id is null)
+                               or c.activity_id = cast(:cible as uuid)
+                               or (cast(:cible as uuid) is null and et.portee = 'ACTIVITE'))
+                    ) ent on true
                     where t.event_id = :e and t.statut <> 'ANNULE'
                       and t.created_at >= :f and t.created_at < :t
                       and (cast(:cible as uuid) is null or exists (

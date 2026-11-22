@@ -44,7 +44,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                 .contentType(ContentType.JSON)
                 .body(Map.of(
                         "email", email,
-                        "password", "Secret123",
+                        "password", "Secret123!Pne",
                         "firstName", "Amina",
                         "lastName", "Ouedraogo",
                         "phone", "+226 70 11 22 33"))
@@ -58,7 +58,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
         // --- login ---
         var login = given()
                 .contentType(ContentType.JSON)
-                .body(Map.of("email", email, "password", "Secret123"))
+                .body(Map.of("email", email, "password", "Secret123!Pne"))
                 .when().post("/api/auth/login")
                 .then().statusCode(200)
                 .body("tokenType", equalTo("Bearer"))
@@ -111,7 +111,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
     void duplicate_email_is_rejected() {
         String email = "dup" + System.nanoTime() + "@example.bf";
         Map<String, String> body = Map.of(
-                "email", email, "password", "Secret123",
+                "email", email, "password", "Secret123!Pne",
                 "firstName", "Paul", "lastName", "Kabore", "phone", "+226 70 44 55 66");
 
         given().contentType(ContentType.JSON).body(body)
@@ -167,7 +167,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
                 .body(Map.of("email", email, "password", "MonMotDePasse!2026"))
                 .when().post("/api/auth/login").then().statusCode(200).extract().path("accessToken");
         given().header("Authorization", "Bearer " + realToken)
-                .contentType(ContentType.JSON).body(Map.of("password", "Autre!2026"))
+                .contentType(ContentType.JSON).body(Map.of("password", "AutreMdp!2026"))
                 .when().post("/api/auth/complete")
                 .then().statusCode(422).body("code", equalTo("NOT_A_GUEST"));
     }
@@ -206,18 +206,18 @@ class AuthFlowIT extends AbstractIntegrationTest {
 
         // claiming without an e-mail is refused
         given().header("Authorization", "Bearer " + guestToken).contentType(ContentType.JSON)
-                .body(Map.of("password", "MotDePasse!2026"))
+                .body(Map.of("password", "MotDePasseSur!2026"))
                 .when().post("/api/auth/complete")
                 .then().statusCode(422).body("code", equalTo("EMAIL_REQUIRED"));
 
         // with an e-mail it works, and login by that e-mail works
         String realEmail = "sie" + System.nanoTime() + "@example.bf";
         given().header("Authorization", "Bearer " + guestToken).contentType(ContentType.JSON)
-                .body(Map.of("password", "MotDePasse!2026", "email", realEmail))
+                .body(Map.of("password", "MotDePasseSur!2026", "email", realEmail))
                 .when().post("/api/auth/complete")
                 .then().statusCode(200).body("user.guest", equalTo(false));
         given().contentType(ContentType.JSON)
-                .body(Map.of("email", realEmail, "password", "MotDePasse!2026"))
+                .body(Map.of("email", realEmail, "password", "MotDePasseSur!2026"))
                 .when().post("/api/auth/login").then().statusCode(200);
     }
 
@@ -225,7 +225,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
     void forgot_then_reset_password_ends_old_sessions() {
         String email = "oubli" + System.nanoTime() + "@example.bf";
         String oldRefresh = given().contentType(ContentType.JSON)
-                .body(Map.of("email", email, "password", "Ancien!2026",
+                .body(Map.of("email", email, "password", "AncienMdp!2026",
                         "firstName", "Fatou", "lastName", "Sawadogo", "phone", "+226 74 00 00 00"))
                 .when().post("/api/auth/register").then().statusCode(201)
                 .extract().path("refreshToken");
@@ -233,15 +233,15 @@ class AuthFlowIT extends AbstractIntegrationTest {
         String token = requestResetToken(email);
 
         given().contentType(ContentType.JSON)
-                .body(Map.of("token", token, "password", "Nouveau!2026"))
+                .body(Map.of("token", token, "password", "NouveauMdp!2026"))
                 .when().post("/api/auth/password/reset").then().statusCode(204);
 
         // new password works, old one does not
         given().contentType(ContentType.JSON)
-                .body(Map.of("email", email, "password", "Nouveau!2026"))
+                .body(Map.of("email", email, "password", "NouveauMdp!2026"))
                 .when().post("/api/auth/login").then().statusCode(200);
         given().contentType(ContentType.JSON)
-                .body(Map.of("email", email, "password", "Ancien!2026"))
+                .body(Map.of("email", email, "password", "AncienMdp!2026"))
                 .when().post("/api/auth/login").then().statusCode(401);
 
         // sessions opened before the reset are revoked
@@ -250,7 +250,7 @@ class AuthFlowIT extends AbstractIntegrationTest {
 
         // the token cannot be reused
         given().contentType(ContentType.JSON)
-                .body(Map.of("token", token, "password", "Encore!2026"))
+                .body(Map.of("token", token, "password", "EncoreMdp!2026"))
                 .when().post("/api/auth/password/reset")
                 .then().statusCode(422).body("code", equalTo("RESET_TOKEN_INVALID"));
     }

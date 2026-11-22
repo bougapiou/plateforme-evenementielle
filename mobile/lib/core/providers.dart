@@ -105,6 +105,16 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
     state = AsyncValue.data(res.user);
   }
 
+  /// Second factor: [setup] = first enrolment (activate) rather than a plain check.
+  Future<void> completeMfa(String mfaToken, String code, {bool setup = false}) async {
+    final res = setup
+        ? await _repo.mfaActivate(mfaToken, code)
+        : await _repo.mfaVerify(mfaToken, code);
+    state = AsyncValue.data(res.user);
+  }
+
+  Future<MfaSetup> mfaSetup(String mfaToken) => _repo.mfaSetup(mfaToken);
+
   Future<void> register({
     required String firstName,
     required String lastName,
@@ -149,6 +159,13 @@ class AuthController extends StateNotifier<AsyncValue<UserSummary?>> {
   /// "Retrouver mon billet": only succeeds if this phone already has tickets.
   Future<void> guestLookup(String phone) async {
     final res = await _repo.guestLookup(phone);
+    state = AsyncValue.data(res.user);
+  }
+
+  Future<void> ticketOtpRequest(String phone) => _repo.ticketOtpRequest(phone);
+
+  Future<void> ticketOtpVerify(String phone, String code) async {
+    final res = await _repo.ticketOtpVerify(phone, code);
     state = AsyncValue.data(res.user);
   }
 

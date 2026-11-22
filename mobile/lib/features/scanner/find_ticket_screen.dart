@@ -43,15 +43,44 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
   List<_EventGroup>? _events;
   String? _downloadingEventId;
   String? _selectedEventId;
+  bool _codeSent = false;
+  final _code = TextEditingController();
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendCode() async {
+    await ref.read(authControllerProvider.notifier).ticketOtpRequest(_tel.trim());
+    if (mounted) {
+      setState(() {
+        _codeSent = true;
+        _busy = false;
+      });
+    }
+  }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_codeSent && !_formKey.currentState!.validate()) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).guestLookup(_tel.trim());
+      final auth = ref.read(authControllerProvider.notifier);
+      if (_codeSent) {
+        await auth.ticketOtpVerify(_tel.trim(), _code.text.trim());
+      } else {
+        try {
+          await auth.guestLookup(_tel.trim());
+        } on ApiException catch (e) {
+          if (e.code != 'OTP_REQUIRED') rethrow;
+          await _sendCode();
+          return;
+        }
+      }
       final tickets = await ref.read(ticketsRepositoryProvider).myTickets();
       final byEvent = <String, _EventGroup>{};
       for (final t in tickets) {
@@ -292,7 +321,40 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  PhoneField(required: true, onChanged: (v) => _tel = v),
+                  if (!_codeSent)
+                    PhoneField(required: true, onChanged: (v) => _tel = v)
+                  else ...[
+                    const InfoBanner(
+                      'Si ce numéro a des billets, un code à 6 chiffres vient de lui être '
+                      'envoyé par SMS (valable 10 minutes).',
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _code,
+                      keyboardType: TextInputType.number,
+                      autofillHints: const [AutofillHints.oneTimeCode],
+                      maxLength: 7,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 22, letterSpacing: 6),
+                      decoration: const InputDecoration(labelText: 'Code reçu par SMS', counterText: ''),
+                    ),
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () {
+                              setState(() => _busy = true);
+                              _sendCode().catchError((Object e) {
+                                if (mounted) {
+                                  setState(() {
+                                    _busy = false;
+                                    _error = e is ApiException ? e.message : 'Envoi impossible.';
+                                  });
+                                }
+                              });
+                            },
+                      child: const Text('Renvoyer un code'),
+                    ),
+                  ],
                   if (_error != null) ...[
                     const SizedBox(height: 14),
                     InfoBanner(_error!, tone: KitTone.red),
@@ -300,7 +362,11 @@ class _FindTicketScreenState extends ConsumerState<FindTicketScreen> {
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: _busy ? null : _submit,
-                    child: Text(_busy ? 'Recherche…' : 'Retrouver mes billets'),
+                    child: Text(_busy
+                        ? 'Un instant…'
+                        : _codeSent
+                            ? 'Valider le code'
+                            : 'Retrouver mes billets'),
                   ),
                 ],
               ),

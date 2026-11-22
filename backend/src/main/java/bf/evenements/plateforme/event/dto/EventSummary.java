@@ -21,14 +21,15 @@ public record EventSummary(
         String lieu,
         String organizerNom,
         boolean standsActifs,
-        EventStatus statut) {
+        EventStatus statut,
+        boolean masquePublic) {
 
     public static EventSummary from(Event e) {
         return new EventSummary(
                 e.getId(), e.getNom(), e.getSigle(), e.getSlug(), e.getDescriptionCourte(),
                 e.getCategory() != null ? e.getCategory().getNom() : null,
                 e.getLogoUrl(), e.getCoverUrl(), e.getDateDebut(), e.getDateFin(),
-                e.getVille(), e.getLieu(), e.getOrganizer().getNomAffichage(),
-                e.isStandsActifs(), e.getStatut());
+                e.getVille(), e.getLieu(), e.getOrganizer().getNomPublic(),
+                e.isStandsActifs(), e.getStatut(), e.isMasquePublic());
     }
 }

@@ -30,6 +30,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final bf.evenements.plateforme.common.security.PasswordPolicy passwordPolicy;
     private final CurrentUserProvider currentUser;
     private final AuditService auditService;
     private final UserDeletionService deletion;
@@ -54,9 +55,23 @@ public class UserService {
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new BadCredentialsException("Mot de passe actuel incorrect");
         }
+        passwordPolicy.check(request.newPassword(), user.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         auditService.record(user.getId(), user.getEmail(), "USER_PASSWORD_CHANGED", "User",
                 user.getId().toString(), null, null);
+    }
+
+    /** Admin: clears a user's second factor (lost phone) and lifts a temporary lock. */
+    @Transactional
+    public UserResponse resetSecurity(UUID id) {
+        User user = loadUser(id);
+        user.setTotpActif(false);
+        user.setTotpSecret(null);
+        user.setEchecsConnexion(0);
+        user.setVerrouilleJusqu(null);
+        auditService.record(currentUser.requireId(), currentUser.require().email(),
+                "USER_MFA_RESET", "User", id.toString(), null, null);
+        return UserResponse.from(user);
     }
 
     @Transactional(readOnly = true)

@@ -57,10 +57,26 @@ public class AuthService {
     private final AuditService auditService;
     private final CurrentUserProvider currentUser;
     private final EmailSender emailSender;
+    private final bf.evenements.plateforme.common.security.PasswordPolicy passwordPolicy;
+    private final LoginAttemptService loginAttempts;
+    private final TotpService totp;
+    private final OtpService otpService;
+    private final bf.evenements.plateforme.notification.SmsSender smsSender;
+
+    /** « Retrouver mon billet » requires a code received by SMS (PART-04). */
+    @org.springframework.beans.factory.annotation.Value("${app.security.ticket-lookup-otp:true}")
+    private boolean ticketLookupOtp = true;
+
+    /** Roles whose holders must use a second factor (empty = never required). */
+    @org.springframework.beans.factory.annotation.Value("${app.security.mfa.required-roles:SUPER_ADMIN,ORGANISATEUR}")
+    private java.util.List<String> mfaRequiredRoles = java.util.List.of();
+
+    private static final String MFA_ISSUER = "PNE Événements";
 
     @Transactional
     public AuthResponse register(RegisterRequest request, String ip) {
         UserType type = request.resolvedType();
+        passwordPolicy.check(request.password(), request.email());
         var existing = userRepository.findByEmailIgnoreCase(request.email());
         if (existing.isPresent()) {
             User u = existing.get();
@@ -169,11 +185,69 @@ public class AuthService {
     }
 
     /**
+     * Guest account holding tickets issued at the door for a visitor (phone +
+     * name): reuses the latest guest with this phone, else creates one. No
+     * session is opened.
+     */
+    @Transactional
+    public User guestUserFor(String phone, String nom) {
+        return userRepository.findFirstByPhoneAndGuestTrueOrderByCreatedAtDesc(phone).orElseGet(() -> {
+            User user = new User();
+            user.setEmail("tel-" + digitsOnly(phone) + "-" + UUID.randomUUID().toString().substring(0, 8)
+                    + PLACEHOLDER_EMAIL_DOMAIN);
+            user.setPasswordHash(passwordEncoder.encode("guest-" + UUID.randomUUID()));
+            user.setFirstName("");
+            user.setLastName(nom == null ? "" : nom);
+            user.setPhone(phone);
+            user.setType(UserType.PARTICULIER);
+            user.setStatus(UserStatus.ACTIF);
+            user.setGuest(true);
+            addRoleFor(user, UserType.PARTICULIER);
+            return userRepository.save(user);
+        });
+    }
+
+    /**
      * "Retrouver mon billet": opens a session only for an EXISTING guest with
      * this phone who actually holds tickets. Never creates an account.
      */
     @Transactional
     public AuthResponse guestSessionForTickets(String phone, String ip) {
+        if (ticketLookupOtp) {
+            throw new BusinessException("OTP_REQUIRED",
+                    "Un code de vérification envoyé par SMS est nécessaire pour retrouver vos billets.");
+        }
+        return openTicketHolderSession(phone, ip);
+    }
+
+    /**
+     * « Mes billets » without password, step 1: sends a 6-digit code by SMS when
+     * this number holds tickets. Answers the same way otherwise (no disclosure).
+     */
+    @Transactional(readOnly = true)
+    public void requestTicketOtp(String phone, String ip) {
+        boolean holder = userRepository.findFirstByPhoneAndGuestTrueOrderByCreatedAtDesc(phone)
+                .filter(u -> ticketRepository.existsByOrderUserId(u.getId()))
+                .isPresent();
+        if (!holder) {
+            return;
+        }
+        String code = otpService.issue(phone);
+        smsSender.send(phone, "PNE : votre code pour retrouver vos billets est " + code
+                + ". Il expire dans 10 minutes. Ne le communiquez à personne.");
+        auditService.record(null, null, "AUTH_OTP_SENT", "User", null, ip, null);
+    }
+
+    /** Step 2: the code opens a session on the guest account holding the tickets. */
+    @Transactional
+    public AuthResponse verifyTicketOtp(String phone, String code, String ip) {
+        if (!otpService.consume(phone, code)) {
+            throw new BusinessException("OTP_INVALID", "Code incorrect ou expiré. Demandez un nouveau code.");
+        }
+        return openTicketHolderSession(phone, ip);
+    }
+
+    private AuthResponse openTicketHolderSession(String phone, String ip) {
         User user = userRepository.findFirstByPhoneAndGuestTrueOrderByCreatedAtDesc(phone)
                 .filter(u -> ticketRepository.existsByOrderUserId(u.getId()))
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -206,6 +280,7 @@ public class AuthService {
             user.setEmail(request.email().toLowerCase());
         }
 
+        passwordPolicy.check(request.password(), user.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         if (StringUtils.hasText(request.firstName())) {
             user.setFirstName(request.firstName());
@@ -272,8 +347,11 @@ public class AuthService {
                                 + "Demandez-en un nouveau."));
 
         User user = token.getUser();
+        passwordPolicy.check(request.password(), user.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setStatus(UserStatus.ACTIF);
+        user.setEchecsConnexion(0);
+        user.setVerrouilleJusqu(null);
         token.setUsedAt(Instant.now());
         refreshTokenRepository.revokeAllForUser(user);
         auditService.record(user.getId(), user.getEmail(), "AUTH_PASSWORD_RESET", "User",
@@ -291,19 +369,157 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request, String ip) {
+        userRepository.findByEmailIgnoreCase(request.email()).ifPresent(this::ensureNotLocked);
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.email(), request.password()));
         } catch (BadCredentialsException ex) {
             auditService.record(null, request.email(), "AUTH_LOGIN_FAILED", "User", null, ip, null);
+            if (loginAttempts.recordFailure(request.email())) {
+                auditService.record(null, request.email(), "AUTH_ACCOUNT_LOCKED", "User", null, ip, null);
+            }
             throw ex;
         }
         User user = userRepository.findByEmailIgnoreCase(request.email())
                 .orElseThrow(() -> new BadCredentialsException("Identifiants invalides"));
+        user.setEchecsConnexion(0);
+        user.setVerrouilleJusqu(null);
+
+        if (user.isTotpActif()) {
+            auditService.record(user.getId(), user.getEmail(), "AUTH_PASSWORD_OK_MFA_PENDING", "User",
+                    user.getId().toString(), ip, null);
+            return AuthResponse.mfa("VERIFY", jwtService.generateMfaToken(user, "VERIFY"));
+        }
+        if (requiresMfa(user)) {
+            return AuthResponse.mfa("SETUP", jwtService.generateMfaToken(user, "SETUP"));
+        }
+        return completeLogin(user, ip);
+    }
+
+    private AuthResponse completeLogin(User user, String ip) {
         user.setLastLoginAt(Instant.now());
         auditService.record(user.getId(), user.getEmail(), "AUTH_LOGIN", "User",
                 user.getId().toString(), ip, null);
         return issueTokens(user);
+    }
+
+    private void ensureNotLocked(User user) {
+        Instant until = user.getVerrouilleJusqu();
+        if (until != null && until.isAfter(Instant.now())) {
+            long minutes = Math.max(1, Duration.between(Instant.now(), until).toMinutes() + 1);
+            throw new bf.evenements.plateforme.common.exception.AccountLockedException(
+                    "Compte verrouillé après plusieurs échecs de connexion. Réessayez dans "
+                            + minutes + " minute" + (minutes > 1 ? "s" : "") + ".");
+        }
+    }
+
+    /** Whether this user's roles make a second factor mandatory. */
+    public boolean requiresMfa(User user) {
+        return !user.isGuest() && mfaRequiredRoles.stream()
+                .filter(StringUtils::hasText).map(String::trim)
+                .anyMatch(r -> user.roleNames().contains(r));
+    }
+
+    // ------------------------------------------------------------ second factor
+
+    /** Second step of the log-in for an enrolled user. */
+    @Transactional
+    public AuthResponse verifyMfa(String mfaToken, String code, String ip) {
+        User user = mfaUser(mfaToken, "VERIFY");
+        ensureNotLocked(user);
+        if (!totp.verify(user.getTotpSecret(), code)) {
+            mfaFailure(user, ip);
+        }
+        user.setEchecsConnexion(0);
+        return completeLogin(user, ip);
+    }
+
+    /** Enrolment, step 1: a fresh secret to scan in the authenticator app. */
+    @Transactional
+    public bf.evenements.plateforme.auth.dto.MfaRequests.Setup setupMfa(String mfaToken) {
+        User user = mfaUser(mfaToken, "SETUP");
+        return newSecretFor(user);
+    }
+
+    /** Enrolment, step 2: the first code proves the app is set up; the session opens. */
+    @Transactional
+    public AuthResponse activateMfa(String mfaToken, String code, String ip) {
+        User user = mfaUser(mfaToken, "SETUP");
+        ensureNotLocked(user);
+        if (user.getTotpSecret() == null || !totp.verify(user.getTotpSecret(), code)) {
+            mfaFailure(user, ip);
+        }
+        user.setTotpActif(true);
+        user.setEchecsConnexion(0);
+        auditService.record(user.getId(), user.getEmail(), "AUTH_MFA_ENABLED", "User",
+                user.getId().toString(), ip, null);
+        return completeLogin(user, ip);
+    }
+
+    /** Voluntary enrolment from the profile page (any full account). */
+    @Transactional
+    public bf.evenements.plateforme.auth.dto.MfaRequests.Setup setupMfaForCurrentUser() {
+        User user = currentFullUser();
+        if (user.isTotpActif()) {
+            throw new BusinessException("MFA_ALREADY_ENABLED", "La double authentification est déjà active.");
+        }
+        return newSecretFor(user);
+    }
+
+    @Transactional
+    public void activateMfaForCurrentUser(String code, String ip) {
+        User user = currentFullUser();
+        if (user.getTotpSecret() == null || !totp.verify(user.getTotpSecret(), code)) {
+            throw new BusinessException("MFA_CODE_INVALID", "Code incorrect. Vérifiez l'heure de votre téléphone.");
+        }
+        user.setTotpActif(true);
+        auditService.record(user.getId(), user.getEmail(), "AUTH_MFA_ENABLED", "User",
+                user.getId().toString(), ip, null);
+    }
+
+    private User currentFullUser() {
+        User user = userRepository.findById(currentUser.requireId())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur courant introuvable"));
+        if (user.isGuest()) {
+            throw new BusinessException("NOT_A_FULL_ACCOUNT", "Créez d'abord votre compte.");
+        }
+        return user;
+    }
+
+    private bf.evenements.plateforme.auth.dto.MfaRequests.Setup newSecretFor(User user) {
+        String secret = totp.newSecret();
+        user.setTotpSecret(secret);
+        user.setTotpActif(false);
+        String uri = totp.otpauthUri(secret, user.getEmail(), MFA_ISSUER);
+        String qr = "data:image/png;base64," + java.util.Base64.getEncoder()
+                .encodeToString(bf.evenements.plateforme.common.web.QrImages.png(uri, 240));
+        return new bf.evenements.plateforme.auth.dto.MfaRequests.Setup(secret, uri, qr);
+    }
+
+    private User mfaUser(String mfaToken, String purpose) {
+        UUID id;
+        try {
+            id = jwtService.parseMfaToken(mfaToken, purpose);
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+            throw new BusinessException("MFA_TOKEN_EXPIRED",
+                    "Session de connexion expirée. Saisissez à nouveau votre mot de passe.");
+        }
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new BadCredentialsException("Identifiants invalides"));
+        if (!user.isActive()) {
+            throw new BadCredentialsException("Compte desactive");
+        }
+        return user;
+    }
+
+    private void mfaFailure(User user, String ip) {
+        auditService.record(user.getId(), user.getEmail(), "AUTH_MFA_FAILED", "User",
+                user.getId().toString(), ip, null);
+        if (loginAttempts.recordFailure(user.getEmail())) {
+            auditService.record(user.getId(), user.getEmail(), "AUTH_ACCOUNT_LOCKED", "User",
+                    user.getId().toString(), ip, null);
+        }
+        throw new BadCredentialsException("Code de vérification incorrect");
     }
 
     @Transactional

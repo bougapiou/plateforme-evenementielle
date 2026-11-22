@@ -25,6 +25,38 @@ public class ActivityAttendanceService {
     private final EventActivityRepository activityRepository;
     private final TicketOrderService ticketOrderService;
     private final TicketRepository ticketRepository;
+    private final bf.evenements.plateforme.common.security.CurrentUserProvider currentUser;
+
+    /** Broadcast link of an online / hybrid session. */
+    public record DiffusionResponse(UUID activityId, String titre,
+                                    bf.evenements.plateforme.event.ActivityFormat format, String lien) {
+    }
+
+    /**
+     * Gives the broadcast link of a session to a person holding a valid ticket
+     * granting access to it (event-wide ticket or one scoped to that activity).
+     */
+    @Transactional(readOnly = true)
+    public DiffusionResponse diffusion(UUID activityId) {
+        EventActivity activity = activityRepository.findById(activityId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Activité", activityId));
+        if (activity.getLienDiffusion() == null) {
+            throw new BusinessException("NO_BROADCAST", "Cette activité n'a pas de lien de diffusion.");
+        }
+        UUID me = currentUser.requireId();
+        boolean holder = ticketRepository.findByOrderUserIdOrderByCreatedAtDesc(me).stream()
+                .filter(t -> t.getStatut() != TicketStatus.ANNULE)
+                .filter(t -> t.getEvent().getId().equals(activity.getEvent().getId()))
+                .anyMatch(t -> t.getEventTicket().getPortee() == TicketScope.EVENEMENT
+                        || t.getEventTicket().getActivities().stream()
+                                .anyMatch(a -> a.getId().equals(activityId)));
+        if (!holder) {
+            throw new BusinessException("NOT_REGISTERED",
+                    "Inscrivez-vous à cette activité pour obtenir le lien de diffusion.");
+        }
+        return new DiffusionResponse(activityId, activity.getTitre(), activity.getFormat(),
+                activity.getLienDiffusion());
+    }
 
     @Transactional
     public TicketResponse attend(UUID activityId) {

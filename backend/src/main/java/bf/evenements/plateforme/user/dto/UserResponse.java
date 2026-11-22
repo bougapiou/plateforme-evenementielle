@@ -20,13 +20,15 @@ public record UserResponse(
         List<String> roles,
         List<String> permissions,
         Instant lastLoginAt,
-        Instant createdAt) {
+        Instant createdAt,
+        boolean mfaActif,
+        Instant verrouilleJusqu) {
 
     public static UserResponse from(User u) {
         return new UserResponse(
                 u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getFullName(),
                 u.getPhone(), u.getType(), u.getStatus(), u.isGuest(),
                 List.copyOf(u.roleNames()), List.copyOf(u.permissionNames()),
-                u.getLastLoginAt(), u.getCreatedAt());
+                u.getLastLoginAt(), u.getCreatedAt(), u.isTotpActif(), u.getVerrouilleJusqu());
     }
 }

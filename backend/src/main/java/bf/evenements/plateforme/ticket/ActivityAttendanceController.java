@@ -22,6 +22,13 @@ public class ActivityAttendanceController {
 
     private final ActivityAttendanceService attendanceService;
 
+    @org.springframework.web.bind.annotation.GetMapping("/{activityId}/diffusion")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Lien de diffusion d'une session en ligne / hybride (réservé aux inscrits)")
+    public ActivityAttendanceService.DiffusionResponse diffusion(@PathVariable UUID activityId) {
+        return attendanceService.diffusion(activityId);
+    }
+
     @PostMapping("/{activityId}/attend")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('" + Permissions.TICKET_PURCHASE + "')")

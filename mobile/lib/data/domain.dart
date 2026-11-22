@@ -117,6 +117,12 @@ class Activity {
   final String? moderateur;
   final int? capacite;
   final String? imageUrl;
+  /// Theme / track (public filter).
+  final String? theme;
+  /// SUR_PLACE | EN_LIGNE | HYBRIDE
+  final String format;
+  /// Broadcast link — only in the organiser's view.
+  final String? lienDiffusion;
 
   Activity({
     required this.id,
@@ -132,9 +138,21 @@ class Activity {
     this.moderateur,
     this.capacite,
     this.imageUrl,
+    this.theme,
+    this.format = 'SUR_PLACE',
+    this.lienDiffusion,
   });
 
   bool get gratuit => acces == 'GRATUIT';
+  bool get enLigne => format != 'SUR_PLACE';
+
+  /// Spans several calendar days (an exhibition, a fair…).
+  bool get multiJours {
+    final s = dateDebut?.toLocal();
+    final e = dateFin?.toLocal().subtract(const Duration(milliseconds: 1));
+    if (s == null || e == null) return false;
+    return DateTime(e.year, e.month, e.day).isAfter(DateTime(s.year, s.month, s.day));
+  }
   bool get payant => acces == 'PAYANT';
 
   factory Activity.fromJson(Map<String, dynamic> j) => Activity(
@@ -151,6 +169,9 @@ class Activity {
         moderateur: j['moderateur'] as String?,
         capacite: j['capacite'] as int?,
         imageUrl: j['imageUrl'] as String?,
+        theme: j['theme'] as String?,
+        format: j['format'] as String? ?? 'SUR_PLACE',
+        lienDiffusion: j['lienDiffusion'] as String?,
       );
 }
 
@@ -250,8 +271,9 @@ class EventFull {
 }
 
 const activityTypes = [
-  'CEREMONIE', 'CONFERENCE', 'PANEL', 'ATELIER', 'FORMATION',
-  'TABLE_RONDE', 'NETWORKING', 'PAUSE', 'SPECTACLE', 'AUTRE',
+  'CEREMONIE', 'KEYNOTE', 'CONFERENCE', 'PANEL', 'TABLE_RONDE', 'FORUM', 'ATELIER',
+  'FORMATION', 'DEMONSTRATION', 'EXPOSITION', 'EMISSION_MEDIA', 'NETWORKING', 'SPECTACLE',
+  'GALA', 'PAUSE', 'AUTRE',
 ];
 
 const partnerLevels = [
@@ -269,6 +291,12 @@ const _activityTypeLabels = <String, String>{
   'NETWORKING': 'Networking',
   'PAUSE': 'Pause',
   'SPECTACLE': 'Spectacle',
+  'DEMONSTRATION': 'Démonstration',
+  'FORUM': 'Forum',
+  'KEYNOTE': 'Keynote',
+  'EMISSION_MEDIA': 'Émission média',
+  'EXPOSITION': 'Exposition',
+  'GALA': 'Gala',
   'AUTRE': 'Autre',
 };
 

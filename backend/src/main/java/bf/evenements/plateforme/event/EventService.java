@@ -52,6 +52,7 @@ public class EventService {
     private final CheckinRepository checkinRepository;
     private final TicketRepository ticketRepository;
     private final InvoiceRepository invoiceRepository;
+    private final bf.evenements.plateforme.checkin.EventStaffRepository staffRepository;
 
     // ---------------------------------------------------------------- CRUD
 
@@ -86,14 +87,18 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public EventResponse get(UUID id) {
-        return EventResponse.from(loadForManage(id));
+        return EventResponse.from(loadManaged(id));
     }
 
     @Transactional(readOnly = true)
     public PageResponse<EventSummary> listMine(@Nullable EventStatus statut, Pageable pageable) {
         UUID userId = currentUser.requireId();
+        java.util.List<UUID> delegated = staffRepository.findByUserIdAndFonction(userId,
+                        bf.evenements.plateforme.checkin.StaffFonction.PROGRAMME).stream()
+                .map(s -> s.getEvent().getId()).toList();
         Specification<Event> spec = Specification.allOf(
-                EventSpecifications.ownedByUser(userId),
+                Specification.anyOf(EventSpecifications.ownedByUser(userId),
+                        EventSpecifications.idIn(delegated)),
                 EventSpecifications.hasStatus(statut));
         return PageResponse.of(eventRepository.findAll(spec, pageable), EventSummary::from);
     }
@@ -229,11 +234,38 @@ public class EventService {
         return EventResponse.from(event);
     }
 
+    /** Admin switch hiding an event from the public showcase (tests, duplicates). */
+    public EventResponse setPublicHidden(UUID id, boolean hidden) {
+        Event event = load(id);
+        event.setMasquePublic(hidden);
+        audit(hidden ? "EVENT_HIDDEN" : "EVENT_SHOWN", event);
+        return EventResponse.from(event);
+    }
+
     // -------------------------------------------------------------- helpers
 
-    /** Loads an event the caller manages (owner) — sub-resource services use this. */
+    /**
+     * Loads an event the caller manages — owner, admin, or programme manager
+     * delegated by the owner. Sub-resource services (programme, tickets, team,
+     * reports) use this.
+     */
     public Event loadManaged(UUID eventId) {
-        return loadForManage(eventId);
+        Event event = load(eventId);
+        UUID me = currentUser.requireId();
+        if (event.isOwnedBy(me) || currentUser.hasAuthority(Permissions.EVENT_VALIDATE)
+                || staffRepository.existsByEventIdAndUserIdAndFonction(eventId, me,
+                        bf.evenements.plateforme.checkin.StaffFonction.PROGRAMME)) {
+            return event;
+        }
+        throw new AccessDeniedException("Accès à l'événement refusé.");
+    }
+
+    /** Read access to the statistics of an event: managers, plus global statistics readers. */
+    public Event loadForStats(UUID eventId) {
+        if (currentUser.hasAuthority(Permissions.STATS_GLOBAL_READ)) {
+            return load(eventId);
+        }
+        return loadManaged(eventId);
     }
 
     /**

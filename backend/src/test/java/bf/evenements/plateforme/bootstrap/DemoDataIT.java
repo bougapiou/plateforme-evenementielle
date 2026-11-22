@@ -39,8 +39,12 @@ class DemoDataIT extends AbstractIntegrationTest {
                 .body("coverUrl", notNullValue())
                 .body("programme[0].imageUrl", notNullValue());
 
+        // P1-02: an edition finished for more than 30 days leaves the public
+        // showcase, but its page stays reachable by its link.
         given().when().get("/api/public/events?search=2023")
                 .then().statusCode(200)
-                .body("content.slug", hasItem("fespaco-2023"));
+                .body("content.slug", org.hamcrest.Matchers.not(hasItem("fespaco-2023")));
+        given().when().get("/api/public/events/fespaco-2023")
+                .then().statusCode(200).body("statut", equalTo("TERMINE"));
     }
 }

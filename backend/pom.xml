@@ -197,6 +197,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <!-- Lets Mockito/byte-buddy mock on JDKs newer than it officially
+                         supports (local JDK 24+); no effect on the JDK 21 build. -->
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
                     <includes>
                         <include>**/*Test.java</include>
                         <include>**/*IT.java</include>

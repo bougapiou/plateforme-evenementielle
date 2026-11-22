@@ -53,14 +53,36 @@ export class ImageUploadComponent {
   uploading = signal(false);
   err = signal<string | null>(null);
 
-  onFile(event: Event): void {
+  /**
+   * Resizes to at most 1600 px and re-encodes as WebP (quality 0.8) before
+   * upload (TECH-07): a phone photo of several Mo becomes ~200 Ko, which keeps
+   * pages light on 3G. Falls back on the original file if the browser cannot.
+   */
+  private async compress(file: File): Promise<Blob> {
+    if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/webp', 0.8));
+      return blob && blob.type === 'image/webp' && blob.size < file.size ? blob : file;
+    } catch {
+      return file;
+    }
+  }
+
+  async onFile(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
     this.err.set(null);
     this.uploading.set(true);
+    const blob = await this.compress(file);
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', blob, blob === file ? file.name : file.name.replace(/\.[^.]+$/, '') + '.webp');
     form.append('dossier', this.folder());
     this.http
       .post<{ url: string }>(`${environment.apiBaseUrl}/uploads/image`, form)

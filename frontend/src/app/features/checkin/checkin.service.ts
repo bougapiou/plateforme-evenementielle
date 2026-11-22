@@ -85,6 +85,28 @@ export interface StaffMember {
   userId: string;
   fullName: string;
   email: string;
+  /** Activities (rooms / slots) the agent is restricted to; empty = whole event. */
+  activityIds: string[];
+  fonction?: 'CONTROLE' | 'PROGRAMME';
+}
+
+export interface OnSiteResponse {
+  numeroBillet: string;
+  scan: ScanResponse;
+}
+
+export interface SelfCheckinConfig {
+  activityId: string;
+  actif: boolean;
+  jeton?: string;
+}
+
+export interface SelfCheckinInfo {
+  evenement: string;
+  activite: string;
+  salle?: string;
+  debut: string;
+  fin?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -131,11 +153,33 @@ export class CheckinService extends ApiBase {
   staff(eventId: string): Observable<StaffMember[]> {
     return this.get<StaffMember[]>(`/events/${eventId}/staff`);
   }
-  addStaff(eventId: string, email: string): Observable<StaffMember> {
-    return this.http.post<StaffMember>(`${this.base}/events/${eventId}/staff`, { email });
+  addStaff(eventId: string, email: string, fonction: 'CONTROLE' | 'PROGRAMME' = 'CONTROLE'): Observable<StaffMember> {
+    return this.http.post<StaffMember>(`${this.base}/events/${eventId}/staff`, { email, fonction });
   }
   removeStaff(eventId: string, userId: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/events/${eventId}/staff/${userId}`);
+  }
+  /** Restricts an agent to some activities (empty list = whole event). */
+  assignStaffActivities(eventId: string, userId: string, activityIds: string[]): Observable<string[]> {
+    return this.http.put<string[]>(`${this.base}/events/${eventId}/staff/${userId}/activities`, { activityIds });
+  }
+  /** On-site registration: free ticket for a walk-in visitor, let in at once. */
+  onSite(eventId: string, body: { activityId?: string; nom: string; telephone: string }): Observable<OnSiteResponse> {
+    return this.http.post<OnSiteResponse>(`${this.base}/checkins/events/${eventId}/sur-place`, body);
+  }
+  configureSelfCheckin(eventId: string, activityId: string, actif: boolean): Observable<SelfCheckinConfig> {
+    return this.http.post<SelfCheckinConfig>(
+      `${this.base}/events/${eventId}/activities/${activityId}/auto-enregistrement`, {}, { params: { actif } });
+  }
+  selfCheckinQr(eventId: string, activityId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/events/${eventId}/activities/${activityId}/auto-enregistrement/qr.png`,
+      { responseType: 'blob' });
+  }
+  publicSelfCheckinInfo(jeton: string): Observable<SelfCheckinInfo> {
+    return this.get<SelfCheckinInfo>(`/public/auto-enregistrement/${jeton}`);
+  }
+  publicSelfCheckin(jeton: string, telephone: string): Observable<ScanResponse> {
+    return this.http.post<ScanResponse>(`${this.base}/public/auto-enregistrement/${jeton}`, { telephone });
   }
   sensors(eventId: string): Observable<SensorView[]> {
     return this.get<SensorView[]>(`/events/${eventId}/sensors`);
