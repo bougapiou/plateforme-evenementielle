@@ -38,7 +38,7 @@ class StructureToggle extends ConsumerWidget {
           structures.when(
             loading: () => const LinearProgressIndicator(),
             error: (e, _) => Text('Impossible de charger vos structures : $e',
-                style: const TextStyle(color: Color(0xFF991B1B))),
+                style: const TextStyle(color: Color(0xFFA2040E))),
             data: (list) {
               if (list.isEmpty) {
                 return Card(

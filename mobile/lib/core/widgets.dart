@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../data/domain.dart';
 import 'brand.dart';
-import 'faso.dart';
 
 /// Coloured status pill used across orders / registrations / tickets.
 class StatusChip extends StatelessWidget {
@@ -38,15 +37,15 @@ class StatusChip extends StatelessWidget {
       case 'VERIFIEE':
       case 'APPROUVE':
       case 'VALIDE':
-        return (const Color(0xFFDCFCE7), const Color(0xFF166534));
+        return (const Color(0xFFD3EDDD), const Color(0xFF045527));
       case 'SOUMIS':
-        return (const Color(0xFFDBEAFE), const Color(0xFF1E40AF));
+        return (const Color(0xFFD6E5F0), const Color(0xFF173F5F));
       case 'EN_COURS':
-        return (const Color(0xFFCCFBF1), const Color(0xFF115E59));
+        return (const Color(0xFFD3EDDD), const Color(0xFF045527));
       case 'EN_ATTENTE':
       case 'ATTENTE_PAIEMENT':
       case 'RESERVE_TEMP':
-        return (const Color(0xFFFEF9C3), const Color(0xFF854D0E));
+        return (const Color(0xFFF9E6C2), const Color(0xFF7D5500));
       case 'ANNULEE':
       case 'ANNULE':
       case 'REFUSEE':
@@ -56,9 +55,9 @@ class StatusChip extends StatelessWidget {
       case 'EXPIRE':
       case 'SUSPENDUE':
       case 'SUSPENDU':
-        return (const Color(0xFFFEE2E2), const Color(0xFF991B1B));
+        return (const Color(0xFFFFE0E2), const Color(0xFFA2040E));
       case 'UTILISE':
-        return (const Color(0xFFE0E7FF), const Color(0xFF3730A3));
+        return (const Color(0xFFD6E5F0), const Color(0xFF173F5F));
       default:
         return (
           Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -99,12 +98,7 @@ class EmptyState extends StatelessWidget {
               alignment: Alignment.center,
               child: Icon(icon, size: 38, color: Brand.b600),
             ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: 120,
-              child: KassenaMotif(height: 10, color: Brand.s200),
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
             Text(title,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium),
@@ -176,7 +170,7 @@ void showSnack(BuildContext context, String message, {bool error = false}) {
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
       content: Text(message),
-      backgroundColor: error ? const Color(0xFF991B1B) : null,
+      backgroundColor: error ? Brand.r700 : null,
     ));
 }
 

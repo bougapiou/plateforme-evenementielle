@@ -143,7 +143,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        icon: const Icon(Icons.hourglass_top, color: Color(0xFFB45309), size: 40),
+        icon: const Icon(Icons.hourglass_top, color: Color(0xFFB07800), size: 40),
         title: const Text('Confirmation en attente'),
         content: Text(
           'Nous n\'avons pas encore reçu la confirmation du paiement $reference. '
@@ -191,7 +191,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        icon: const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 48),
+        icon: const Icon(Icons.check_circle, color: Color(0xFF00843B), size: 48),
         title: const Text('Paiement confirmé'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -291,7 +291,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(_error!,
-                      style: const TextStyle(color: Color(0xFF991B1B))),
+                      style: const TextStyle(color: Color(0xFFA2040E))),
                 ),
               FilledButton.icon(
                 onPressed: _processing ? null : () => _pay('SUCCESS', t),

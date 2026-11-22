@@ -224,20 +224,20 @@ class _EnCoursPill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: const Color(0xFFECFDF5),
+      color: const Color(0xFFECF7F0),
       borderRadius: BorderRadius.circular(99),
     ),
     child: const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        CircleAvatar(radius: 3, backgroundColor: Color(0xFF10B981)),
+        CircleAvatar(radius: 3, backgroundColor: Color(0xFF00843B)),
         SizedBox(width: 5),
         Text(
           'En cours',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF047857),
+            color: Color(0xFF026C31),
           ),
         ),
       ],

@@ -190,6 +190,7 @@ class EventsRepository extends _Base {
     String? categorie,
     String? ville,
     int page = 0,
+    int size = 12,
   }) =>
       _get(
         '/public/events',
@@ -199,7 +200,7 @@ class EventsRepository extends _Base {
           if (categorie != null && categorie.isNotEmpty) 'categorie': categorie,
           if (ville != null && ville.isNotEmpty) 'ville': ville,
           'page': page,
-          'size': 12,
+          'size': size,
         },
       );
 

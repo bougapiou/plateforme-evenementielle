@@ -364,11 +364,11 @@ class _FluxTabState extends ConsumerState<_FluxTab>
               else ...[
                 const Row(
                   children: [
-                    _Legend(Color(0xFF1E3A8A), 'Entrées'),
+                    _Legend(Color(0xFF173F5F), 'Entrées'),
                     SizedBox(width: 12),
-                    _Legend(Color(0xFFF59E0B), 'Sorties'),
+                    _Legend(Color(0xFFC98F12), 'Sorties'),
                     SizedBox(width: 12),
-                    _Legend(Color(0xFF334155), 'Présents'),
+                    _Legend(Color(0xFF4A443E), 'Présents'),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -444,11 +444,11 @@ class _FluxPainter extends CustomPainter {
     final slot = size.width / points.length;
     final bar = math.max(1.5, slot / 2 - 1.5);
     double y(int v) => h - (h - 4) * v / max;
-    final inPaint = Paint()..color = const Color(0xFF1E3A8A);
-    final outPaint = Paint()..color = const Color(0xFFF59E0B);
+    final inPaint = Paint()..color = const Color(0xFF173F5F);
+    final outPaint = Paint()..color = const Color(0xFFC98F12);
     final line =
         Paint()
-          ..color = const Color(0xFF334155)
+          ..color = const Color(0xFF4A443E)
           ..strokeWidth = 2
           ..style = PaintingStyle.stroke;
     final path = Path();
@@ -481,7 +481,7 @@ class _FluxPainter extends CustomPainter {
     canvas.drawLine(
       Offset(0, h),
       Offset(size.width, h),
-      Paint()..color = const Color(0xFFE2E8F0),
+      Paint()..color = const Color(0xFFE2DDD6),
     );
   }
 
@@ -785,7 +785,7 @@ class _ExportTabState extends ConsumerState<_ExportTab>
         if (_error != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text(_error!, style: const TextStyle(color: Colors.red)),
+            child: Text(_error!, style: const TextStyle(color: Color(0xFFA2040E))),
           ),
         if (p != null) ...[
           const Divider(height: 24),
@@ -838,7 +838,7 @@ class _ExportTabState extends ConsumerState<_ExportTab>
                       ? Text(
                         '×${l.occurrences}',
                         style: const TextStyle(
-                          color: Color(0xFFB45309),
+                          color: Color(0xFFB07800),
                           fontWeight: FontWeight.w700,
                         ),
                       )

@@ -11,6 +11,11 @@ class Fmt {
 
   static String date(DateTime? d) => d == null ? '—' : _day.format(d.toLocal());
 
+  static final _jourCourt = DateFormat('EEE d MMM', 'fr');
+  /// « mar 24 nov » : jour abrégé, sans points.
+  static String dateShort(DateTime? d) =>
+      d == null ? '—' : _jourCourt.format(d.toLocal()).replaceAll('.', '');
+
   static String dateTime(DateTime? d) =>
       d == null ? '—' : _dayTime.format(d.toLocal());
 

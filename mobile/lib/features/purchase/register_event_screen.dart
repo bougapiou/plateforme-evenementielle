@@ -176,7 +176,7 @@ class _RegisterEventScreenState extends ConsumerState<RegisterEventScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        icon: const Icon(Icons.how_to_reg, color: Color(0xFF16A34A), size: 44),
+        icon: const Icon(Icons.how_to_reg, color: Color(0xFF00843B), size: 44),
         title: const Text('Inscription enregistrée'),
         content: Text([
           reg.statut == 'CONFIRMEE'

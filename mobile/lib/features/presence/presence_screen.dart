@@ -338,7 +338,7 @@ class _PresenceScreenState extends ConsumerState<PresenceScreen> {
   Widget _buildDark(PresenceSource source) {
     final d = _data!;
     return Scaffold(
-      backgroundColor: const Color(0xFF020617),
+      backgroundColor: const Color(0xFF14110F),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -366,7 +366,7 @@ class _PresenceScreenState extends ConsumerState<PresenceScreen> {
                           ? 'Connexion perdue'
                           : DateFormat.Hms('fr').format(_updatedAt!),
                       style: TextStyle(
-                        color: _offline ? const Color(0xFFF59E0B) : Brand.s500,
+                        color: _offline ? const Color(0xFFC98F12) : Brand.s500,
                         fontSize: 11,
                       ),
                     ),
@@ -413,34 +413,34 @@ enum _Tone {
   entrees(
     light: Brand.b50,
     lightFg: Brand.b700,
-    dark: Color(0xFF06251A),
-    darkBorder: Color(0xFF14532D),
-    darkValue: Color(0xFF6EE7B7),
-    darkLabel: Color(0xFF10B981),
+    dark: Color(0xFF032E16),
+    darkBorder: Color(0xFF04411F),
+    darkValue: Color(0xFF74C296),
+    darkLabel: Color(0xFF00843B),
   ),
   sorties(
     light: Brand.s100,
     lightFg: Brand.s700,
-    dark: Color(0xFF0B1226),
-    darkBorder: Color(0xFF334155),
-    darkValue: Color(0xFFF1F5F9),
-    darkLabel: Color(0xFF94A3B8),
+    dark: Color(0xFF14110F),
+    darkBorder: Color(0xFF4A443E),
+    darkValue: Color(0xFFEFECE7),
+    darkLabel: Color(0xFFA9A199),
   ),
   presents(
-    light: Color(0xFFEFF6FF),
-    lightFg: Color(0xFF1D4ED8),
-    dark: Color(0xFF082238),
-    darkBorder: Color(0xFF075985),
-    darkValue: Color(0xFF7DD3FC),
-    darkLabel: Color(0xFF0EA5E9),
+    light: Color(0xFFEEF4F9),
+    lightFg: Color(0xFF2A6D9B),
+    dark: Color(0xFF0D2639),
+    darkBorder: Color(0xFF173F5F),
+    darkValue: Color(0xFF7BA5C4),
+    darkLabel: Color(0xFF4F89B1),
   ),
   reentrees(
-    light: Color(0xFFFFFBEB),
-    lightFg: Color(0xFFB45309),
-    dark: Color(0xFF241205),
-    darkBorder: Color(0xFF7C2D12),
-    darkValue: Color(0xFFFCD34D),
-    darkLabel: Color(0xFFF59E0B),
+    light: Color(0xFFFDF4E3),
+    lightFg: Color(0xFFB07800),
+    dark: Color(0xFF2E1F00),
+    darkBorder: Color(0xFF4A3200),
+    darkValue: Color(0xFFE0AA45),
+    darkLabel: Color(0xFFC98F12),
   );
 
   final Color light;
@@ -478,11 +478,11 @@ class _LiveDot extends StatelessWidget {
     width: 10,
     height: 10,
     decoration: BoxDecoration(
-      color: const Color(0xFF10B981),
+      color: const Color(0xFF00843B),
       shape: BoxShape.circle,
       boxShadow: [
         BoxShadow(
-          color: const Color(0xFF10B981).withValues(alpha: .45),
+          color: const Color(0xFF00843B).withValues(alpha: .45),
           blurRadius: 6,
           spreadRadius: 2,
         ),
@@ -507,7 +507,7 @@ class _SourcePicker extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: dark ? const Color(0xCC1E293B) : Brand.s100,
+        color: dark ? const Color(0xCC332E2A) : Brand.s100,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -703,12 +703,12 @@ class _ActivityCard extends StatelessWidget {
                 stat(
                   '${f['presents'] ?? 0}',
                   'Présents',
-                  const Color(0xFF1D4ED8),
+                  const Color(0xFF2A6D9B),
                 ),
                 stat(
                   '${f['reentrees'] ?? 0}',
                   'Ré-entrées',
-                  const Color(0xFFB45309),
+                  const Color(0xFFB07800),
                 ),
               ],
             ),

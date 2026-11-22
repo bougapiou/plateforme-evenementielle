@@ -64,7 +64,7 @@ class _BecomeOrganizerScreenState extends ConsumerState<BecomeOrganizerScreen> {
           context: context,
           builder: (_) => AlertDialog(
             icon: const Icon(Icons.verified_outlined,
-                color: Color(0xFF16A34A), size: 44),
+                color: Color(0xFF00843B), size: 44),
             title: const Text('Demande envoyée'),
             content: const Text(
                 'Votre demande pour devenir organisateur a été transmise. '

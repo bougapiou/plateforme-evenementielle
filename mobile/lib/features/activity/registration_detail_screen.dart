@@ -202,7 +202,7 @@ class _RegistrationDetailScreenState
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Card(
-                    color: const Color(0xFFFEE2E2),
+                    color: const Color(0xFFFFE0E2),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Text('Motif du refus : ${r.motifRefus}'),
@@ -305,7 +305,7 @@ class _RegistrationDetailScreenState
           SizedBox(
               width: 110,
               child: Text(label,
-                  style: const TextStyle(color: Color(0xFF64748B)))),
+                  style: const TextStyle(color: Color(0xFF756D66)))),
           Expanded(child: Text(value)),
         ]),
       );

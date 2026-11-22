@@ -175,8 +175,8 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                 color: _outcome == null
                     ? Colors.white
                     : (_outcome!.resultat == 'VALIDE'
-                        ? const Color(0xFF4ADE80)
-                        : const Color(0xFFF87171)),
+                        ? const Color(0xFF3EA46D)
+                        : const Color(0xFFF0636E)),
               ),
               if (!showResult)
                 const Padding(
@@ -263,8 +263,8 @@ class DirectionSwitch extends StatelessWidget {
         borderRadius: BorderRadius.circular(99),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        option('ENTREE', 'Entrée', Icons.login, const Color(0xFF16A34A)),
-        option('SORTIE', 'Sortie', Icons.logout, const Color(0xFF475569)),
+        option('ENTREE', 'Entrée', Icons.login, const Color(0xFF00843B)),
+        option('SORTIE', 'Sortie', Icons.logout, const Color(0xFF635C55)),
       ]),
     );
   }
@@ -381,23 +381,23 @@ class ScanResultPanel extends StatelessWidget {
 
   (Color, IconData, String) _style() {
     if (error != null) {
-      return (const Color(0xFF991B1B), Icons.error_outline, 'ERREUR');
+      return (const Color(0xFFA2040E), Icons.error_outline, 'ERREUR');
     }
     final o = outcome!;
     switch (o.resultat) {
       case 'VALIDE':
         if (o.sortie) {
-          return (const Color(0xFF334155), Icons.logout, 'SORTIE ENREGISTRÉE');
+          return (const Color(0xFF4A443E), Icons.logout, 'SORTIE ENREGISTRÉE');
         }
         return (
-          const Color(0xFF15803D),
+          const Color(0xFF026C31),
           o.reentree ? Icons.replay : Icons.check_circle,
           o.reentree ? 'RÉ-ENTRÉE' : 'VALIDE',
         );
       case 'DEJA_UTILISE':
-        return (const Color(0xFFB45309), Icons.block, 'REFUSÉ');
+        return (const Color(0xFFB07800), Icons.block, 'REFUSÉ');
       default:
-        return (const Color(0xFF991B1B), Icons.block, 'INVALIDE');
+        return (const Color(0xFFA2040E), Icons.block, 'INVALIDE');
     }
   }
 }
@@ -413,13 +413,13 @@ class CounterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cells = [
-      ('Entrées', stats['entrees'] ?? 0, Icons.login, const Color(0xFF86EFAC)),
-      ('Sorties', stats['sorties'] ?? 0, Icons.logout, const Color(0xFFCBD5E1)),
-      ('Présents', stats['presents'] ?? 0, Icons.groups, const Color(0xFF7DD3FC)),
-      ('Ré-entrées', stats['reentrees'] ?? 0, Icons.replay, const Color(0xFFFCD34D)),
+      ('Entrées', stats['entrees'] ?? 0, Icons.login, const Color(0xFFA8DBBC)),
+      ('Sorties', stats['sorties'] ?? 0, Icons.logout, const Color(0xFFCFC8BF)),
+      ('Présents', stats['presents'] ?? 0, Icons.groups, const Color(0xFF7BA5C4)),
+      ('Ré-entrées', stats['reentrees'] ?? 0, Icons.replay, const Color(0xFFE0AA45)),
     ];
     return Material(
-      color: const Color(0xD90F172A),
+      color: const Color(0xD9211D1A),
       borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
@@ -436,7 +436,7 @@ class CounterBar extends StatelessWidget {
                         style: TextStyle(
                             fontWeight: FontWeight.w800, color: color, fontSize: 18)),
                     Text(label,
-                        style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                        style: const TextStyle(fontSize: 10, color: Color(0xFFA9A199))),
                   ]),
               ],
             ),

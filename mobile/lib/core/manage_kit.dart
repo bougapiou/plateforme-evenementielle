@@ -7,10 +7,10 @@ import 'brand.dart';
 /// Semantic colour pairs (soft background + strong foreground).
 enum KitTone {
   green(Brand.b50, Brand.b700),
-  blue(Color(0xFFEFF6FF), Color(0xFF1D4ED8)),
-  amber(Color(0xFFFFFBEB), Color(0xFFB45309)),
-  red(Color(0xFFFEF2F2), Color(0xFFB91C1C)),
-  violet(Color(0xFFF5F3FF), Color(0xFF6D28D9)),
+  blue(Color(0xFFEEF4F9), Color(0xFF2A6D9B)),
+  amber(Color(0xFFFDF4E3), Color(0xFFB07800)),
+  red(Color(0xFFFFF1F2), Color(0xFFC40511)),
+  violet(Color(0xFFEEF4F9), Color(0xFF173F5F)),
   slate(Brand.s100, Brand.s700);
 
   final Color bg;

@@ -117,6 +117,8 @@ class Activity {
   final String? moderateur;
   final int? capacite;
   final String? imageUrl;
+  /// Billet gratuit géré automatiquement pour une activité en accès GRATUIT.
+  final String? freeTicketId;
 
   Activity({
     required this.id,
@@ -132,6 +134,7 @@ class Activity {
     this.moderateur,
     this.capacite,
     this.imageUrl,
+    this.freeTicketId,
   });
 
   bool get gratuit => acces == 'GRATUIT';
@@ -151,6 +154,7 @@ class Activity {
         moderateur: j['moderateur'] as String?,
         capacite: j['capacite'] as int?,
         imageUrl: j['imageUrl'] as String?,
+        freeTicketId: j['freeTicketId'] as String?,
       );
 }
 
@@ -653,6 +657,12 @@ class Ticket {
   final String? orderReference;
   final String qrImageUrl;
   final String pdfUrl;
+  /// EVENEMENT (tout l'événement) ou ACTIVITE (seulement [sessions]).
+  final String portee;
+  /// Description de la catégorie de billet (ce que le billet donne).
+  final String? categorieDescription;
+  /// Sessions couvertes (billet de session ou pass), par ordre chronologique.
+  final List<TicketSession> sessions;
 
   Ticket({
     required this.id,
@@ -668,9 +678,17 @@ class Ticket {
     this.orderReference,
     required this.qrImageUrl,
     required this.pdfUrl,
+    this.portee = 'EVENEMENT',
+    this.categorieDescription,
+    this.sessions = const [],
   });
 
   bool get utilise => statut == 'UTILISE';
+  bool get estPass => sessions.length > 1;
+  bool get estSession => sessions.length == 1;
+  /// Billet d'une session : le titre de la session plutôt que « Accès — … ».
+  String get titre => estSession ? sessions.first.titre : (categorieNom ?? 'Billet');
+  String get typeLabel => estPass ? 'Pass · ${sessions.length} sessions' : estSession ? 'Session' : 'Entrée';
   bool get valide => statut == 'EMISE';
 
   factory Ticket.fromJson(Map<String, dynamic> j) => Ticket(
@@ -687,6 +705,29 @@ class Ticket {
         orderReference: j['orderReference'] as String?,
         qrImageUrl: j['qrImageUrl'] as String? ?? '',
         pdfUrl: j['pdfUrl'] as String? ?? '',
+        portee: j['portee'] as String? ?? 'EVENEMENT',
+        categorieDescription: j['categorieDescription'] as String?,
+        sessions: (j['sessions'] as List? ?? const [])
+            .map((e) => TicketSession.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+/// Une session du programme couverte par un billet.
+class TicketSession {
+  final String id;
+  final String titre;
+  final DateTime? dateDebut;
+  final DateTime? dateFin;
+  final String? salle;
+  TicketSession({required this.id, required this.titre, this.dateDebut, this.dateFin, this.salle});
+
+  factory TicketSession.fromJson(Map<String, dynamic> j) => TicketSession(
+        id: j['id'] as String,
+        titre: j['titre'] as String? ?? '',
+        dateDebut: parseDate(j['dateDebut']),
+        dateFin: parseDate(j['dateFin']),
+        salle: j['salle'] as String?,
       );
 }
 

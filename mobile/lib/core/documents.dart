@@ -38,3 +38,18 @@ Future<DocOutcome> fetchAndPresentDocument(
       ? DocOutcome.opened
       : DocOutcome.savedNoViewer;
 }
+
+/// « Voir » : sur le web, ouvre le PDF dans un nouvel onglet ; sur mobile, l'ouvre
+/// avec la visionneuse du système (qui permet aussi de l'enregistrer ou le partager).
+Future<DocOutcome> viewDocument(
+  ApiClient api, {
+  required String path,
+  required String filename,
+}) async {
+  if (kIsWeb) {
+    final bytes = await api.bytes(path);
+    dl.openBytes(Uint8List.fromList(bytes), filename);
+    return DocOutcome.opened;
+  }
+  return fetchAndPresentDocument(api, path: path, filename: filename);
+}

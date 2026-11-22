@@ -91,24 +91,31 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                                     children: [
                                       StatusChip(t.statut),
                                       const SizedBox(height: 6),
-                                      Text(t.eventNom,
+                                      Text(t.titre,
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: Theme.of(context)
                                               .textTheme
                                               .titleSmall),
                                       const SizedBox(height: 2),
+                                      Text('${t.typeLabel} · ${t.eventNom}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: Brand.b700)),
                                       Text(
-                                          [
-                                            if (t.categorieNom != null &&
-                                                t.categorieNom!.isNotEmpty)
-                                              t.categorieNom!,
-                                            'N° ${t.numero}',
-                                          ].join(' · '),
+                                          t.estSession
+                                              ? Fmt.dateTime(t.sessions.first.dateDebut)
+                                              : t.estPass
+                                                  ? Fmt.range(t.sessions.first.dateDebut,
+                                                      t.sessions.last.dateDebut)
+                                                  : Fmt.dateTime(t.eventDateDebut),
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodySmall),
-                                      Text(Fmt.dateTime(t.eventDateDebut),
+                                      Text('N° ${t.numero}',
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodySmall),

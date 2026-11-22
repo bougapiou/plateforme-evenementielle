@@ -79,7 +79,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                  child: Text(_error!, style: const TextStyle(color: Color(0xFFA2040E))),
                 ),
               FilledButton(
                 onPressed: _loading ? null : _submit,

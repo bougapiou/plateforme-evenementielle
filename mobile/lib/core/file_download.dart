@@ -11,5 +11,8 @@ import 'file_download_native.dart'
 void saveBytes(Uint8List bytes, String filename) =>
     impl.saveBytes(bytes, filename);
 
+/// Web : ouvre le document dans un nouvel onglet (aperçu du navigateur).
+void openBytes(Uint8List bytes, String filename) => impl.openBytes(bytes, filename);
+
 /// Whether [saveBytes] does anything on the current platform (web only).
 bool get canSaveBytes => impl.canSaveBytes;

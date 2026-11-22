@@ -49,13 +49,13 @@ class RemoteImage extends StatelessWidget {
 
 /// Same palette and pick rule as the PDFs (backend `EventTheme`) and the web: one color per event, everywhere.
 const _cover = [
-  (accent: Color(0xFF0E7A3C), dark: Color(0xFF065829)), // vert
-  (accent: Color(0xFF1D4E9E), dark: Color(0xFF0F3572)), // bleu
-  (accent: Color(0xFF6B3FA0), dark: Color(0xFF4A2873)), // violet
-  (accent: Color(0xFF0F766E), dark: Color(0xFF07554F)), // turquoise
-  (accent: Color(0xFF9F1239), dark: Color(0xFF720725)), // bordeaux
-  (accent: Color(0xFFB45309), dark: Color(0xFF823800)), // ocre
-  (accent: Color(0xFF4338CA), dark: Color(0xFF2A2191)), // indigo
+  (accent: Color(0xFF00843B), dark: Color(0xFF045527)), // vert
+  (accent: Color(0xFF2A6D9B), dark: Color(0xFF173F5F)), // bleu
+  (accent: Color(0xFFB07800), dark: Color(0xFF7D5500)), // ocre
+  (accent: Color(0xFF026C31), dark: Color(0xFF04411F)), // vert foncé
+  (accent: Color(0xFF635C55), dark: Color(0xFF332E2A)), // neutre
+  (accent: Color(0xFF173F5F), dark: Color(0xFF0D2639)), // bleu nuit
+  (accent: Color(0xFFA39300), dark: Color(0xFF5C5300)), // or
 ];
 
 /// Java's String.hashCode() (UTF-16 code units, 32-bit), so the pick matches the backend exactly.

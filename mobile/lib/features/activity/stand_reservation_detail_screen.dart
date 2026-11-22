@@ -142,7 +142,7 @@ class _StandReservationDetailScreenState
           SizedBox(
               width: 120,
               child: Text(label,
-                  style: const TextStyle(color: Color(0xFF64748B)))),
+                  style: const TextStyle(color: Color(0xFF756D66)))),
           Expanded(child: Text(value)),
         ]),
       );

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart' show Scrollable;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,6 +19,7 @@ class _StubEvents extends EventsRepository {
     String? categorie,
     String? ville,
     int page = 0,
+    int size = 12,
   }) async =>
       Paged(content: const [], page: 0, totalPages: 0, totalElements: 0, last: true);
 
@@ -39,6 +41,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(find.text('Événements'), findsWidgets);
-    expect(find.text('Aucun événement'), findsOneWidget);
+    // L'état vide est sous le bandeau d'accueil : on fait défiler jusqu'à lui.
+    await tester.scrollUntilVisible(find.text('Aucun événement trouvé'), 300,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text('Aucun événement trouvé'), findsOneWidget);
   });
 }

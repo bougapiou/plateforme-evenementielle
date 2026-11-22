@@ -4,19 +4,19 @@ import '../../data/domain.dart';
 
 /// Display label and accent colour of an activity type (`typeActivite`).
 ({String label, Color color}) activityTypeStyle(String? type) => switch (type) {
-      'CEREMONIE' => (label: 'Cérémonie', color: const Color(0xFFB45309)),
-      'CONFERENCE' => (label: 'Conférence', color: const Color(0xFF1D4ED8)),
-      'PANEL' => (label: 'Panel', color: const Color(0xFF7C3AED)),
-      'ATELIER' => (label: 'Atelier', color: const Color(0xFF0F766E)),
-      'FORMATION' => (label: 'Formation', color: const Color(0xFF0369A1)),
-      'TABLE_RONDE' => (label: 'Table ronde', color: const Color(0xFF9333EA)),
-      'NETWORKING' => (label: 'Networking', color: const Color(0xFFC2410C)),
-      'PAUSE' => (label: 'Pause', color: const Color(0xFF64748B)),
-      'SPECTACLE' => (label: 'Spectacle', color: const Color(0xFFBE123C)),
-      _ => (label: 'Activité', color: const Color(0xFF475569)),
+      'CEREMONIE' => (label: 'Cérémonie', color: const Color(0xFFB07800)),
+      'CONFERENCE' => (label: 'Conférence', color: const Color(0xFF2A6D9B)),
+      'PANEL' => (label: 'Panel', color: const Color(0xFF215780)),
+      'ATELIER' => (label: 'Atelier', color: const Color(0xFF026C31)),
+      'FORMATION' => (label: 'Formation', color: const Color(0xFF215780)),
+      'TABLE_RONDE' => (label: 'Table ronde', color: const Color(0xFF173F5F)),
+      'NETWORKING' => (label: 'Networking', color: const Color(0xFF976600)),
+      'PAUSE' => (label: 'Pause', color: const Color(0xFF756D66)),
+      'SPECTACLE' => (label: 'Spectacle', color: const Color(0xFFA2040E)),
+      _ => (label: 'Activité', color: const Color(0xFF635C55)),
     };
 
-const _line = Color(0xFFCBD5E1);
+const _line = Color(0xFFCFC8BF);
 
 /// Event programme drawn as a tree (arborescence): the event at the root,
 /// one collapsible branch per day, that day's activities as leaves in time
@@ -170,7 +170,7 @@ class _RootNode extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF334155)]),
+              colors: [Color(0xFF211D1A), Color(0xFF4A443E)]),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -210,8 +210,8 @@ class _DayNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: const Color(0xFFEEF2FF),
-        shape: const StadiumBorder(side: BorderSide(color: Color(0xFFC7D2FE))),
+        color: const Color(0xFFEEF4F9),
+        shape: const StadiumBorder(side: BorderSide(color: Color(0xFFA9C5DA))),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
@@ -221,7 +221,7 @@ class _DayNode extends StatelessWidget {
               AnimatedRotation(
                 turns: collapsed ? -0.25 : 0,
                 duration: const Duration(milliseconds: 150),
-                child: const Icon(Icons.expand_more, size: 18, color: Color(0xFF4338CA)),
+                child: const Icon(Icons.expand_more, size: 18, color: Color(0xFF215780)),
               ),
               const SizedBox(width: 4),
               if (jour != null) ...[
@@ -230,17 +230,17 @@ class _DayNode extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1,
-                        color: Color(0xFF4338CA))),
+                        color: Color(0xFF215780))),
                 const SizedBox(width: 6),
               ],
               Flexible(
                 child: Text(label,
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+                        fontWeight: FontWeight.w600, color: Color(0xFF332E2A))),
               ),
               const SizedBox(width: 6),
               Text('$count',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF756D66))),
             ]),
           ),
         ),

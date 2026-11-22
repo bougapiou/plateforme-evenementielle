@@ -21,6 +21,18 @@ void saveBytes(Uint8List bytes, String filename) {
   web.URL.revokeObjectURL(url);
 }
 
+/// Ouvre [bytes] dans un nouvel onglet (le navigateur affiche le PDF).
+void openBytes(Uint8List bytes, String filename) {
+  final blob = web.Blob(
+    <JSAny>[bytes.toJS].toJS,
+    web.BlobPropertyBag(type: _mimeFor(filename)),
+  );
+  final url = web.URL.createObjectURL(blob);
+  web.window.open(url, '_blank');
+  // l'onglet garde sa copie : on libère l'URL un peu plus tard
+  Future.delayed(const Duration(minutes: 1), () => web.URL.revokeObjectURL(url));
+}
+
 bool get canSaveBytes => true;
 
 String _mimeFor(String filename) {
