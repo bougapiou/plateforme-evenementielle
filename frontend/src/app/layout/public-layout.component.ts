@@ -21,35 +21,16 @@ import { IconComponent } from '../shared/icon.component';
       </a>
 
       <header class="relative z-[200] bg-white">
-        <!-- Barre de service -->
-        <div class="border-b border-neutre-200 bg-neutre-50">
-          <div class="mx-auto flex max-w-conteneur items-center justify-between gap-4 px-4 py-1.5 text-[0.8125rem] text-neutre-700 sm:px-6">
-            <span class="truncate">Service public numérique de l'État</span>
-            <nav aria-label="Accès rapides" class="hidden items-center gap-5 sm:flex">
-              @if (!auth.isAuthenticated()) {
-                <a routerLink="/retrouver-billet" class="hover:text-vert-700 hover:underline">Retrouver mon billet</a>
-                <a routerLink="/connexion" class="inline-flex items-center gap-1.5 font-medium text-vert-700 hover:underline">
-                  <app-icon name="login" class="h-4 w-4" aria-hidden="true" /> Se connecter
-                </a>
-              } @else {
-                <a routerLink="/tableau-de-bord" class="font-medium text-vert-700 hover:underline">
-                  {{ auth.isGuest() ? 'Mes billets' : 'Mon tableau de bord' }}
-                </a>
-              }
-            </nav>
-          </div>
-        </div>
-
-        <!-- Bloc-marque + navigation -->
-        <div class="mx-auto flex max-w-conteneur items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <a routerLink="/" class="group flex min-w-0 shrink items-center gap-2.5 py-1 sm:gap-3" (click)="menuOpen.set(false)"
+        <!-- Marque + navigation -->
+        <div class="mx-auto flex max-w-conteneur items-center justify-between gap-2 px-4 py-3 min-[400px]:gap-4 sm:px-6">
+          <a routerLink="/" class="group flex min-w-0 shrink items-center gap-2 py-1 min-[400px]:gap-2.5 sm:gap-3" (click)="menuOpen.set(false)"
              aria-label="PNE — Plateforme Nationale des Événements, retour à l'accueil">
-            <img src="assets/logo-mark.png" alt="" class="h-8 w-auto shrink-0 sm:h-12" width="133" height="48" />
-            <span class="flex min-w-0 flex-col border-l border-neutre-300 pl-2.5 font-display leading-tight sm:pl-3">
-              <span class="whitespace-nowrap text-[0.8125rem] font-extrabold text-neutre-900 group-hover:text-vert-700 min-[400px]:text-[0.9375rem] sm:text-[1.0625rem]">
+            <img src="assets/logo-mark.png" alt="" class="h-6 w-auto shrink-0 min-[400px]:h-8 sm:h-12" width="133" height="48" />
+            <span class="flex min-w-0 flex-col border-l border-neutre-300 pl-2 font-display leading-tight min-[400px]:pl-2.5 sm:pl-3">
+              <span class="text-[0.75rem] font-extrabold text-neutre-900 group-hover:text-vert-700 min-[400px]:whitespace-nowrap min-[400px]:text-[0.9375rem] sm:text-[1.0625rem]">
                 Plateforme Nationale
               </span>
-              <span class="whitespace-nowrap text-[0.75rem] font-medium text-neutre-700 min-[400px]:text-[0.8125rem] sm:text-[0.9375rem]">des Événements</span>
+              <span class="whitespace-nowrap text-[0.6875rem] font-medium text-neutre-700 min-[400px]:text-[0.8125rem] sm:text-[0.9375rem]">des Événements</span>
             </span>
           </a>
 
@@ -58,23 +39,28 @@ import { IconComponent } from '../shared/icon.component';
             <ng-container *ngTemplateOutlet="links" />
           </nav>
 
-          <!-- Mobile / tablette -->
-          <button type="button" class="btn-ghost -mr-2 shrink-0 lg:hidden" aria-label="Ouvrir le menu"
-                  aria-controls="menu-mobile" [attr.aria-expanded]="menuOpen()"
-                  (click)="menuOpen.set(!menuOpen())">
-            <app-icon [name]="menuOpen() ? 'x' : 'menu'" class="h-6 w-6" aria-hidden="true" />
-            <span class="text-sm">Menu</span>
-          </button>
+          <!-- Mobile / tablette : « Se connecter » toujours visible + bouton du menu -->
+          <div class="-mr-2 flex shrink-0 items-center gap-1 lg:hidden">
+            @if (!auth.isAuthenticated()) {
+              <a routerLink="/connexion" class="btn-primary min-h-[40px] whitespace-nowrap px-2.5 text-[0.75rem] min-[400px]:px-3 min-[400px]:text-[0.8125rem]"
+                 (click)="menuOpen.set(false)">
+                Se connecter
+              </a>
+            }
+            <button type="button" class="btn-ghost px-2" [attr.aria-label]="menuOpen() ? 'Fermer le menu' : 'Ouvrir le menu'"
+                    aria-controls="menu-mobile" [attr.aria-expanded]="menuOpen()"
+                    (click)="menuOpen.set(!menuOpen())">
+              <app-icon [name]="menuOpen() ? 'x' : 'menu'" class="h-6 w-6" aria-hidden="true" />
+              <span class="hidden text-sm sm:inline">Menu</span>
+            </button>
+          </div>
         </div>
 
         @if (menuOpen()) {
           <nav id="menu-mobile" aria-label="Navigation principale"
-               class="flex flex-col gap-1 border-t border-neutre-200 bg-white px-4 pb-4 pt-2 lg:hidden [&>*]:w-full [&>*]:justify-start"
+               class="flex flex-col gap-1 border-t border-neutre-200 bg-white px-4 pb-4 pt-2 lg:hidden [&>a]:w-full [&>a]:justify-start [&>button]:w-full [&>button]:justify-start"
                (click)="menuOpen.set(false)">
-            <ng-container *ngTemplateOutlet="links" />
-            @if (!auth.isAuthenticated()) {
-              <a routerLink="/retrouver-billet" class="btn-ghost">Retrouver mon billet</a>
-            }
+            <ng-container *ngTemplateOutlet="links; context: { mobile: true }" />
           </nav>
         }
 
@@ -82,7 +68,7 @@ import { IconComponent } from '../shared/icon.component';
         <div class="fs-filet" role="presentation"></div>
       </header>
 
-      <ng-template #links>
+      <ng-template #links let-mobile="mobile">
         <a routerLink="/" routerLinkActive="!text-vert-700 !bg-vert-50" ariaCurrentWhenActive="page"
            [routerLinkActiveOptions]="{ exact: true }" class="btn-ghost">
           <app-icon name="calendar" class="h-4 w-4" aria-hidden="true" /> Événements
@@ -96,13 +82,29 @@ import { IconComponent } from '../shared/icon.component';
           <app-icon name="scan" class="h-4 w-4" aria-hidden="true" /> Scanner un billet
         </a>
         @if (auth.isGuest()) {
+          <a routerLink="/tableau-de-bord/billets" class="btn-ghost">
+            <app-icon name="ticket" class="h-4 w-4" aria-hidden="true" /> Mes billets
+          </a>
           <a routerLink="/finaliser-compte" class="btn-primary lg:ml-2">Créer mon compte</a>
           <button type="button" class="btn-ghost" (click)="auth.logout()">Quitter</button>
         } @else if (auth.isAuthenticated()) {
           <a routerLink="/tableau-de-bord" class="btn-secondary lg:ml-2">Tableau de bord</a>
           <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
+        } @else if (mobile) {
+          <!-- Menu mobile : « Se connecter » à la place de « Créer un compte » -->
+          <a routerLink="/connexion" class="btn-primary mt-2">
+            <app-icon name="login" class="h-4 w-4" aria-hidden="true" /> Se connecter
+          </a>
+          <p class="pt-2 text-center text-sm text-neutre-600">
+            Pas encore de compte ? <a routerLink="/inscription" class="lien">Créer un compte</a>
+          </p>
         } @else {
-          <a routerLink="/inscription" class="btn-primary lg:ml-2">Créer un compte</a>
+          <!-- Grand écran : « Se connecter » à côté de « Créer un compte » -->
+          <a routerLink="/connexion" routerLinkActive="!text-vert-700 !bg-vert-50" ariaCurrentWhenActive="page"
+             class="btn-secondary lg:ml-2">
+            <app-icon name="login" class="h-4 w-4" aria-hidden="true" /> Se connecter
+          </a>
+          <a routerLink="/inscription" class="btn-primary">Créer un compte</a>
         }
       </ng-template>
 
@@ -155,7 +157,6 @@ import { IconComponent } from '../shared/icon.component';
         <div class="border-t border-neutre-700">
           <div class="mx-auto flex max-w-conteneur flex-col gap-2 px-4 py-5 text-xs text-neutre-400 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <span>© {{ year }} PNE — Plateforme Nationale des Événements</span>
-            <span>Service public numérique de l'État</span>
           </div>
         </div>
       </footer>

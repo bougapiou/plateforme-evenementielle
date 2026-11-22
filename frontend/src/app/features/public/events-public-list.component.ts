@@ -24,10 +24,7 @@ type Onglet = 'avenir' | 'passes';
     <section class="pleine-largeur relative -mt-8 overflow-hidden bg-neutre-900 text-white sm:-mt-10">
       <div class="mx-auto grid max-w-conteneur items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:pb-20 lg:pt-16">
         <div>
-          <p class="surtitre flex items-center gap-2 text-neutre-300">
-            <span class="fs-repere" aria-hidden="true"></span> Service public numérique
-          </p>
-          <h1 class="mt-5 text-[clamp(2.25rem,1.6rem+2.9vw,3.75rem)] text-white">
+          <h1 class="text-[clamp(2.25rem,1.6rem+2.9vw,3.75rem)] text-white">
             Les grands événements du Burkina Faso,
             <span class="text-or-300">au même endroit.</span>
           </h1>
@@ -156,9 +153,9 @@ type Onglet = 'avenir' | 'passes';
       </section>
     }
 
-    <!-- ============ CATÉGORIES ============ -->
+    <!-- ============ CATÉGORIES (grand écran ; sur téléphone : liste déroulante dans le catalogue) ============ -->
     @if (categories().length) {
-      <section class="mt-16" aria-labelledby="titre-categories">
+      <section class="mt-16 hidden md:block" aria-labelledby="titre-categories">
         <div class="flex items-end justify-between gap-4">
           <div>
             <p class="surtitre text-vert-700">Explorer</p>
@@ -187,7 +184,7 @@ type Onglet = 'avenir' | 'passes';
     }
 
     <!-- ============ CATALOGUE ============ -->
-    <section class="mt-16 scroll-mt-6" id="catalogue" aria-labelledby="titre-catalogue">
+    <section class="mt-12 scroll-mt-6 md:mt-16" id="catalogue" aria-labelledby="titre-catalogue">
       <div class="flex flex-col gap-4 border-b border-neutre-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p class="surtitre text-vert-700">Catalogue</p>
@@ -208,6 +205,22 @@ type Onglet = 'avenir' | 'passes';
           </button>
         </div>
       </div>
+
+      <!-- Téléphone : choix de la catégorie par liste déroulante (évite de faire défiler toutes les tuiles) -->
+      @if (categories().length) {
+        <div class="mt-4 md:hidden">
+          <label for="categorie-mobile" class="form-label">Catégorie</label>
+          <div class="relative">
+            <select id="categorie-mobile" class="form-input appearance-none pr-10" [ngModel]="categorie" (ngModelChange)="definirCategorie($event)">
+              <option value="">Toutes les catégories</option>
+              @for (c of categories(); track c.id) {
+                <option [value]="c.slug">{{ c.nom }} — {{ compteCategorie(c.nom) }}</option>
+              }
+            </select>
+            <app-icon name="chevron-down" class="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutre-500" aria-hidden="true" />
+          </div>
+        </div>
+      }
 
       @if (filtresActifs()) {
         <div class="mt-4 flex flex-wrap items-center gap-2 text-sm" aria-live="polite">
@@ -480,6 +493,12 @@ export class EventsPublicListComponent {
     if (this.filtresActifs()) {
       setTimeout(() => document.getElementById('catalogue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     }
+  }
+
+  /** Liste déroulante (téléphone) : sélection directe, « » = toutes. */
+  definirCategorie(slug: string): void {
+    this.categorie = slug ?? '';
+    this.rechercher();
   }
 
   choisirCategorie(slug: string): void {
