@@ -98,7 +98,7 @@ public class TicketOrderService {
             if (free && qty > 1) {
                 qty = 1; // one free ticket per person, always
             }
-            if (free) {
+            if (free && ticket.getPortee() == TicketScope.EVENEMENT) {
                 freeQty += qty;
             }
             if (!ticket.onSale(now)) {
@@ -133,9 +133,12 @@ public class TicketOrderService {
             total = total.add(ticket.getPrixMontant().multiply(BigDecimal.valueOf(qty)));
         }
 
-        // At most one free ticket per person and per event (all free categories combined).
+        // At most one free EVENT-WIDE ticket per person and per event (all such categories
+        // combined): two free invitations to the same event are refused. Free ACTIVITE tickets
+        // (conference pass, single session) are capped at one per category (PER_USER_LIMIT above),
+        // so they can be combined with an entry ticket and with each other.
         if (freeQty > 0
-                && ticketEntityRepository.countFreeTicketsForUserAndEvent(buyer.getId(), event.getId())
+                && ticketEntityRepository.countFreeEventWideTicketsForUserAndEvent(buyer.getId(), event.getId())
                         + freeQty > 1) {
             throw new BusinessException("FREE_TICKET_LIMIT",
                     "Un seul billet gratuit par personne pour cet événement.");

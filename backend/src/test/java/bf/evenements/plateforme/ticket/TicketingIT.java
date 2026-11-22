@@ -1,6 +1,7 @@
 package bf.evenements.plateforme.ticket;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
@@ -163,6 +164,85 @@ class TicketingIT extends AbstractIntegrationTest {
         as(buyer).body(Map.of("eventId", eventId,
                         "lignes", List.of(Map.of("eventTicketId", paid, "quantite", 2))))
                 .when().post("/api/ticket-orders").then().statusCode(201);
+    }
+
+    @Test
+    void free_entry_pass_and_single_sessions_can_be_combined_but_each_only_once() {
+        long n = System.nanoTime();
+        String orga = TestAuth.organizerToken("f2-orga-" + n + "@example.bf");
+        String admin = TestAuth.adminToken();
+        String eventId = publishedEvent(orga, admin)[0];
+
+        String conf1 = as(orga).body(Map.of("titre", "Conférence 1", "typeActivite", "CONFERENCE",
+                        "acces", "GRATUIT", "dateDebut", "2027-09-01T09:00:00Z"))
+                .when().post("/api/events/" + eventId + "/activities").then().statusCode(201)
+                .extract().path("id");
+        String conf2 = as(orga).body(Map.of("titre", "Conférence 2", "typeActivite", "CONFERENCE",
+                        "acces", "GRATUIT", "dateDebut", "2027-09-02T09:00:00Z"))
+                .when().post("/api/events/" + eventId + "/activities").then().statusCode(201)
+                .extract().path("id");
+        String panel = as(orga).body(Map.of("titre", "Panel", "typeActivite", "PANEL",
+                        "acces", "GRATUIT", "dateDebut", "2027-09-02T14:00:00Z"))
+                .when().post("/api/events/" + eventId + "/activities").then().statusCode(201)
+                .extract().path("id");
+
+        String entree = as(orga).body(Map.of("nom", "Entrée", "prixMontant", 0,
+                        "portee", "EVENEMENT", "quantiteTotale", 100))
+                .when().post("/api/events/" + eventId + "/tickets").then().statusCode(201)
+                .extract().path("id");
+        String invitation = as(orga).body(Map.of("nom", "Invitation", "prixMontant", 0,
+                        "portee", "EVENEMENT", "quantiteTotale", 100))
+                .when().post("/api/events/" + eventId + "/tickets").then().statusCode(201)
+                .extract().path("id");
+        String pass = as(orga).body(Map.of("nom", "Pass Conférences", "prixMontant", 0,
+                        "portee", "ACTIVITE", "quantiteTotale", 100,
+                        "activityIds", List.of(conf1, conf2)))
+                .when().post("/api/events/" + eventId + "/tickets").then().statusCode(201)
+                .extract().path("id");
+
+        String visitor = TestAuth.registerAndToken("f2-visitor-" + n + "@example.bf", "PARTICULIER");
+
+        // entry + conference pass in the same order
+        as(visitor).body(Map.of("eventId", eventId, "lignes", List.of(
+                        Map.of("eventTicketId", entree, "quantite", 1),
+                        Map.of("eventTicketId", pass, "quantite", 1))))
+                .when().post("/api/ticket-orders").then().statusCode(201).body("statut", equalTo("PAYEE"));
+
+        // plus a single session (« Réserver cette session »)
+        as(visitor).when().post("/api/activities/" + panel + "/attend").then().statusCode(201);
+
+        // but never the same pass twice…
+        as(visitor).body(Map.of("eventId", eventId,
+                        "lignes", List.of(Map.of("eventTicketId", pass, "quantite", 1))))
+                .when().post("/api/ticket-orders")
+                .then().statusCode(422).body("code", equalTo("PER_USER_LIMIT"));
+        // …nor the same session twice…
+        as(visitor).when().post("/api/activities/" + panel + "/attend")
+                .then().statusCode(422).body("code", equalTo("PER_USER_LIMIT"));
+        // …nor a second free event-wide ticket
+        as(visitor).body(Map.of("eventId", eventId,
+                        "lignes", List.of(Map.of("eventTicketId", invitation, "quantite", 1))))
+                .when().post("/api/ticket-orders")
+                .then().statusCode(422).body("code", equalTo("FREE_TICKET_LIMIT"));
+
+        // « Mes billets » says what each ticket covers
+        var mine = as(visitor).when().get("/api/tickets/my").then().statusCode(200).extract().jsonPath();
+        assertThat(mine.getList("find { it.categorieNom == 'Pass Conférences' }.sessions.titre"))
+                .containsExactly("Conférence 1", "Conférence 2");
+        assertThat(mine.getString("find { it.categorieNom == 'Pass Conférences' }.portee")).isEqualTo("ACTIVITE");
+        assertThat(mine.getList("find { it.categorieNom == 'Entrée' }.sessions")).isEmpty();
+        assertThat(mine.getList("find { it.categorieNom.startsWith('Accès') }.sessions.titre"))
+                .containsExactly("Panel");
+
+        // the pass PDF has a second page listing its sessions
+        String passTicketId = mine.getString("find { it.categorieNom == 'Pass Conférences' }.id");
+        byte[] pdf = as(visitor).when().get("/api/tickets/" + passTicketId + "/pdf")
+                .then().statusCode(200).extract().asByteArray();
+        try (var doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+            assertThat(doc.getNumberOfPages()).isEqualTo(2);
+        } catch (java.io.IOException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test

@@ -17,13 +17,13 @@ public final class EventTheme {
     }
 
     private static final Palette[] PALETTE = {
-            new Palette(new Color(0x0E7A3C), new Color(0x065829)), // vert
-            new Palette(new Color(0x1D4E9E), new Color(0x0F3572)), // bleu
-            new Palette(new Color(0x6B3FA0), new Color(0x4A2873)), // violet
-            new Palette(new Color(0x0F766E), new Color(0x07554F)), // turquoise
-            new Palette(new Color(0x9F1239), new Color(0x720725)), // bordeaux
-            new Palette(new Color(0xB45309), new Color(0x823800)), // ocre
-            new Palette(new Color(0x4338CA), new Color(0x2A2191)), // indigo
+            new Palette(new Color(0x00843B), new Color(0x045527)), // vert
+            new Palette(new Color(0x2A6D9B), new Color(0x173F5F)), // bleu
+            new Palette(new Color(0xB07800), new Color(0x7D5500)), // ocre
+            new Palette(new Color(0x026C31), new Color(0x04411F)), // vert foncé
+            new Palette(new Color(0x635C55), new Color(0x332E2A)), // neutre
+            new Palette(new Color(0x173F5F), new Color(0x0D2639)), // bleu nuit
+            new Palette(new Color(0xA39300), new Color(0x5C5300)), // or
     };
 
     private EventTheme() {

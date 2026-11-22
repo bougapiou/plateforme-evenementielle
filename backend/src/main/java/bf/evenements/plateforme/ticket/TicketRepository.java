@@ -20,10 +20,16 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     boolean existsByNumero(String numero);
 
-    /** Free tickets (price 0) already held by a user for a given event. */
+    /**
+     * Free event-wide tickets (price 0, scope EVENEMENT) already held by a user for an event.
+     * Free ACTIVITE tickets (a pass covering some sessions, or one session) are not counted:
+     * they are capped per category instead (one per person), so a visitor can combine an
+     * entry ticket, a conference pass and individual sessions.
+     */
     @Query("select count(t) from Ticket t where t.order.user.id = :userId "
             + "and t.event.id = :eventId and t.eventTicket.prixMontant = 0 "
+            + "and t.eventTicket.portee = bf.evenements.plateforme.ticket.TicketScope.EVENEMENT "
             + "and t.statut <> bf.evenements.plateforme.ticket.TicketStatus.ANNULE")
-    long countFreeTicketsForUserAndEvent(@Param("userId") UUID userId,
-                                         @Param("eventId") UUID eventId);
+    long countFreeEventWideTicketsForUserAndEvent(@Param("userId") UUID userId,
+                                                  @Param("eventId") UUID eventId);
 }

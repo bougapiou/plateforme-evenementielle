@@ -6,12 +6,15 @@ import bf.evenements.plateforme.common.pdf.PdfBackdrop;
 import bf.evenements.plateforme.common.pdf.PdfFonts;
 import bf.evenements.plateforme.common.storage.FileStorageService;
 import bf.evenements.plateforme.common.web.QrImages;
+import bf.evenements.plateforme.event.EventActivity;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -81,9 +84,19 @@ public class TicketPdfService {
                 drawBrand(cs, f);
                 drawTitle(cs, f, event.getNom(), subtitle(event));
                 drawPanel(cs, f, ticket, event);
-                drawQr(cs, f, qr);
+                drawQr(cs, f, qr, sessions(ticket).size());
 
                 cs.restoreGraphicsState();
+            }
+
+            // Pass multi-sessions : page 2 avec la liste des sessions incluses.
+            List<EventActivity> sessions = sessions(ticket);
+            if (sessions.size() > 1) {
+                PDPage list = new PDPage(new PDRectangle(W, H));
+                doc.addPage(list);
+                try (PDPageContentStream cs = new PDPageContentStream(doc, list)) {
+                    drawSessionList(cs, f, ticket, sessions);
+                }
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -170,10 +183,35 @@ public class TicketPdfService {
                 ? "Visiteur" : ticket.getParticipantNom().toUpperCase(Locale.FRENCH);
         String lieu = join(" – ", event.getVille(), event.getLieu());
 
+        // Contenu adapté à la portée du billet :
+        //  - billet d'une seule session : date, horaire et salle DE LA SESSION ;
+        //  - pass multi-sessions : période couverte, la liste détaillée est en page 2 ;
+        //  - billet d'événement : date et heure d'ouverture de l'événement.
+        List<EventActivity> sessions = sessions(ticket);
+        String typeLabel = "Type de billet";
+        String type = ticket.getEventTicket().getNom();
+        String date = DATE.format(event.getDateDebut());
+        String heure = TIME.format(event.getDateDebut());
+        if (sessions.size() == 1) {
+            EventActivity s = sessions.get(0);
+            typeLabel = "Session";
+            type = s.getTitre();
+            date = DATE.format(s.getDateDebut());
+            heure = s.getDateFin() != null
+                    ? TIME.format(s.getDateDebut()) + " – " + TIME.format(s.getDateFin())
+                    : TIME.format(s.getDateDebut());
+            String salle = s.getSalle() != null ? s.getSalle() : s.getLieu();
+            lieu = join(" – ", salle, event.getLieu(), event.getVille());
+        } else if (sessions.size() > 1) {
+            type = type + " · " + sessions.size() + " sessions";
+            date = periode(sessions.get(0).getDateDebut(), sessions.get(sessions.size() - 1).getDateDebut());
+            heure = "Voir page 2";
+        }
+
         row(cs, f, Icon.PERSON, "Nom du participant", participant, x0, rowTop[0], full);
-        row(cs, f, Icon.TICKET, "Type de billet", ticket.getEventTicket().getNom(), x0, rowTop[1], full);
-        row(cs, f, Icon.CALENDAR, "Date", DATE.format(event.getDateDebut()), x0, rowTop[2], col2 - px(30));
-        row(cs, f, Icon.CLOCK, "Heure", TIME.format(event.getDateDebut()), col2, rowTop[2], full);
+        row(cs, f, Icon.TICKET, typeLabel, type, x0, rowTop[1], full);
+        row(cs, f, Icon.CALENDAR, "Date", date, x0, rowTop[2], col2 - px(30));
+        row(cs, f, Icon.CLOCK, "Heure", heure, col2, rowTop[2], full);
         row(cs, f, Icon.PIN, "Lieu", lieu.isEmpty() ? "—" : lieu, x0, rowTop[3], full);
         row(cs, f, Icon.NUMBER, "N° de billet", ticket.getNumero(), x0, rowTop[4], col2 - px(30));
         row(cs, f, Icon.SHIELD, "Référence", ticket.getOrder().getReference(), col2, rowTop[4], full);
@@ -208,7 +246,8 @@ public class TicketPdfService {
         f.draw(cs, f.bold, size, textX, top(fromTop + px(40.8f)), f.ellipsize(f.bold, size, rightEdge - textX, v));
     }
 
-    private void drawQr(PDPageContentStream cs, PdfFonts f, PDImageXObject qr) throws IOException {
+    private void drawQr(PDPageContentStream cs, PdfFonts f, PDImageXObject qr, int nbSessions)
+            throws IOException {
         float pad = 12f;
         float cardW = QR_SIZE + 2 * pad;
         float cardX = W - px(46) - cardW;
@@ -217,7 +256,8 @@ public class TicketPdfService {
 
         // Hint under the card: phone icon + two italic lines.
         String l1 = "Présentez ce QR Code à l'entrée";
-        String l2 = "pour accéder à l'événement.";
+        String l2 = nbSessions > 1 ? "de chaque session incluse."
+                : nbSessions == 1 ? "pour accéder à cette session." : "pour accéder à l'événement.";
         float size = 9.6f;
         float textW = Math.max(f.width(f.italic, size, l1), f.width(f.italic, size, l2));
         float icon = 20f;
@@ -226,6 +266,113 @@ public class TicketPdfService {
         cs.setNonStrokingColor(Color.WHITE);
         f.draw(cs, f.italic, size, gx + icon + 6, top(351), l1);
         f.draw(cs, f.italic, size, gx + icon + 6, top(363), l2);
+    }
+
+    // ---------- billets de session / pass ----------
+
+    private static final DateTimeFormatter JOUR = DateTimeFormatter.ofPattern("EEE d MMM", Locale.FRENCH)
+            .withZone(ZONE);
+    private static final DateTimeFormatter JOUR_MOIS = DateTimeFormatter.ofPattern("d MMMM", Locale.FRENCH)
+            .withZone(ZONE);
+    private static final Color ENCRE = new Color(0x21, 0x1D, 0x1A);
+    private static final Color ATTENUE = new Color(0x63, 0x5C, 0x55);
+    private static final Color FILET = new Color(0xE2, 0xDD, 0xD6);
+    private static final Color VERT = new Color(0x02, 0x6C, 0x31);
+
+    /** Sessions couvertes par un billet de portée ACTIVITE, par ordre chronologique (vide sinon). */
+    private static List<EventActivity> sessions(Ticket ticket) {
+        var category = ticket.getEventTicket();
+        if (category.getPortee() != TicketScope.ACTIVITE) {
+            return List.of();
+        }
+        return category.getActivities().stream()
+                .sorted(Comparator.comparing(EventActivity::getDateDebut,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+    }
+
+    /** « 24 – 27 novembre 2026 », ou une seule date si tout est le même jour. */
+    private static String periode(Instant debut, Instant fin) {
+        String d = DATE.format(debut);
+        String e = DATE.format(fin);
+        if (d.equals(e)) {
+            return d;
+        }
+        var zd = debut.atZone(ZONE);
+        var ze = fin.atZone(ZONE);
+        if (zd.getYear() == ze.getYear() && zd.getMonth() == ze.getMonth()) {
+            return zd.getDayOfMonth() + " – " + e; // 24 – 27 novembre 2026
+        }
+        return JOUR_MOIS.format(debut) + " – " + e;
+    }
+
+    /** Page 2 d'un pass : en-tête sombre puis une ligne par session (jour, horaire, titre, salle). */
+    private void drawSessionList(PDPageContentStream cs, PdfFonts f, Ticket ticket, List<EventActivity> sessions)
+            throws IOException {
+        float margin = 36f;
+        cs.setNonStrokingColor(new Color(0xFC, 0xFB, 0xF9));
+        cs.addRect(0, 0, W, H);
+        cs.fill();
+
+        // En-tête
+        float headH = 74f;
+        cs.setNonStrokingColor(ENCRE);
+        cs.addRect(0, H - headH, W, headH);
+        cs.fill();
+        cs.setNonStrokingColor(PdfArt.GOLD);
+        f.drawSpaced(cs, f.bold, 9.5f, margin, H - 26f, "SESSIONS INCLUSES DANS VOTRE BILLET", 1.2f);
+        cs.setNonStrokingColor(Color.WHITE);
+        String titre = ticket.getEventTicket().getNom() + " — " + ticket.getEvent().getNom();
+        f.draw(cs, f.bold, 17f, margin, H - 50f, f.ellipsize(f.bold, 17f, W - 2 * margin - 170f, titre));
+        String num = "Billet N° " + ticket.getNumero();
+        f.draw(cs, f.regular, 10f, W - margin - f.width(f.regular, 10f, num), H - 50f, num);
+
+        // Lignes
+        float top = H - headH - 14f;
+        float bottom = 34f;
+        int max = sessions.size();
+        float rowH = Math.min(34f, (top - bottom) / max);
+        if (rowH < 22f) { // trop de sessions : on tronque proprement
+            rowH = 22f;
+            max = (int) ((top - bottom - rowH) / rowH);
+        }
+        float colJour = margin;
+        float colHeure = margin + 96f;
+        float colTitre = margin + 196f;
+        float colSalle = W - margin - 150f;
+        float size = Math.min(11.5f, rowH * 0.38f);
+
+        for (int i = 0; i < Math.min(max, sessions.size()); i++) {
+            EventActivity s = sessions.get(i);
+            float y = top - (i + 1) * rowH + rowH * 0.36f;
+            cs.setNonStrokingColor(VERT);
+            f.draw(cs, f.bold, size, colJour, y, JOUR.format(s.getDateDebut()).replace(".", "").toUpperCase(Locale.FRENCH));
+            cs.setNonStrokingColor(ENCRE);
+            String h = s.getDateFin() != null
+                    ? TIME.format(s.getDateDebut()) + " – " + TIME.format(s.getDateFin())
+                    : TIME.format(s.getDateDebut());
+            f.draw(cs, f.regular, size, colHeure, y, h);
+            f.draw(cs, f.bold, size, colTitre, y, f.ellipsize(f.bold, size, colSalle - colTitre - 12f, s.getTitre()));
+            cs.setNonStrokingColor(ATTENUE);
+            String salle = s.getSalle() != null ? s.getSalle() : (s.getLieu() != null ? s.getLieu() : "");
+            f.draw(cs, f.regular, size, colSalle, y, f.ellipsize(f.regular, size, W - margin - colSalle, salle));
+
+            cs.setStrokingColor(FILET);
+            cs.setLineWidth(0.6f);
+            float ly = top - (i + 1) * rowH;
+            cs.moveTo(margin, ly);
+            cs.lineTo(W - margin, ly);
+            cs.stroke();
+        }
+        if (max < sessions.size()) {
+            cs.setNonStrokingColor(ATTENUE);
+            f.draw(cs, f.italic, 10f, margin, top - (max + 1) * rowH + rowH * 0.36f,
+                    "… et " + (sessions.size() - max) + " autre(s) session(s) — voir le programme de l'événement.");
+        }
+
+        cs.setNonStrokingColor(ATTENUE);
+        f.draw(cs, f.italic, 9f, margin, 16f,
+                "Présentez le QR code de la page 1 à l'entrée de chaque session. Il n'est valable que pour les sessions ci-dessus.");
     }
 
     private static String join(String sep, String... parts) {
