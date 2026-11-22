@@ -15,7 +15,7 @@ declare const window: Window & { BarcodeDetector?: any };
   imports: [FormsModule],
   template: `
     <div class="mx-auto max-w-md">
-      <h1 class="text-xl font-bold text-slate-800">Scanner un QR code</h1>
+      <h1 class="text-[clamp(1.625rem,1.36rem+1.17vw,2.375rem)] text-neutre-900">Scanner un QR code</h1>
       <p class="mt-1 text-sm text-slate-500">
         Visez le QR affiché sur l'affiche ou le flyer d'un événement : vous
         arrivez directement sur sa page pour vous inscrire ou prendre votre

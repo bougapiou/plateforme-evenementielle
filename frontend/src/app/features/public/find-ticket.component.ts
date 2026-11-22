@@ -29,7 +29,7 @@ interface EventGroup {
   imports: [FormsModule, RouterLink, PhoneInputComponent],
   template: `
     <div class="mx-auto max-w-md">
-      <h1 class="text-xl font-bold text-slate-800">Retrouver mon billet</h1>
+      <h1 class="text-[clamp(1.625rem,1.36rem+1.17vw,2.375rem)] text-neutre-900">Retrouver mon billet</h1>
 
       @if (auth.isAuthenticated()) {
         <div class="card mt-4 p-5">

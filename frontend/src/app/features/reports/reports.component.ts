@@ -432,11 +432,11 @@ const DAY_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numer
   `,
   styles: `
     .chip {
-      border: 1px solid #e2e8f0; border-radius: 9999px; padding: 0.3rem 0.8rem;
-      font-size: 0.8rem; color: #475569; background: #fff;
+      border: 1px solid #e2ddd6; border-radius: 9999px; padding: 0.3rem 0.8rem;
+      font-size: 0.8rem; color: #4a443e; background: #fff;
     }
-    .chip:hover { border-color: #94a3b8; }
-    .chip.on { background: #1e3a8a; border-color: #1e3a8a; color: #fff; }
+    .chip:hover { border-color: #026c31; }
+    .chip.on { background: #00843b; border-color: #00843b; color: #fff; }
     .legend { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 2px; }
   `,
 })

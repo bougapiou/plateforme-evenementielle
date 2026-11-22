@@ -38,6 +38,42 @@ const STYLES: Record<string, string> = {
   UTILISE: 'bg-slate-100 text-slate-500',
 };
 
+/** Libellés français affichés (les codes techniques restent la clé). */
+const LABELS: Record<string, string> = {
+  EN_ATTENTE: 'En attente',
+  VERIFIEE: 'Vérifiée',
+  ACTIF: 'Actif',
+  ACTIF_USER: 'Actif',
+  SUSPENDUE: 'Suspendue',
+  SUSPENDU: 'Suspendu',
+  DESACTIVE: 'Désactivé',
+  BROUILLON: 'Brouillon',
+  SOUMIS: 'Soumis',
+  VALIDE: 'Validé',
+  PUBLIE: 'Publié',
+  INSCRIPTIONS_OUVERTES: 'Inscriptions ouvertes',
+  INSCRIPTIONS_FERMEES: 'Inscriptions closes',
+  EN_COURS: 'En cours',
+  TERMINE: 'Terminé',
+  ANNULE: 'Annulé',
+  REFUSE: 'Refusé',
+  REUSSI: 'Réussi',
+  PAYEE: 'Payée',
+  PAYE: 'Payé',
+  CONFIRME: 'Confirmé',
+  CONFIRMEE: 'Confirmée',
+  ECHOUE: 'Échoué',
+  EXPIRE: 'Expiré',
+  EXPIREE: 'Expirée',
+  ANNULEE: 'Annulée',
+  REFUSEE: 'Refusée',
+  REMBOURSE: 'Remboursé',
+  RESERVE_TEMP: 'Réservé (temporaire)',
+  ATTENTE_PAIEMENT: 'En attente de paiement',
+  EMISE: 'Valide',
+  UTILISE: 'Utilisé',
+};
+
 @Component({
   selector: 'app-status-badge',
   standalone: true,
@@ -51,6 +87,7 @@ export class StatusBadgeComponent {
   }
 
   label(): string {
-    return this.value().replace(/_/g, ' ').toLowerCase();
+    const v = this.value();
+    return LABELS[v] ?? v.charAt(0) + v.slice(1).replace(/_/g, ' ').toLowerCase();
   }
 }

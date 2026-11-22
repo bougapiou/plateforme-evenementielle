@@ -232,6 +232,20 @@ export interface MyTicket {
   participantNom?: string;
   statut: 'EMISE' | 'UTILISE' | 'ANNULE';
   orderReference: string;
+  /** EVENEMENT : tout l'événement ; ACTIVITE : seulement les sessions listées. */
+  portee?: TicketScope;
+  /** Description de la catégorie de billet (ce que le billet donne). */
+  categorieDescription?: string;
+  /** Sessions couvertes (billet de session ou pass), par ordre chronologique. */
+  sessions?: TicketSession[];
+}
+
+export interface TicketSession {
+  id: string;
+  titre: string;
+  dateDebut: string;
+  dateFin?: string;
+  salle?: string;
 }
 
 export const ACTIVITY_TYPES: ActivityType[] = [

@@ -22,7 +22,7 @@ const REFRESH_MS = 5000;
     <a routerLink="/presence-en-direct" class="text-sm text-brand-700 hover:underline">
       ← Autres événements en direct
     </a>
-    <h1 class="mt-1 text-xl font-bold text-slate-800">Présence en direct</h1>
+    <h1 class="mt-1 text-[clamp(1.625rem,1.36rem+1.17vw,2.375rem)] text-neutre-900">Présence en direct</h1>
 
     <div class="card mt-4 p-4 sm:p-5">
       <app-presence-panel [data]="data()" [initialSource]="initialSource" [refreshSeconds]="refreshSeconds"

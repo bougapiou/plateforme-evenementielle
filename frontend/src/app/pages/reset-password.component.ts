@@ -12,10 +12,9 @@ import { PasswordInputComponent } from '../shared/password-input.component';
   imports: [ReactiveFormsModule, RouterLink, PasswordInputComponent],
   template: `
     <div class="mx-auto max-w-md">
-      <img src="assets/logo.png" alt="Plateforme Nationale des Événements"
-           class="mx-auto mb-6 h-24 w-auto" />
+      <img src="assets/logo.png" alt="PNE — Plateforme nationale des événements" class="mx-auto mb-6 h-24 w-auto" />
       <div class="card p-6">
-        <h1 class="text-xl font-bold text-slate-800">Nouveau mot de passe</h1>
+        <h1 class="text-[1.625rem] text-neutre-900">Nouveau mot de passe</h1>
 
         @if (!token) {
           <p class="mt-2 text-sm text-slate-600">

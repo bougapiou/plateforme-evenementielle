@@ -9,12 +9,8 @@ import {
   TicketOrder,
 } from '../events/event.models';
 
-export interface IssuedTicket {
-  id: string;
-  numero: string;
-  eventNom: string;
-  categorieNom?: string;
-}
+/** Billet émis (réponse de « Participer ») : même forme que « Mes billets ». */
+export type IssuedTicket = MyTicket;
 
 @Injectable({ providedIn: 'root' })
 export class TicketsService extends ApiBase {

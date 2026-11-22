@@ -16,7 +16,7 @@ import { formatDateRange, formatTime } from '../../shared/format';
   imports: [RouterLink, IconComponent, EventCoverComponent],
   template: `
     <div class="mx-auto max-w-3xl">
-      <h1 class="text-xl font-bold text-slate-800">Présence en direct</h1>
+      <h1 class="text-[clamp(1.625rem,1.36rem+1.17vw,2.375rem)] text-neutre-900">Présence en direct</h1>
       <p class="mt-1 text-sm text-slate-500">
         Combien de personnes sont entrées, sorties ou présentes en ce moment : billets scannés à l'entrée
         et passages comptés par les capteurs, séparément ou additionnés — avec un affichage plein écran.

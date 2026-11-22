@@ -246,6 +246,14 @@ export const routes: Routes = [
         title: 'Utilisateurs',
       },
       {
+        path: 'admin/roles',
+        canActivate: [authGuard],
+        data: { permission: 'ROLE_MANAGE' },
+        loadComponent: () =>
+          import('./features/admin/admin-roles.component').then((m) => m.AdminRolesComponent),
+        title: 'Rôles et autorisations',
+      },
+      {
         path: 'admin/structures',
         canActivate: [authGuard],
         data: { permission: 'STRUCTURE_READ' },

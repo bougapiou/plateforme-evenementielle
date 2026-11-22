@@ -97,8 +97,9 @@ export class EventsService extends ApiBase {
     categorie?: string;
     ville?: string;
     page?: number;
+    size?: number;
   } = {}): Observable<Page<EventSummary>> {
-    return this.get<Page<EventSummary>>('/public/events', { ...opts, size: 12 });
+    return this.get<Page<EventSummary>>('/public/events', { size: 12, ...opts });
   }
 
   publicBySlug(slug: string): Observable<EventPublic> {

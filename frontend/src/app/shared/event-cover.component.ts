@@ -1,14 +1,14 @@
 import { Component, computed, input } from '@angular/core';
 
-/** Same palette and same pick rule as the PDFs (backend `EventTheme`), so an event has one color everywhere. */
+/** Palette alignée sur la charte graphique (vert, bleu, ocre, neutres, or ; pas de rouge, réservé au critique). Same palette and same pick rule as the PDFs (backend `EventTheme`), so an event has one color everywhere. */
 const PALETTE: { accent: string; dark: string }[] = [
-  { accent: '#0E7A3C', dark: '#065829' }, // vert
-  { accent: '#1D4E9E', dark: '#0F3572' }, // bleu
-  { accent: '#6B3FA0', dark: '#4A2873' }, // violet
-  { accent: '#0F766E', dark: '#07554F' }, // turquoise
-  { accent: '#9F1239', dark: '#720725' }, // bordeaux
-  { accent: '#B45309', dark: '#823800' }, // ocre
-  { accent: '#4338CA', dark: '#2A2191' }, // indigo
+  { accent: '#00843B', dark: '#045527' }, // vert
+  { accent: '#2A6D9B', dark: '#173F5F' }, // bleu
+  { accent: '#B07800', dark: '#7D5500' }, // ocre
+  { accent: '#026C31', dark: '#04411F' }, // vert foncé
+  { accent: '#635C55', dark: '#332E2A' }, // neutre
+  { accent: '#173F5F', dark: '#0D2639' }, // bleu nuit
+  { accent: '#A39300', dark: '#5C5300' }, // or
 ];
 
 /** Java's String.hashCode(), so the pick matches the backend exactly. */
@@ -28,7 +28,7 @@ function javaHash(s: string): number {
   host: { class: 'block overflow-hidden' },
   template: `
     @if (coverUrl()) {
-      <img [src]="coverUrl()" alt="" class="h-full w-full object-cover" loading="lazy" />
+      <img [src]="coverUrl()" alt="" class="h-full w-full" [class.object-cover]="!contain()" [class.object-contain]="contain()" loading="lazy" />
     } @else {
       <div class="relative h-full w-full overflow-hidden" [style.background]="palette().dark" aria-hidden="true">
         <div class="absolute -right-10 -top-16 h-56 w-56 rounded-full opacity-25"
@@ -44,6 +44,8 @@ function javaHash(s: string): number {
 export class EventCoverComponent {
   nom = input.required<string>();
   coverUrl = input<string | null | undefined>(null);
+  /** Affiche l'image entière (affiches avec texte) au lieu de la recadrer. */
+  contain = input(false);
 
   palette = computed(() => PALETTE[((javaHash(this.nom()) % PALETTE.length) + PALETTE.length) % PALETTE.length]);
 }

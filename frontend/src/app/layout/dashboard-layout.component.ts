@@ -24,7 +24,7 @@ interface NavItem {
       <!-- Barre latérale (ordinateur / grande tablette) -->
       <aside class="hidden w-64 shrink-0 border-r border-slate-200 bg-white md:block">
         <a routerLink="/" class="flex h-16 items-center gap-2 border-b border-slate-200 px-5">
-          <img src="assets/logo-192.png" alt="PNE" class="h-8 w-8" />
+          <img src="assets/logo-mark.png" alt="PNE" class="h-7 w-auto" />
           <span class="font-extrabold text-brand-700">Espace</span>
         </a>
         <nav class="space-y-1 p-3 text-sm font-medium">
@@ -39,7 +39,7 @@ interface NavItem {
           <aside class="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col overflow-y-auto bg-white shadow-xl">
             <div class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-5">
               <span class="flex items-center gap-2">
-                <img src="assets/logo-192.png" alt="PNE" class="h-8 w-8" />
+                <img src="assets/logo-mark.png" alt="PNE" class="h-7 w-auto" />
                 <span class="font-extrabold text-brand-700">Espace</span>
               </span>
               <button type="button" class="btn-ghost -mr-2" aria-label="Fermer le menu"
@@ -130,6 +130,7 @@ export class DashboardLayoutComponent {
   private readonly adminNav: NavItem[] = [
     { label: 'Événements', path: '/tableau-de-bord/admin/evenements', icon: 'calendar', permission: 'EVENT_VALIDATE' },
     { label: 'Utilisateurs', path: '/tableau-de-bord/admin/utilisateurs', icon: 'users', permission: 'USER_READ' },
+    { label: 'Rôles et autorisations', path: '/tableau-de-bord/admin/roles', icon: 'key', permission: 'ROLE_MANAGE' },
     { label: 'Structures', path: '/tableau-de-bord/admin/structures', icon: 'building', permission: 'STRUCTURE_READ' },
     { label: 'Organisateurs', path: '/tableau-de-bord/admin/organisateurs', icon: 'badge', permission: 'ORGANIZER_MANAGE' },
     { label: 'Pointage des visiteurs', path: '/tableau-de-bord/admin/pointage', icon: 'check', permission: 'POINTAGE_MANAGE' },

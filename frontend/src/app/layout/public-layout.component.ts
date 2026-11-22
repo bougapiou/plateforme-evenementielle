@@ -4,84 +4,159 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { IconComponent } from '../shared/icon.component';
 
+/**
+ * Gabarit de l'espace public, conforme à la Charte graphique de l'administration burkinabè v2.0 :
+ * barre de service, marque PNE (logo + « Plateforme Nationale des Événements »),
+ * navigation principale, filet national sous l'en-tête, pied de page institutionnel.
+ */
 @Component({
   selector: 'app-public-layout',
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, NgTemplateOutlet],
   template: `
-    <div class="flex min-h-full flex-col overflow-x-hidden">
-      <header class="sticky top-0 z-30 border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <a routerLink="/" class="flex shrink-0 items-center" (click)="menuOpen.set(false)">
-            <img src="assets/logo.png" alt="Plateforme Nationale des Événements"
-                 class="h-10 w-auto" />
+    <div class="flex min-h-full flex-col overflow-x-hidden bg-neutre-25">
+      <a href="#contenu"
+         class="sr-only z-[600] rounded-md bg-white px-4 py-2 font-semibold text-vert-700 focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+        Aller au contenu
+      </a>
+
+      <header class="relative z-[200] bg-white">
+        <!-- Barre de service -->
+        <div class="border-b border-neutre-200 bg-neutre-50">
+          <div class="mx-auto flex max-w-conteneur items-center justify-between gap-4 px-4 py-1.5 text-[0.8125rem] text-neutre-700 sm:px-6">
+            <span class="truncate">Service public numérique de l'État</span>
+            <nav aria-label="Accès rapides" class="hidden items-center gap-5 sm:flex">
+              @if (!auth.isAuthenticated()) {
+                <a routerLink="/retrouver-billet" class="hover:text-vert-700 hover:underline">Retrouver mon billet</a>
+                <a routerLink="/connexion" class="inline-flex items-center gap-1.5 font-medium text-vert-700 hover:underline">
+                  <app-icon name="login" class="h-4 w-4" aria-hidden="true" /> Se connecter
+                </a>
+              } @else {
+                <a routerLink="/tableau-de-bord" class="font-medium text-vert-700 hover:underline">
+                  {{ auth.isGuest() ? 'Mes billets' : 'Mon tableau de bord' }}
+                </a>
+              }
+            </nav>
+          </div>
+        </div>
+
+        <!-- Bloc-marque + navigation -->
+        <div class="mx-auto flex max-w-conteneur items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <a routerLink="/" class="group flex min-w-0 shrink items-center gap-2.5 py-1 sm:gap-3" (click)="menuOpen.set(false)"
+             aria-label="PNE — Plateforme Nationale des Événements, retour à l'accueil">
+            <img src="assets/logo-mark.png" alt="" class="h-8 w-auto shrink-0 sm:h-12" width="133" height="48" />
+            <span class="flex min-w-0 flex-col border-l border-neutre-300 pl-2.5 font-display leading-tight sm:pl-3">
+              <span class="whitespace-nowrap text-[0.8125rem] font-extrabold text-neutre-900 group-hover:text-vert-700 min-[400px]:text-[0.9375rem] sm:text-[1.0625rem]">
+                Plateforme Nationale
+              </span>
+              <span class="whitespace-nowrap text-[0.75rem] font-medium text-neutre-700 min-[400px]:text-[0.8125rem] sm:text-[0.9375rem]">des Événements</span>
+            </span>
           </a>
 
           <!-- Grand écran : menu horizontal -->
-          <nav class="hidden items-center gap-1 whitespace-nowrap text-sm font-medium lg:flex">
+          <nav aria-label="Navigation principale" class="hidden items-center gap-1 whitespace-nowrap lg:flex">
             <ng-container *ngTemplateOutlet="links" />
           </nav>
 
-          <!-- Mobile / tablette : bouton pour ouvrir le menu -->
-          <button type="button" class="btn-ghost -mr-2 lg:hidden" aria-label="Ouvrir le menu"
+          <!-- Mobile / tablette -->
+          <button type="button" class="btn-ghost -mr-2 shrink-0 lg:hidden" aria-label="Ouvrir le menu"
                   aria-controls="menu-mobile" [attr.aria-expanded]="menuOpen()"
                   (click)="menuOpen.set(!menuOpen())">
-            <app-icon [name]="menuOpen() ? 'x' : 'menu'" class="h-6 w-6" />
-            <span class="ml-1 text-sm font-medium">Menu</span>
+            <app-icon [name]="menuOpen() ? 'x' : 'menu'" class="h-6 w-6" aria-hidden="true" />
+            <span class="text-sm">Menu</span>
           </button>
         </div>
 
         @if (menuOpen()) {
-          <nav id="menu-mobile"
-               class="flex flex-col gap-1 border-t border-slate-100 bg-white px-4 pb-4 pt-2 text-sm font-medium lg:hidden [&>*]:w-full [&>*]:justify-start"
+          <nav id="menu-mobile" aria-label="Navigation principale"
+               class="flex flex-col gap-1 border-t border-neutre-200 bg-white px-4 pb-4 pt-2 lg:hidden [&>*]:w-full [&>*]:justify-start"
                (click)="menuOpen.set(false)">
             <ng-container *ngTemplateOutlet="links" />
+            @if (!auth.isAuthenticated()) {
+              <a routerLink="/retrouver-billet" class="btn-ghost">Retrouver mon billet</a>
+            }
           </nav>
         }
+
+        <!-- Filet national : sous l'en-tête officiel, une seule fois -->
+        <div class="fs-filet" role="presentation"></div>
       </header>
 
       <ng-template #links>
-        <a routerLink="/" routerLinkActive="text-brand-700"
-           [routerLinkActiveOptions]="{ exact: true }" class="btn-ghost inline-flex items-center gap-1.5">
-          <app-icon name="calendar" class="h-4 w-4" /> Événements
+        <a routerLink="/" routerLinkActive="!text-vert-700 !bg-vert-50" ariaCurrentWhenActive="page"
+           [routerLinkActiveOptions]="{ exact: true }" class="btn-ghost">
+          <app-icon name="calendar" class="h-4 w-4" aria-hidden="true" /> Événements
         </a>
-        <a routerLink="/presence-en-direct" routerLinkActive="text-brand-700"
-           class="btn-ghost inline-flex items-center gap-1.5">
-          <app-icon name="present" class="h-4 w-4" /> Présence en direct
+        <a routerLink="/presence-en-direct" routerLinkActive="!text-vert-700 !bg-vert-50" ariaCurrentWhenActive="page"
+           class="btn-ghost">
+          <app-icon name="present" class="h-4 w-4" aria-hidden="true" /> Présence en direct
         </a>
-        <a routerLink="/scanner" routerLinkActive="text-brand-700"
-           class="btn-ghost inline-flex items-center gap-1.5">
-          <app-icon name="scan" class="h-4 w-4" /> Scanner
+        <a routerLink="/scanner" routerLinkActive="!text-vert-700 !bg-vert-50" ariaCurrentWhenActive="page"
+           class="btn-ghost">
+          <app-icon name="scan" class="h-4 w-4" aria-hidden="true" /> Scanner un billet
         </a>
-        @if (!auth.isAuthenticated()) {
-          <a routerLink="/retrouver-billet" routerLinkActive="text-brand-700"
-             class="btn-ghost inline-flex items-center gap-1.5">
-            <app-icon name="ticket" class="h-4 w-4" /> Retrouver mon billet
-          </a>
-        }
         @if (auth.isGuest()) {
-          <a routerLink="/tableau-de-bord" class="btn-ghost">Mes billets</a>
-          <a routerLink="/finaliser-compte" class="btn-primary">Créer mon compte</a>
+          <a routerLink="/finaliser-compte" class="btn-primary lg:ml-2">Créer mon compte</a>
           <button type="button" class="btn-ghost" (click)="auth.logout()">Quitter</button>
         } @else if (auth.isAuthenticated()) {
-          <a routerLink="/tableau-de-bord" class="btn-ghost">Tableau de bord</a>
+          <a routerLink="/tableau-de-bord" class="btn-secondary lg:ml-2">Tableau de bord</a>
           <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
+        } @else {
+          <a routerLink="/inscription" class="btn-primary lg:ml-2">Créer un compte</a>
         }
       </ng-template>
 
-      <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+      <main id="contenu" tabindex="-1" class="mx-auto w-full max-w-conteneur flex-1 px-4 py-8 focus:outline-none sm:px-6 sm:py-10">
         <router-outlet />
       </main>
 
-      <footer class="border-t border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-slate-500">
-          <span>© {{ year }} — Plateforme Nationale de Gestion des Événements · Burkina Faso</span>
-          <nav class="flex flex-wrap items-center gap-4">
-            @if (!auth.isAuthenticated()) {
-              <a routerLink="/connexion" class="hover:text-brand-700">Connexion</a>
-              <a routerLink="/inscription" class="hover:text-brand-700">Créer un compte</a>
-            }
+      <footer class="mt-12 bg-neutre-900 text-neutre-200">
+        <div class="mx-auto grid max-w-conteneur gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.6fr_1fr_1fr]">
+          <div>
+            <a routerLink="/" class="inline-flex items-center gap-3" aria-label="PNE — Plateforme Nationale des Événements, retour à l'accueil">
+              <!-- Le logo a un fond transparent et des parties claires : on le pose sur un fond blanc -->
+              <span class="flex items-center rounded-md bg-white px-2.5 py-1.5">
+                <img src="assets/logo-mark.png" alt="" class="h-9 w-auto" width="100" height="36" />
+              </span>
+              <span class="flex flex-col font-display leading-tight">
+                <span class="text-base font-extrabold text-white">Plateforme Nationale</span>
+                <span class="text-sm font-medium text-neutre-300">des Événements</span>
+              </span>
+            </a>
+            <p class="mt-5 max-w-sm text-sm leading-relaxed text-neutre-400">
+              Inscriptions, billetterie électronique, réservation de stands, paiement en ligne et
+              contrôle d'accès pour les grands événements du Burkina Faso.
+            </p>
+          </div>
+
+          <nav aria-labelledby="pied-evenements">
+            <h2 id="pied-evenements" class="surtitre text-neutre-400">Événements</h2>
+            <ul class="mt-4 space-y-2.5 text-sm">
+              <li><a routerLink="/" class="hover:text-white hover:underline">Catalogue des événements</a></li>
+              <li><a routerLink="/presence-en-direct" class="hover:text-white hover:underline">Présence en direct</a></li>
+              <li><a routerLink="/scanner" class="hover:text-white hover:underline">Scanner un billet</a></li>
+            </ul>
           </nav>
+
+          <nav aria-labelledby="pied-compte">
+            <h2 id="pied-compte" class="surtitre text-neutre-400">Mon espace</h2>
+            <ul class="mt-4 space-y-2.5 text-sm">
+              @if (!auth.isAuthenticated()) {
+                <li><a routerLink="/connexion" class="hover:text-white hover:underline">Se connecter</a></li>
+                <li><a routerLink="/inscription" class="hover:text-white hover:underline">Créer un compte</a></li>
+                <li><a routerLink="/retrouver-billet" class="hover:text-white hover:underline">Retrouver mon billet</a></li>
+              } @else {
+                <li><a routerLink="/tableau-de-bord" class="hover:text-white hover:underline">Tableau de bord</a></li>
+              }
+            </ul>
+          </nav>
+        </div>
+
+        <div class="border-t border-neutre-700">
+          <div class="mx-auto flex max-w-conteneur flex-col gap-2 px-4 py-5 text-xs text-neutre-400 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <span>© {{ year }} PNE — Plateforme Nationale des Événements</span>
+            <span>Service public numérique de l'État</span>
+          </div>
         </div>
       </footer>
     </div>

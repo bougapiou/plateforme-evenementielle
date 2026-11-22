@@ -1,36 +1,195 @@
+/* Polices de la charte, servies par l'application elle-même (pas de CDN tiers). */
+@import '@fontsource-variable/archivo/wght.css';
+@import '@fontsource-variable/inter/wght.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Jetons de la Charte graphique de l'administration burkinabè v2.0 (extrait). */
+:root {
+  --rouge-500: #e30613;
+  --vert-500: #00843b;
+  --or-300: #ffed00;
+  --action: #00843b;
+  --action-survol: #026c31;
+  --action-active: #045527;
+  --texte: #211d1a;
+  --texte-attenue: #635c55;
+  --surface: #ffffff;
+  --surface-basse: #fcfbf9;
+  --surface-enfoncee: #f7f5f2;
+  --surface-inverse: #211d1a;
+  --bordure: #e2ddd6;
+  --focus-halo: 0 0 0 3px #ffffff, 0 0 0 5px #026c31;
+  --lien: #045527;
+  --lien-survol: #04411f;
+  --filet-hauteur: 14px;
+  --etoile-or: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 95'%3E%3Cpath fill='%23ffed00' d='M50 0 61.8 36.3 100 36.3 69.1 58.7 80.9 95 50 72.6 19.1 95 30.9 58.7 0 36.3 38.2 36.3Z'/%3E%3C/svg%3E");
+  --courbe-sortie: cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+
 @layer base {
   html,
   body {
-    @apply h-full bg-slate-50 text-slate-800 antialiased;
+    @apply h-full bg-neutre-25 text-neutre-900 antialiased;
+  }
+  body {
+    font-size: 0.9375rem; /* 15 px : plancher de la charte pour le texte courant */
+    line-height: 1.6;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+    letter-spacing: -0.02em;
+  }
+  h1 { font-weight: 800; line-height: 1.15; }
+  h2, h3 { font-weight: 700; line-height: 1.25; }
+  h4, h5, h6 { font-weight: 600; line-height: 1.25; }
+
+  /* Un seul traitement de focus, jamais désactivé. */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--focus-halo);
+    border-radius: 4px;
+  }
+
+  table { font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer components {
+  /* --- Boutons (charte : vert = action principale, rouge = destructif, or = relief rare) --- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold
-           transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-4 py-2 font-display text-sm font-semibold
+           transition-colors duration-150 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50;
   }
+  .btn:focus-visible { box-shadow: var(--focus-halo); }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500;
+    @apply btn bg-vert-500 text-white shadow-xs hover:bg-vert-600 hover:shadow-sm active:bg-vert-700;
+  }
+  .btn-secondary {
+    @apply btn border border-vert-600 bg-white text-vert-700 hover:bg-vert-50 active:bg-vert-100;
   }
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-slate-100;
+    @apply btn text-neutre-700 hover:bg-neutre-100 hover:text-neutre-900;
   }
+  .btn-danger {
+    @apply btn bg-rouge-500 text-white hover:bg-rouge-600 active:bg-rouge-700;
+  }
+  .btn-relief {
+    @apply btn bg-or-300 text-neutre-900 hover:bg-or-400;
+  }
+  .btn-inverse {
+    @apply btn bg-white text-vert-700 hover:bg-vert-50;
+  }
+  .btn-contour-clair {
+    @apply btn border border-white/60 text-white hover:bg-white/10;
+  }
+
+  /* --- Surfaces --- */
   .card {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply rounded-xl border border-neutre-200 bg-white shadow-xs;
   }
+
+  /* --- Formulaires --- */
   .form-input {
-    @apply block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm
-           focus:border-brand-500 focus:ring-brand-500;
+    @apply block min-h-[44px] w-full rounded-md border border-neutre-450 bg-white px-3 py-2 text-[0.9375rem] text-neutre-900
+           placeholder:text-neutre-550 focus:border-vert-600 focus:outline-none;
   }
+  .form-input:focus { box-shadow: 0 0 0 1px #026c31; }
   .form-label {
-    @apply mb-1 block text-sm font-medium text-slate-700;
+    @apply mb-1 block text-sm font-medium text-neutre-800;
   }
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  /* --- Typographie éditoriale --- */
+  .surtitre {
+    @apply font-display text-xs font-bold uppercase;
+    letter-spacing: 0.08em;
+  }
+  .chapeau {
+    @apply text-neutre-700;
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    max-width: 68ch;
+  }
+  .lien {
+    color: var(--lien);
+    @apply font-medium underline decoration-1 underline-offset-2 hover:decoration-2;
+  }
+  .lien:hover { color: var(--lien-survol); }
+
+
+  /* Section pleine largeur à l'intérieur du conteneur principal. */
+  .pleine-largeur {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+
+  /* Motif tissé (Faso Dan Fani) : 4 à 8 px, jamais derrière du texte, un par écran. */
+  .fs-tissage {
+    height: 6px;
+    background: repeating-linear-gradient(
+      90deg,
+      #026c31 0 14px,
+      var(--tissage-fond, #211d1a) 14px 17px,
+      #ffed00 17px 21px,
+      var(--tissage-fond, #211d1a) 21px 24px,
+      #a2040e 24px 34px,
+      var(--tissage-fond, #211d1a) 34px 37px,
+      #f7f5f2 37px 39px,
+      var(--tissage-fond, #211d1a) 39px 42px
+    );
+  }
+
+  /* --- Filet national : rouge au-dessus, vert au-dessous, étoile d'or centrée.
+         Placé une seule fois, sous l'en-tête officiel ; jamais comme séparateur décoratif. --- */
+  .fs-filet {
+    position: relative;
+    display: block;
+    height: var(--filet-hauteur);
+    background: linear-gradient(to bottom, var(--rouge-500) 50%, var(--vert-500) 50%);
+  }
+  .fs-filet::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: calc(var(--filet-hauteur) * 0.9);
+    height: calc(var(--filet-hauteur) * 0.9);
+    transform: translate(-50%, -50%);
+    background: var(--etoile-or) center / contain no-repeat;
+  }
+  .fs-filet--fin { --filet-hauteur: 10px; }
+
+  /* Repère national : courte vignette qui ponctue un titre de section. */
+  .fs-repere {
+    position: relative;
+    display: inline-block;
+    width: 28px;
+    height: 12px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, var(--rouge-500) 50%, var(--vert-500) 50%);
+    vertical-align: middle;
+  }
+  .fs-repere::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    transform: translate(-50%, -50%);
+    background: var(--etoile-or) center / contain no-repeat;
   }
 }

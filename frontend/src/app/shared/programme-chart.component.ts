@@ -11,16 +11,16 @@ interface ProgrammeDay {
 
 /** Display label and accent colour of each activity type. */
 const TYPE_STYLE: Record<ActivityType, { label: string; color: string }> = {
-  CEREMONIE: { label: 'Cérémonie', color: '#b45309' },
-  CONFERENCE: { label: 'Conférence', color: '#1d4ed8' },
-  PANEL: { label: 'Panel', color: '#7c3aed' },
-  ATELIER: { label: 'Atelier', color: '#0f766e' },
-  FORMATION: { label: 'Formation', color: '#0369a1' },
-  TABLE_RONDE: { label: 'Table ronde', color: '#9333ea' },
-  NETWORKING: { label: 'Networking', color: '#c2410c' },
-  PAUSE: { label: 'Pause', color: '#64748b' },
-  SPECTACLE: { label: 'Spectacle', color: '#be123c' },
-  AUTRE: { label: 'Activité', color: '#475569' },
+  CEREMONIE: { label: 'Cérémonie', color: '#7d7100' },
+  CONFERENCE: { label: 'Conférence', color: '#2a6d9b' },
+  PANEL: { label: 'Panel', color: '#173f5f' },
+  ATELIER: { label: 'Atelier', color: '#00843b' },
+  FORMATION: { label: 'Formation', color: '#215780' },
+  TABLE_RONDE: { label: 'Table ronde', color: '#045527' },
+  NETWORKING: { label: 'Networking', color: '#b07800' },
+  PAUSE: { label: 'Pause', color: '#837b73' },
+  SPECTACLE: { label: 'Spectacle', color: '#7d5500' },
+  AUTRE: { label: 'Activité', color: '#635c55' },
 };
 
 const DAY_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -97,15 +97,15 @@ const DAY_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeri
     </ul>
   `,
   styles: `
-    :host { display: block; --line: #cbd5e1; font-size: 0.875rem; }
+    :host { display: block; --line: #cfc8bf; font-size: 0.875rem; }
 
     .root {
       display: inline-flex; align-items: center; gap: 0.6rem;
-      padding: 0.55rem 1rem; border-radius: 0.75rem;
-      background: linear-gradient(135deg, #0f172a, #334155); color: #fff;
+      padding: 0.55rem 1rem; border-radius: 6px;
+      background: #211d1a; color: #fff;
     }
     .root-icon { font-size: 0.8rem; opacity: 0.8; }
-    .root-title { font-weight: 700; line-height: 1.25; }
+    .root-title { font-family: 'Archivo Variable', Archivo, sans-serif; font-weight: 700; line-height: 1.25; }
     .root-sub { font-size: 0.75rem; opacity: 0.75; }
 
     /* Tree lines: an elbow into each node, a vertical rail past non-last ones. */
@@ -125,20 +125,20 @@ const DAY_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeri
     .day {
       display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem;
       padding: 0.35rem 0.85rem; border-radius: 9999px; text-align: left;
-      background: #eef2ff; border: 1px solid #c7d2fe; cursor: pointer;
+      background: #ecf7f0; border: 1px solid #a8dbbc; cursor: pointer;
     }
-    .day:hover { background: #e0e7ff; }
-    .chev { color: #4338ca; transition: transform 0.15s; display: inline-block; }
+    .day:hover { background: #d3eddd; }
+    .chev { color: #045527; transition: transform 0.15s; display: inline-block; }
     .chev.closed { transform: rotate(-90deg); }
-    .day-num { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #4338ca; }
-    .day-label { font-weight: 600; color: #1e293b; }
+    .day-num { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #045527; }
+    .day-label { font-weight: 600; color: #211d1a; }
     .day-label::first-letter { text-transform: uppercase; }
-    .day-count { font-size: 0.75rem; color: #64748b; }
+    .day-count { font-size: 0.75rem; color: #635c55; }
 
     .act {
-      background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid var(--accent);
+      background: #fff; border: 1px solid #e2ddd6; border-left: 4px solid var(--accent);
       border-radius: 0.6rem; padding: 0.5rem 0.75rem;
-      box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+      box-shadow: 0 1px 2px rgba(33, 29, 26, 0.06);
     }
     .act-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .dot { width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: var(--accent); }
@@ -147,14 +147,14 @@ const DAY_FMT = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeri
       background: color-mix(in srgb, var(--accent) 10%, transparent);
       padding: 0.05rem 0.5rem; border-radius: 9999px;
     }
-    .act-title { font-weight: 600; color: #1e293b; }
-    .act-type { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #94a3b8; }
+    .act-title { font-weight: 600; color: #211d1a; }
+    .act-type { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #756d66; }
     .act-body { display: flex; gap: 0.75rem; }
     .act-body:empty { display: none; }
     .act-img { margin-top: 0.4rem; width: 5rem; height: 3.5rem; object-fit: cover; border-radius: 0.4rem; flex-shrink: 0; }
-    .act-meta { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; color: #64748b; font-size: 0.78rem; }
-    .act-meta b { font-weight: 500; color: #94a3b8; margin-right: 0.25rem; }
-    .act-desc { margin-top: 0.3rem; color: #64748b; font-size: 0.78rem; }
+    .act-meta { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; color: #635c55; font-size: 0.78rem; }
+    .act-meta b { font-weight: 500; color: #756d66; margin-right: 0.25rem; }
+    .act-desc { margin-top: 0.3rem; color: #635c55; font-size: 0.78rem; }
   `,
 })
 export class ProgrammeChartComponent {
