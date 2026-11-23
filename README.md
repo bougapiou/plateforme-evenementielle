@@ -7,7 +7,7 @@ paiement en ligne, contrôle d'accès par QR code, factures/reçus, notification
 tableaux de bord et statistiques.
 
 ## Stack
-
+WWP6J3IZYSOKEEUEYM5XHL2ZO3BDKLSQ
 | Composant   | Technologie                                    |
 |-------------|------------------------------------------------|
 | Backend API | Spring Boot 3 · Java 21 · JPA · PostgreSQL · Flyway |
