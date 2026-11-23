@@ -87,7 +87,8 @@ public class EventActivityService {
                 ft.setPortee(TicketScope.ACTIVITE);
                 ft.setLimiteParUtilisateur(1);
             }
-            ft.setNom("Accès — " + a.getTitre());
+            // Le nom d'une catégorie de billet est limité à 120 caractères (titre d'activité : 200).
+            ft.setNom(abreger("Accès — " + a.getTitre(), 120));
             ft.setDescription("Accès gratuit à l'activité « " + a.getTitre() + " »");
             ft.setPrixMontant(BigDecimal.ZERO);
             ft.setDevise(Money.DEFAULT_CURRENCY);
@@ -102,6 +103,19 @@ public class EventActivityService {
             eventTicketRepository.findById(a.getFreeTicketId())
                     .ifPresent(ft -> ft.setActif(false));
         }
+    }
+
+    /** Coupe proprement un texte trop long (sur un espace si possible) et ajoute « … ». */
+    static String abreger(String texte, int max) {
+        if (texte.length() <= max) {
+            return texte;
+        }
+        String coupe = texte.substring(0, max - 1);
+        int espace = coupe.lastIndexOf(' ');
+        if (espace > max * 2 / 3) {
+            coupe = coupe.substring(0, espace);
+        }
+        return coupe.stripTrailing() + "…";
     }
 
     private Event editableEvent(UUID eventId) {
