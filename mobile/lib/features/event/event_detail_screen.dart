@@ -246,7 +246,7 @@ class _Body extends ConsumerWidget {
               // --- À propos ---
               if ((e.descriptionDetaillee ?? e.descriptionCourte) != null) ...[
                 const _Section('À propos'),
-                Text(e.descriptionDetaillee ?? e.descriptionCourte!, style: t.bodyLarge),
+                _TexteDepliable(e.descriptionDetaillee ?? e.descriptionCourte!, style: t.bodyLarge),
               ],
 
               if (e.conditionsParticipation != null) ...[
@@ -502,6 +502,56 @@ class _Body extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+/// Texte long : affiche les premières lignes puis « Lire la suite » / « Réduire ».
+/// Le bouton n'apparaît que si le texte dépasse réellement [lignes] lignes.
+class _TexteDepliable extends StatefulWidget {
+  final String texte;
+  final TextStyle? style;
+  static const lignes = 6;
+  const _TexteDepliable(this.texte, {this.style});
+
+  @override
+  State<_TexteDepliable> createState() => _TexteDepliableState();
+}
+
+class _TexteDepliableState extends State<_TexteDepliable> {
+  bool _ouvert = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, contraintes) {
+      final mesure = TextPainter(
+        text: TextSpan(text: widget.texte, style: widget.style),
+        maxLines: _TexteDepliable.lignes,
+        textDirection: TextDirection.ltr,
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout(maxWidth: contraintes.maxWidth);
+      final long = mesure.didExceedMaxLines;
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: Text(
+            widget.texte,
+            style: widget.style,
+            maxLines: long && !_ouvert ? _TexteDepliable.lignes : null,
+            overflow: long && !_ouvert ? TextOverflow.ellipsis : TextOverflow.visible,
+          ),
+        ),
+        if (long)
+          TextButton.icon(
+            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 40)),
+            onPressed: () => setState(() => _ouvert = !_ouvert),
+            iconAlignment: IconAlignment.end,
+            icon: Icon(_ouvert ? Icons.expand_less : Icons.expand_more, size: 20),
+            label: Text(_ouvert ? 'Réduire' : 'Lire la suite'),
+          ),
+      ]);
+    });
   }
 }
 

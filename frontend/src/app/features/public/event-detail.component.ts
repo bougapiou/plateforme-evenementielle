@@ -114,7 +114,21 @@ import { ApiError } from '../../core/models';
         <div class="min-w-0 space-y-14">
           <section id="presentation" class="scroll-mt-20">
             <h2 class="text-[1.625rem] text-neutre-900">À propos de l'événement</h2>
-            <p class="mt-4 max-w-mesure whitespace-pre-line leading-[1.75] text-neutre-800">{{ e.descriptionDetaillee || e.descriptionCourte || 'Les détails de cet événement seront bientôt disponibles.' }}</p>
+            <!-- Texte long : premières lignes, puis « Lire la suite » pour tout afficher -->
+            <div class="relative mt-4 max-w-mesure">
+              <p id="apropos-texte" class="whitespace-pre-line leading-[1.75] text-neutre-800"
+                 [class.line-clamp-6]="aproposLong(e) && !aproposOuvert()">{{ texteApropos(e) }}</p>
+              @if (aproposLong(e) && !aproposOuvert()) {
+                <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-neutre-25 to-transparent" aria-hidden="true"></div>
+              }
+            </div>
+            @if (aproposLong(e)) {
+              <button type="button" class="mt-3 inline-flex items-center gap-1.5 font-display text-sm font-semibold text-vert-700 hover:underline"
+                      aria-controls="apropos-texte" [attr.aria-expanded]="aproposOuvert()" (click)="aproposOuvert.set(!aproposOuvert())">
+                {{ aproposOuvert() ? 'Réduire' : 'Lire la suite' }}
+                <app-icon name="chevron-down" class="h-4 w-4 transition-transform" [class.rotate-180]="aproposOuvert()" aria-hidden="true" />
+              </button>
+            }
             @if (e.conditionsParticipation) {
               <div class="mt-6 flex gap-3 rounded-xl border border-bleu-100 bg-bleu-50 p-4 text-sm text-bleu-800">
                 <app-icon name="info" class="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -647,6 +661,16 @@ export class EventDetailComponent implements OnDestroy {
   stands = signal<Stand[]>([]);
   standReservation = signal<StandReservation | null>(null);
   standError = signal<string | null>(null);
+
+  /** « À propos » : replié par défaut quand le texte est long. */
+  aproposOuvert = signal(false);
+  texteApropos = (e: EventPublic) =>
+    e.descriptionDetaillee || e.descriptionCourte || 'Les détails de cet événement seront bientôt disponibles.';
+  /** Long = plus de ~6 lignes : beaucoup de caractères ou beaucoup de retours à la ligne. */
+  aproposLong = (e: EventPublic) => {
+    const t = this.texteApropos(e);
+    return t.length > 450 || t.split('\n').length > 6;
+  };
 
   /** Billet affiché dans la fenêtre « Voir le billet ». */
   apercu = signal<BilletVisualisable | null>(null);
