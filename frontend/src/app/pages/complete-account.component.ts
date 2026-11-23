@@ -12,7 +12,7 @@ import { PasswordInputComponent } from '../shared/password-input.component';
   imports: [ReactiveFormsModule, RouterLink, PasswordInputComponent],
   template: `
     <div class="mx-auto max-w-md">
-      <img src="assets/logo.png" alt="PNE — Plateforme nationale des événements" class="mx-auto mb-6 h-24 w-auto" />
+      <img src="assets/logo-pne.png" alt="PNE — Plateforme nationale des événements" class="mx-auto mb-6 h-24 w-auto" />
 
       @if (!auth.isGuest()) {
         <div class="card p-6 text-center">

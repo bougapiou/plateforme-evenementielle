@@ -13,7 +13,7 @@ import { PhoneInputComponent } from '../shared/phone-input.component';
   imports: [ReactiveFormsModule, RouterLink, PhoneInputComponent, PasswordInputComponent],
   template: `
     <div class="mx-auto max-w-lg">
-      <img src="assets/logo.png" alt="PNE — Plateforme nationale des événements" class="mx-auto mb-6 h-24 w-auto" />
+      <img src="assets/logo-pne.png" alt="PNE — Plateforme nationale des événements" class="mx-auto mb-6 h-24 w-auto" />
       <div class="card p-6">
         <h1 class="text-[1.625rem] text-neutre-900">Créer un compte</h1>
         <p class="mt-1 text-sm text-slate-500">

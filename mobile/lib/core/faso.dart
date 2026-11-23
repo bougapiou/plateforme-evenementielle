@@ -159,7 +159,7 @@ class FasoBrandBlock extends StatelessWidget {
             decoration: onDark
                 ? BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))
                 : null,
-            child: Image.asset('assets/logo_mark.png',
+            child: Image.asset('assets/logo_pne_mark.png',
                 height: emblem * 0.62,
                 fit: BoxFit.contain,
                 semanticLabel: 'PNE — Plateforme nationale des événements'),
@@ -303,7 +303,7 @@ class FasoHeader extends StatelessWidget {
         const Text('La Patrie ou la Mort, nous Vaincrons',
             style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Brand.s600)),
         const SizedBox(height: 18),
-        Image.asset('assets/logo.png',
+        Image.asset('assets/logo_pne.png',
             height: 96,
             fit: BoxFit.contain,
             semanticLabel: 'PNE — Plateforme nationale des événements'),

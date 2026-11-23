@@ -150,7 +150,7 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
               title: Semantics(
                 label: 'PNE — Plateforme Nationale des Événements',
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Image.asset('assets/logo_mark.png', height: 24, fit: BoxFit.contain, excludeFromSemantics: true),
+                  Image.asset('assets/logo_pne_mark.png', height: 24, fit: BoxFit.contain, excludeFromSemantics: true),
                   Container(width: 1, height: 30, margin: const EdgeInsets.symmetric(horizontal: 8), color: Brand.s300),
                   const Flexible(
                     child: ExcludeSemantics(
@@ -167,21 +167,6 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                   ),
                 ]),
               ),
-              actions: [
-                if (!signedIn)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 40),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        textStyle: const TextStyle(fontFamily: Brand.display, fontWeight: FontWeight.w600, fontSize: 13),
-                      ),
-                      onPressed: () => context.push('/connexion'),
-                      child: const Text('Se connecter'),
-                    ),
-                  ),
-              ],
               bottom: const PreferredSize(preferredSize: Size.fromHeight(8), child: FasoFilet(height: 8)),
             ),
 
@@ -330,7 +315,7 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
-                        child: Image.asset('assets/logo_mark.png', height: 28, excludeFromSemantics: true),
+                        child: Image.asset('assets/logo_pne_mark.png', height: 28, excludeFromSemantics: true),
                       ),
                       const SizedBox(width: 12),
                       const ExcludeSemantics(

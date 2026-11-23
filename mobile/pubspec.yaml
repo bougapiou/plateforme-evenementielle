@@ -32,8 +32,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/logo.png
-    - assets/logo_mark.png
+    - assets/logo_pne.png
+    - assets/logo_pne_mark.png
     - assets/armoiries.png
 
   # Polices de la Charte graphique de l'administration burkinabè (SIL OFL 1.1)

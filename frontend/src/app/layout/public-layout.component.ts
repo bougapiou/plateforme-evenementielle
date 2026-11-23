@@ -25,7 +25,7 @@ import { IconComponent } from '../shared/icon.component';
         <div class="mx-auto flex max-w-conteneur items-center justify-between gap-2 px-4 py-3 min-[400px]:gap-4 sm:px-6">
           <a routerLink="/" class="group flex min-w-0 shrink items-center gap-2 py-1 min-[400px]:gap-2.5 sm:gap-3" (click)="menuOpen.set(false)"
              aria-label="PNE — Plateforme Nationale des Événements, retour à l'accueil">
-            <img src="assets/logo-mark.png" alt="" class="h-6 w-auto shrink-0 min-[400px]:h-8 sm:h-12" width="133" height="48" />
+            <img src="assets/logo-pne-mark.png" alt="" class="h-6 w-auto shrink-0 min-[400px]:h-8 sm:h-12" width="133" height="48" />
             <span class="flex min-w-0 flex-col border-l border-neutre-300 pl-2 font-display leading-tight min-[400px]:pl-2.5 sm:pl-3">
               <span class="text-[0.75rem] font-extrabold text-neutre-900 group-hover:text-vert-700 min-[400px]:whitespace-nowrap min-[400px]:text-[0.9375rem] sm:text-[1.0625rem]">
                 Plateforme Nationale
@@ -39,21 +39,13 @@ import { IconComponent } from '../shared/icon.component';
             <ng-container *ngTemplateOutlet="links" />
           </nav>
 
-          <!-- Mobile / tablette : « Se connecter » toujours visible + bouton du menu -->
-          <div class="-mr-2 flex shrink-0 items-center gap-1 lg:hidden">
-            @if (!auth.isAuthenticated()) {
-              <a routerLink="/connexion" class="btn-primary min-h-[40px] whitespace-nowrap px-2.5 text-[0.75rem] min-[400px]:px-3 min-[400px]:text-[0.8125rem]"
-                 (click)="menuOpen.set(false)">
-                Se connecter
-              </a>
-            }
-            <button type="button" class="btn-ghost px-2" [attr.aria-label]="menuOpen() ? 'Fermer le menu' : 'Ouvrir le menu'"
-                    aria-controls="menu-mobile" [attr.aria-expanded]="menuOpen()"
-                    (click)="menuOpen.set(!menuOpen())">
-              <app-icon [name]="menuOpen() ? 'x' : 'menu'" class="h-6 w-6" aria-hidden="true" />
-              <span class="hidden text-sm sm:inline">Menu</span>
-            </button>
-          </div>
+          <!-- Mobile / tablette : bouton du menu (« Se connecter » est dans le menu) -->
+          <button type="button" class="btn-ghost -mr-2 shrink-0 lg:hidden" [attr.aria-label]="menuOpen() ? 'Fermer le menu' : 'Ouvrir le menu'"
+                  aria-controls="menu-mobile" [attr.aria-expanded]="menuOpen()"
+                  (click)="menuOpen.set(!menuOpen())">
+            <app-icon [name]="menuOpen() ? 'x' : 'menu'" class="h-6 w-6" aria-hidden="true" />
+            <span class="text-sm">Menu</span>
+          </button>
         </div>
 
         @if (menuOpen()) {
@@ -118,7 +110,7 @@ import { IconComponent } from '../shared/icon.component';
             <a routerLink="/" class="inline-flex items-center gap-3" aria-label="PNE — Plateforme Nationale des Événements, retour à l'accueil">
               <!-- Le logo a un fond transparent et des parties claires : on le pose sur un fond blanc -->
               <span class="flex items-center rounded-md bg-white px-2.5 py-1.5">
-                <img src="assets/logo-mark.png" alt="" class="h-9 w-auto" width="100" height="36" />
+                <img src="assets/logo-pne-mark.png" alt="" class="h-9 w-auto" width="100" height="36" />
               </span>
               <span class="flex flex-col font-display leading-tight">
                 <span class="text-base font-extrabold text-white">Plateforme Nationale</span>
