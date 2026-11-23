@@ -144,9 +144,11 @@ type Onglet = 'avenir' | 'passes';
                   <span class="text-3xl font-extrabold tabular-nums text-neutre-900">{{ c.valeur }}</span>
                 </p>
               }
-              <span class="btn-primary relative z-10 px-6">
+              <!-- Vrai lien (au-dessus du lien de la carte) : ouvre la page directement sur la billetterie -->
+              <a [routerLink]="['/evenements', e.slug]" [queryParams]="{ participer: 1 }"
+                 class="btn-primary relative z-10 px-6">
                 Réserver ma place <app-icon name="arrow-right" class="h-4 w-4" aria-hidden="true" />
-              </span>
+              </a>
             </div>
           </div>
         </article>

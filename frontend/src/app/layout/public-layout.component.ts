@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { IconComponent } from '../shared/icon.component';
@@ -83,6 +83,10 @@ import { IconComponent } from '../shared/icon.component';
           <a routerLink="/tableau-de-bord" class="btn-secondary lg:ml-2">Tableau de bord</a>
           <button type="button" class="btn-ghost" (click)="auth.logout()">Déconnexion</button>
         } @else if (mobile) {
+          <a routerLink="/retrouver-billet" routerLinkActive="!text-vert-700 !bg-vert-50" ariaCurrentWhenActive="page"
+             class="btn-ghost">
+            <app-icon name="ticket" class="h-4 w-4" aria-hidden="true" /> Retrouver mon billet
+          </a>
           <!-- Menu mobile : « Se connecter » à la place de « Créer un compte » -->
           <a routerLink="/connexion" class="btn-primary mt-2">
             <app-icon name="login" class="h-4 w-4" aria-hidden="true" /> Se connecter
@@ -152,6 +156,15 @@ import { IconComponent } from '../shared/icon.component';
           </div>
         </div>
       </footer>
+
+      <!-- Remonter en haut de la page : visible après un défilement ; au-dessus de la barre
+           « Réserver » des pages événement sur téléphone -->
+      @if (afficherHaut()) {
+        <button type="button" (click)="remonter()" aria-label="Remonter en haut de la page" title="Remonter en haut"
+                class="fixed bottom-24 right-4 z-[300] flex h-12 w-12 items-center justify-center rounded-full border border-neutre-200 bg-white text-vert-700 shadow-lg transition hover:-translate-y-0.5 hover:bg-vert-50 sm:right-6 lg:bottom-8">
+          <app-icon name="arrow-left" class="h-5 w-5 rotate-90" aria-hidden="true" />
+        </button>
+      }
     </div>
   `,
 })
@@ -159,4 +172,16 @@ export class PublicLayoutComponent {
   auth = inject(AuthService);
   year = new Date().getFullYear();
   menuOpen = signal(false);
+  afficherHaut = signal(false);
+
+  @HostListener('window:scroll')
+  onScroll(): void {
+    this.afficherHaut.set(window.scrollY > 600);
+  }
+
+  remonter(): void {
+    const reduit = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduit ? 'auto' : 'smooth' });
+    document.getElementById('contenu')?.focus({ preventScroll: true });
+  }
 }
